@@ -25,6 +25,11 @@ Nav29 is a medical data management tool developed by Foundation 29 that enables 
 2. Install dependencies
 3. Start the development server
 
+### Repository Structure
+
+- **Client**: This repository contains the frontend code
+- **Server**: The backend code is available at [https://github.com/foundation29org/nav29_server](https://github.com/foundation29org/nav29_server)
+
 ## 🔒 Privacy and Security
 
 Nav29 is designed with medical data privacy and security as top priorities:
