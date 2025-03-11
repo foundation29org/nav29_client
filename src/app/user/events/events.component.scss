@@ -1,0 +1,118 @@
+.mat-column-name {
+  width: 50%; /* Cambia a tu valor deseado */
+}
+
+::ng-deep .mat-datepicker-toggle-default-icon {
+  width: 1.5em !important;
+}
+
+.entity {
+    border-radius: 10px;
+  }
+  
+  .allergy {
+    background-color: #ffb3b3;
+  }
+  
+  .disease {
+    background-color: #ffcc80;
+  }
+  
+  .drug {
+    background-color: #b3e0ff;
+  }
+  
+  .symptom {
+    background-color: #b3ffb3;
+  }
+  
+  .treatment {
+    background-color: #ccccff;
+  }
+
+  .gene {
+    background-color: #ff9fe28f;
+  }
+
+  .other {
+    background-color: #d9d9d9;
+  }
+
+  table {
+    width: 100%;
+  }
+  
+  ::ng-deep .mat-form-field-infix{border-top: .0em solid transparent !important;}
+  
+  .mat-mdc-form-field {
+    width: 100%;
+  }
+  
+  td, th {
+    width: 25%;
+  }
+
+  .small-width {
+    max-width: 30rem !important;
+  }
+
+  tr.example-detail-row {
+    height: 0;
+  }
+  
+  tr.example-element-row:not(.example-expanded-row):hover {
+    background: whitesmoke;
+  }
+  
+  tr.example-element-row:not(.example-expanded-row):active {
+    background: #efefef;
+  }
+  
+  .example-element-row td {
+    border-bottom-width: 0;
+  }
+  
+  .example-element-detail {
+    overflow: hidden;
+    display: flex;
+  }
+  
+  .example-element-symbol {
+    font-weight: bold;
+    font-size: 40px;
+    line-height: normal;
+  }
+  
+  .example-element-description {
+    padding: 16px;
+  }
+  
+  .example-element-description-attribution {
+    opacity: 0.5;
+  }
+
+  .example-container {
+    //min-height: 400px;
+    overflow: auto;
+  }
+  
+  table {
+    width: 100%;
+  }
+
+  .select-checkbox {
+    width: 50px;  /* o el ancho que prefieras */
+    padding-right: 20px!important;
+}
+  /*.mat-row .mat-cell {
+    cursor: pointer;
+  }
+  
+  .mat-row:hover .mat-cell {
+    border-bottom: 2px solid #111;
+    border-top: 2px solid #111;
+    background: #d1d1d1;
+  }*/
+  /*::ng-deep .mat-form-field-infix {
+    display: contents !important;
+  }*/

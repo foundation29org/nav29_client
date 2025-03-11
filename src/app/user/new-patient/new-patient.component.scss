@@ -1,0 +1,311 @@
+.heightpanel{
+  height: max-content;
+  min-height: 500px;
+  padding: 2.25rem !important;
+}
+
+.heightpanelsm{
+  padding: 2.25rem !important;
+}
+
+.form-body {
+  display: flex;
+  flex-direction: column; /* Organiza los hijos en una columna */
+  justify-content: space-between; /* Espacia los hijos al principio y al final del contenedor */
+  max-width: calc(var(--main-container-max-width) - 200px);
+  flex-grow: 1;
+  padding: 20px;
+  min-height: 400px; /* Asegúrate de que el contenedor tenga un mínimo de altura */
+}
+
+::ng-deep .swal2-content{
+  font-size: 1rem !important;
+  text-align: center !important;
+}
+
+
+/* Contenedor de botones al final */
+.button-container {
+  margin-top: auto; /* Empuja el contenedor de botones hacia el fondo */
+}
+
+.panelform2{
+  width: 800px;
+  margin: auto;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.main-container{
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  padding: 20px;
+}
+
+.panelprogress{
+  display: none;
+}
+
+.col-video {
+  display: flex;
+  justify-content: center; /* Centra horizontalmente */
+  align-items: center; /* Centra verticalmente */
+  height: 100%; /* Asegúrate de que el contenedor tenga una altura definida para que funcione el centrado vertical */
+}
+
+.video-frame{
+  height: 54vh;
+  min-height: auto;
+  width: fit-content;
+}
+
+.container-custom2 {
+    input {
+      opacity: 0;
+      position: absolute;
+      z-index: 2;
+      width: 100%;
+      height: 100%;
+      top: 0;
+      left: 0;
+    }
+  
+    label {
+      color: white;
+      background-color: #343a40;
+    }
+  
+    h3 {
+      font-size:  1.25rem !important;
+      color: #38424c;
+    }
+  }
+
+  :root {
+    --main-container-max-width: 776px; /* Ajusta este valor según tus necesidades */
+  }
+
+  .panelform{
+    max-width: var(--main-container-max-width); /* Asume que has definido esta variable en :root */
+    width: 100%; /* Ocupará el 100% hasta que alcance el max-width */
+    margin: auto;
+  }
+
+.card-title {
+    margin-bottom: 20px;
+    color: #333;
+    font-size: 1.5em;
+}
+
+.options-container {
+    margin-bottom: 20px;
+}
+
+.option-card {
+  display: block;
+  background: #f9f9f9;
+  border: 2px solid #ddd;
+  margin-bottom: 10px;
+  padding: 10px;
+  border-radius: 8px;
+  transition: border-color 0.3s;
+  position: relative; /* Para posicionar el pseudo-elemento o ícono de selección */
+  cursor: pointer; /* Hace que toda la tarjeta sea clickeable */
+}
+
+.option-card:hover {
+    border-color: #e52421; /* Color de tu elección */
+}
+
+.option-card .radio-input:checked ~ .option-content {
+  border-color: #e52421; /* Color de tu elección */
+}
+
+.option-card .radio-input:checked ~ .option-content:before {
+  content: ''; /* Puedes usar un ícono aquí si lo prefieres */
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  border: 2px solid #e52421;
+  border-radius: 8px;
+}
+
+.radio-input {
+    display: none; /* Ocultar el radio input predeterminado */
+}
+
+.option-content h4 {
+    margin: 0;
+    color: #333;
+    font-size: 1.2em;
+}
+
+.option-content p {
+    margin: 0;
+    color: #666;
+}
+
+.form-progress-container {
+  display: flex;
+  padding: 20px; /* Añade espacio alrededor de la barra de progreso */
+  margin-right: 20px; /* Añade espacio entre la barra de progreso y el formulario */
+  flex: 0 0 200px; /* Ajusta esto para establecer un ancho fijo para la barra de progreso */
+}
+
+.form-step-section {
+  max-width: 500px; /* O el ancho máximo deseado para los pasos del formulario */
+  margin: auto; /* Centra el contenido dentro de 'form-body' */
+  min-width: 300px;
+}
+
+.progress-indicator {
+  list-style: none;
+  padding: 0;
+  //border-right: 2px solid #ccc; /* Añade una línea divisoria, si es necesario */
+}
+
+.progress-indicator li {
+  padding: 10px;
+  margin-bottom: 4px;
+  white-space: nowrap; /* Evita que los textos se partan en varias líneas */
+}
+
+.progress-indicator li.active {
+  font-weight: bold;
+  color: #e52421; /* O el color que desees para el progreso activo */
+}
+
+.panelprogress2 {
+  position: relative; /* Contenedor relativo para posicionar la etiqueta de progreso */
+  width: 30px; /* Ancho del contenedor de la barra de progreso */
+  height: 200px; /* Altura del contenedor de la barra de progreso */
+  margin: auto;
+}
+
+.panelprogress2 span {
+  position: absolute; /* Posiciona el texto del progreso */
+  top: -25px; /* Ajusta según sea necesario */
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.progress2 {
+  height: 100%; /* La barra de progreso ocupa toda la altura del contenedor */
+  width: fit-content; /* El ancho de la barra de progreso */
+  display: flex;
+  align-items: flex-start; /* Alinea la barra de progreso en la parte inferior */
+  background-color: #e9ecef; /* Color de fondo de la barra de progreso */
+  border-radius: .25rem; /* Redondea las esquinas */
+  overflow: hidden;
+}
+
+.progress-bar2 {
+  width: 4px; /* El ancho de la barra es el 100% del contenedor .progress */
+  height: 0; /* La altura inicial es 0 */
+  transition: height .6s ease; /* Transición suave para la altura */
+  background-color: #e52421;
+  transform: scaleY(0); /* Comienza sin altura visible */
+  transform-origin: top; /* Comienza la transformación desde la parte superior */
+  border-radius: .25rem 0.25rem 0 0; /* Redondea las esquinas superiores */
+}
+
+.inputnumber{
+  width: auto !important;
+  display: inline-block !important;
+}
+
+.center-spinner{
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.voice-recorder {
+  text-align: center;
+  margin-top: 20px;
+}
+
+.mic-icon {
+  cursor: pointer;
+  display: inline-block;
+  //font-size: 40px;
+  //color: #007bff; /* Bootstrap primary color */
+  color: #253240;
+  font-weight: 700;
+  font-size: 1.25rem;
+}
+
+.mic-icon:hover {
+  //color: #0056b3; /* Darker shade for hover effect */
+  color: #b0b6bb;
+}
+
+.recording-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: red;
+  margin-top: 10px;
+}
+
+.record-icon {
+  margin-right: 5px;
+  color: red;
+  animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.2);
+    opacity: 0.7;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@media ( max-width: 991px ){
+  .panelform2{
+    width: 100% !important;
+  }
+}
+
+  @media ( max-width: 767.98px){
+    .heightpanel{
+      padding: 0.75rem !important;
+    }
+  }
+
+  @media ( max-width: 991px){
+    .form-progress-container{
+      display: none;
+    }
+    .panelprogress{
+      display: block;
+    }
+  }
+
+  @media ( max-width: 400px){
+    .form-step-section {
+      min-width: 250px;
+    }
+  }
+
+  @media ( max-width: 350px){
+    .form-step-section {
+      min-width: 220px;
+    }
+    .main-container {
+      padding: 0 !important;
+    }
+  }

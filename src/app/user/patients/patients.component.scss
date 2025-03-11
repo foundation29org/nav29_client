@@ -1,0 +1,39 @@
+.custom-white-button{
+  border: none !important;
+  border-radius: 0.35rem !important;
+}
+
+@media (max-width: 767.98px) {
+    .card {
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      margin-bottom: 1rem;
+    }
+  
+    .card-title {
+      font-size: 1.1rem;
+      margin-bottom: 0.5rem;
+    }
+  
+    .card-text {
+      font-size: 0.9rem;
+      margin-bottom: 0.3rem;
+    }
+  
+    .btn-group {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 1rem;
+    }
+  
+    .btn-group .btn {
+      flex: 1;
+      margin: 0 2px;
+    }
+  
+    mat-form-field {
+      width: 100%;
+      margin-bottom: 0.5rem;
+    }
+  }

@@ -1,0 +1,28 @@
+<app-navbar-dx29></app-navbar-dx29>
+<div class="wrapper" (window:resize)="onResize($event)">  
+  <div class="main-panel">
+    <div>
+      <div class="">
+          <div class="">
+              <router-outlet></router-outlet>
+          </div>
+      </div>
+      <app-footer-land></app-footer-land>
+      <div class="row  p-2 color-footer  center-elements">
+        <div class="col-md-4 col-sm-12">
+          <span class="">info@foundation29.org</span>
+        </div>
+        <div class="col-md-4 col-sm-12">
+          <a routerLink="/privacy-policy" (click)="trackEventsService.lauchEvent('privacy-policy btn 1')">
+            <span>{{'menu.Privacy Policy' | translate }}</span>
+          </a>
+        </div>
+        <div class="col-md-4 col-sm-12">
+          <span class="">© {{currentDate | date: 'yyyy' }} <a href="https://www.foundation29.org/" target="_blank" (click)="trackEventsService.lauchEvent('web Foundation 29');">{{'generics.Foundation 29' | translate }}</a></span>
+        </div>
+      </div>
+      <!-- Scroll to top button -->
+    <button class="btn btn-primary scroll-top" type="button" *ngIf="isScrollTopVisible" (click)="scrollToTop();trackEventsService.lauchEvent('scroll btn 1')"><i class="fa fa-arrow-up"></i></button>
+    </div>
+  </div>
+</div>

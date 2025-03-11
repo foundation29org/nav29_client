@@ -1,0 +1,78 @@
+.col-video {
+  display: flex;
+  justify-content: center; /* Centra horizontalmente */
+  align-items: center; /* Centra verticalmente */
+}
+
+.video-progress {
+  
+  .progress {
+    height: 5px;
+    background-color: #ddd;
+    
+    .progress-bar {
+      background-color: #343a40;
+      transition: width 0.1s ease;
+    }
+  }
+  
+  .time-remaining {
+    font-size: 14px;
+    color: #666;
+  }
+}
+
+.alert-yellow{
+  border-color: #f1da1f !important;
+  background-color: #f9c448 !important;
+  color: #000 !important;
+}
+
+::ng-deep .swal2-content{
+  text-align: initial !important;
+}
+
+.divider {
+  position: relative;
+  text-align: center;
+  margin: 20px 0; /* Ajusta el margen según sea necesario */
+}
+
+.divider:before,
+.divider:after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  width: 40%; /* Ajusta la longitud de la línea según sea necesario */
+  height: 1px;
+  background: #E0E0E0;
+}
+
+.divider:before {
+  left: 5%;
+}
+
+.divider:after {
+  right: 5%;
+}
+
+.divider-text {
+  background: #FFF; /* Color de fondo igual al del contenedor de login */
+  padding: 0 10px; /* Espaciado alrededor del texto "or" */
+}
+
+@media ( min-height: 700px ){
+  .video-frame{
+    height: 54vh;
+    min-height: auto;
+    width: fit-content;
+  }
+}
+
+@media ( max-width: 380px ){
+
+  .centerdiv{
+    clear: both;
+    float: none !important;
+  }
+}

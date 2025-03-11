@@ -1,0 +1,1163 @@
+﻿{
+    "Acetazolamide": {
+        "value": "1",
+        "text": "listadoFarmacos.ACETAZOLAMIDE",
+        "data": "onlyadults",
+        "kids": {
+            "initialdose": {
+                "min": "0",
+                "max": "0"
+            },
+            "maintenancedose": {
+                "min": "0",
+                "max": "0"
+            },
+            "perkg": "yes"
+        },
+        "adults": {
+            "initialdose": {
+                "min": "8",
+                "max": "30"
+            },
+            "maintenancedose": {
+                "min": "8",
+                "max": "30"
+            },
+            "perkg": "yes"
+        }
+    },
+    "Brivaracetam - Briviact": {
+        "value": "2",
+        "text": "listadoFarmacos.BRIVARACETAM BRIVIACT",
+        "data": "yes",
+        "kids": {
+            "initialdose": {
+                "min": "1",
+                "max": "3"
+            },
+            "maintenancedose": {
+                "min": "1",
+                "max": "6"
+            },
+            "perkg": "yes"
+        },
+        "adults": {
+            "initialdose": {
+                "min": "100",
+                "max": "100"
+            },
+            "maintenancedose": {
+                "min": "50",
+                "max": "200"
+            },
+            "perkg": "no"
+        }
+    },
+    "Cannabidiol (CBD) - Epidiolex": {
+        "value": "3",
+        "text": "listadoFarmacos.CBD EPIDIOLEX",
+        "data": "yes",
+        "kids": {
+            "initialdose": {
+                "min": "5",
+                "max": "5"
+            },
+            "maintenancedose": {
+                "min": "10",
+                "max": "20"
+            },
+            "perkg": "yes"
+        },
+        "adults": {
+            "initialdose": {
+                "min": "2.5",
+                "max": "2.5"
+            },
+            "maintenancedose": {
+                "min": "10",
+                "max": "20"
+            },
+            "perkg": "yes"
+        }
+    },
+    "Carbamazepine": {
+        "value": "4",
+        "text": "listadoFarmacos.CARBAMAZEPINE",
+        "data": "yes",
+        "kids": {
+            "initialdose": {
+                "min": "10",
+                "max": "20"
+            },
+            "maintenancedose": {
+                "min": "10",
+                "max": "35"
+            },
+            "perkg": "yes"
+        },
+        "adults": {
+            "initialdose": {
+                "min": "400",
+                "max": "400"
+            },
+            "maintenancedose": {
+                "min": "800",
+                "max": "1600"
+            },
+            "perkg": "no"
+        }
+    },
+    "Clobazam (CLB) - Frisium - Onfi": {
+        "value": "5",
+        "text": "listadoFarmacos.CLOBAZAM FRISIUM ONFI",
+        "data": "yes",
+        "kids": {
+            "initialdose": {
+                "min": "5",
+                "max": "10"
+            },
+            "maintenancedose": {
+                "min": "20",
+                "max": "40"
+            },
+            "perkg": "no"
+        },
+        "adults": {
+            "initialdose": {
+                "min": "5",
+                "max": "10"
+            },
+            "maintenancedose": {
+                "min": "20",
+                "max": "40"
+            },
+            "perkg": "no"
+        }
+    },
+    "Clonazepam - Rivotril": {
+        "value": "6",
+        "text": "listadoFarmacos.CLONAZEPAM",
+        "data": "yes",
+        "kids": {
+            "initialdose": {
+                "min": "0.01",
+                "max": "0.05"
+            },
+            "maintenancedose": {
+                "min": "0.01",
+                "max": "0.02"
+            },
+            "perkg": "yes"
+        },
+        "adults": {
+            "initialdose": {
+                "min": "1.5",
+                "max": "1.5"
+            },
+            "maintenancedose": {
+                "min": "1.5",
+                "max": "20"
+            },
+            "perkg": "no"
+        }
+    },
+    "Diazepam - Diastat - Valium": {
+        "value": "7",
+        "text": "listadoFarmacos.DIAZEPAM DIASTAT VALIUM",
+        "data": "yes",
+        "kids": {
+            "initialdose": {
+                "min": "0.2",
+                "max": "0.5"
+            },
+            "maintenancedose": {
+                "min": "0.2",
+                "max": "0.5"
+            },
+            "perkg": "yes"
+        },
+        "adults": {
+            "initialdose": {
+                "min": "0.2",
+                "max": "0.4"
+            },
+            "maintenancedose": {
+                "min": "0.2",
+                "max": "0.4"
+            },
+            "perkg": "no"
+        }
+    },
+    "Distigmine Bromide": {
+        "value": "8",
+        "text": "listadoFarmacos.DISTIGMINE BROMIDE",
+        "data": "no",
+        "kids": {
+            "initialdose": {
+                "min": "0",
+                "max": "0"
+            },
+            "maintenancedose": {
+                "min": "0",
+                "max": "0"
+            },
+            "perkg": "yes"
+        },
+        "adults": {
+            "initialdose": {
+                "min": "0",
+                "max": "0"
+            },
+            "maintenancedose": {
+                "min": "0",
+                "max": "0"
+            },
+            "perkg": "no"
+        }
+    },
+    "Divalproex Sodium - Depakote": {
+        "value": "9",
+        "text": "listadoFarmacos.DIVALPROEX SODIUM DEPAKOTE",
+        "data": "yes",
+        "kids": {
+            "initialdose": {
+                "min": "10",
+                "max": "15"
+            },
+            "maintenancedose": {
+                "min": "15",
+                "max": "60"
+            },
+            "perkg": "yes"
+        },
+        "adults": {
+            "initialdose": {
+                "min": "10",
+                "max": "15"
+            },
+            "maintenancedose": {
+                "min": "15",
+                "max": "60"
+            },
+            "perkg": "yes"
+        }
+    },
+    "Divalproex Sodium - Depakote ER": {
+        "value": "10",
+        "text": "listadoFarmacos.DIVALPROEX SODIUM DEPAKOTE ER",
+        "data": "yes",
+        "kids": {
+            "initialdose": {
+                "min": "10",
+                "max": "15"
+            },
+            "maintenancedose": {
+                "min": "15",
+                "max": "60"
+            },
+            "perkg": "yes"
+        },
+        "adults": {
+            "initialdose": {
+                "min": "10",
+                "max": "15"
+            },
+            "maintenancedose": {
+                "min": "15",
+                "max": "60"
+            },
+            "perkg": "yes"
+        }
+    },
+    "Eslicarbazepine": {
+        "value": "11",
+        "text": "listadoFarmacos.ESLICARBAZEPINE ACETATE",
+        "data": "yes",
+        "kids": {
+            "initialdose": {
+                "min": "200",
+                "max": "400"
+            },
+            "maintenancedose": {
+                "min": "400",
+                "max": "1200"
+            },
+            "perkg": "no"
+        },
+        "adults": {
+            "initialdose": {
+                "min": "400",
+                "max": "400"
+            },
+            "maintenancedose": {
+                "min": "800",
+                "max": "1600"
+            },
+            "perkg": "no"
+        }
+    },
+    "Ethosuximide - Zarontin": {
+        "value": "12",
+        "text": "listadoFarmacos.ETHOSUXIMIDE ZARONTIN",
+        "data": "yes",
+        "kids": {
+            "initialdose": {
+                "min": "250",
+                "max": "500"
+            },
+            "maintenancedose": {
+                "min": "500",
+                "max": "1500"
+            },
+            "perkg": "no"
+        },
+        "adults": {
+            "initialdose": {
+                "min": "500",
+                "max": "500"
+            },
+            "maintenancedose": {
+                "min": "500",
+                "max": "1500"
+            },
+            "perkg": "no"
+        }
+    },
+    "Ezogabine - Retigabine": {
+        "value": "13",
+        "text": "listadoFarmacos.EZOGABINE RETIGABINE",
+        "data": "onlyadults",
+        "kids": {
+            "initialdose": {
+                "min": "0",
+                "max": "0"
+            },
+            "maintenancedose": {
+                "min": "0",
+                "max": "305"
+            },
+            "perkg": "yes"
+        },
+        "adults": {
+            "initialdose": {
+                "min": "300",
+                "max": "300"
+            },
+            "maintenancedose": {
+                "min": "600",
+                "max": "120"
+            },
+            "perkg": "no"
+        }
+    },
+    "Felbamate - Felbatol": {
+        "value": "14",
+        "text": "listadoFarmacos.FELBAMATE - FELBATOL",
+        "data": "yes",
+        "kids": {
+            "initialdose": {
+                "min": "15",
+                "max": "15"
+            },
+            "maintenancedose": {
+                "min": "15",
+                "max": "45"
+            },
+            "perkg": "yes"
+        },
+        "adults": {
+            "initialdose": {
+                "min": "1200",
+                "max": "1200"
+            },
+            "maintenancedose": {
+                "min": "2400",
+                "max": "3600"
+            },
+            "perkg": "no"
+        }
+    },
+    "Fenfluramine - Fintepla": {
+        "value": "15",
+        "text": "listadoFarmacos.FENFLURAMINE FINTEPLA",
+        "data": "yes",
+        "kids": {
+            "initialdose": {
+                "min": "0.2",
+                "max": "0.2"
+            },
+            "maintenancedose": {
+                "min": "0.4",
+                "max": "0.4"
+            },
+            "perkg": "yes"
+        },
+        "adults": {
+            "initialdose": {
+                "min": "0.2",
+                "max": "0.2"
+            },
+            "maintenancedose": {
+                "min": "0.4",
+                "max": "0.4"
+            },
+            "perkg": "yes"
+        }
+    },
+    "Gabapentin": {
+        "value": "16",
+        "text": "listadoFarmacos.GABAPENTIN",
+        "data": "yes",
+        "kids": {
+            "initialdose": {
+                "min": "10",
+                "max": "35"
+            },
+            "maintenancedose": {
+                "min": "35",
+                "max": "50"
+            },
+            "perkg": "yes"
+        },
+        "adults": {
+            "initialdose": {
+                "min": "900",
+                "max": "900"
+            },
+            "maintenancedose": {
+                "min": "2400",
+                "max": "3600"
+            },
+            "perkg": "no"
+        }
+    },
+    "Gabapentin - Neurontin": {
+        "value": "17",
+        "text": "listadoFarmacos.GABAPENTIN NEURONTIN",
+        "data": "yes",
+        "kids": {
+            "initialdose": {
+                "min": "10",
+                "max": "35"
+            },
+            "maintenancedose": {
+                "min": "35",
+                "max": "50"
+            },
+            "perkg": "yes"
+        },
+        "adults": {
+            "initialdose": {
+                "min": "900",
+                "max": "900"
+            },
+            "maintenancedose": {
+                "min": "2400",
+                "max": "3600"
+            },
+            "perkg": "no"
+        }
+    },
+    "Ketogenic Diet": {
+        "value": "18",
+        "text": "listadoFarmacos.KETOGENIC DIET",
+        "data": "no",
+        "kids": {
+            "initialdose": {
+                "min": "10",
+                "max": "0"
+            },
+            "maintenancedose": {
+                "min": "0",
+                "max": "0"
+            },
+            "perkg": "no"
+        },
+        "adults": {
+            "initialdose": {
+                "min": "0",
+                "max": "0"
+            },
+            "maintenancedose": {
+                "min": "0",
+                "max": "0"
+            },
+            "perkg": "no"
+        }
+    },
+    "Lacosamide - Vimpat": {
+        "value": "19",
+        "text": "listadoFarmacos.LACOSAMIDE VIMPAT",
+        "data": "yes",
+        "kids": {
+            "initialdose": {
+                "min": "2",
+                "max": "2"
+            },
+            "maintenancedose": {
+                "min": "4",
+                "max": "15"
+            },
+            "perkg": "yes"
+        },
+        "adults": {
+            "initialdose": {
+                "min": "100",
+                "max": "200"
+            },
+            "maintenancedose": {
+                "min": "200",
+                "max": "400"
+            },
+            "perkg": "no"
+        }
+    },
+    "Lamotrigine - Lamictal": {
+        "value": "20",
+        "text": "listadoFarmacos.LAMOTRAGINE LAMICTAL",
+        "data": "yes",
+        "kids": {
+            "initialdose": {
+                "min": "0.15",
+                "max": "0.6"
+            },
+            "maintenancedose": {
+                "min": "1",
+                "max": "15"
+            },
+            "perkg": "yes"
+        },
+        "adults": {
+            "initialdose": {
+                "min": "12.5",
+                "max": "50"
+            },
+            "maintenancedose": {
+                "min": "100",
+                "max": "500"
+            },
+            "perkg": "no"
+        }
+    },
+    "Lamotrigine - Lamictal XR": {
+        "value": "21",
+        "text": "listadoFarmacos.LAMOTRAGINE LAMICTAL XR",
+        "data": "onlyadults",
+        "kids": {
+            "initialdose": {
+                "min": "0",
+                "max": "0"
+            },
+            "maintenancedose": {
+                "min": "0",
+                "max": "0"
+            },
+            "perkg": "yes"
+        },
+        "adults": {
+            "initialdose": {
+                "min": "12.5",
+                "max": "50"
+            },
+            "maintenancedose": {
+                "min": "200",
+                "max": "600"
+            },
+            "perkg": "no"
+        }
+    },
+    "Levetiracetam - Keppra": {
+        "value": "22",
+        "text": "listadoFarmacos.LEVETIRACETAM KEPPRA",
+        "data": "yes",
+        "kids": {
+            "initialdose": {
+                "min": "14",
+                "max": "20"
+            },
+            "maintenancedose": {
+                "min": "35",
+                "max": "60"
+            },
+            "perkg": "yes"
+        },
+        "adults": {
+            "initialdose": {
+                "min": "1000",
+                "max": "1000"
+            },
+            "maintenancedose": {
+                "min": "1000",
+                "max": "3000"
+            },
+            "perkg": "no"
+        }
+    },
+    "Levetiracetam - Keppra XR": {
+        "value": "23",
+        "text": "listadoFarmacos.LEVETIRACETAM KEPPRA XR",
+        "data": "onlyadults",
+        "kids": {
+            "initialdose": {
+                "min": "0",
+                "max": "0"
+            },
+            "maintenancedose": {
+                "min": "0",
+                "max": "0"
+            },
+            "perkg": "yes"
+        },
+        "adults": {
+            "initialdose": {
+                "min": "1000",
+                "max": "1000"
+            },
+            "maintenancedose": {
+                "min": "1000",
+                "max": "3000"
+            },
+            "perkg": "no"
+        }
+    },
+    "Lorazepam": {
+        "value": "24",
+        "text": "listadoFarmacos.LORAZEPAM",
+        "data": "onlyadults",
+        "kids": {
+            "initialdose": {
+                "min": "0",
+                "max": "0"
+            },
+            "maintenancedose": {
+                "min": "0",
+                "max": "0"
+            },
+            "perkg": "yes"
+        },
+        "adults": {
+            "initialdose": {
+                "min": "4",
+                "max": "4"
+            },
+            "maintenancedose": {
+                "min": "8",
+                "max": "8"
+            },
+            "perkg": "no"
+        }
+    },
+    "Midazolam": {
+        "value": "25",
+        "text": "listadoFarmacos.MIDAZOLAM",
+        "data": "yes",
+        "kids": {
+            "initialdose": {
+                "min": "5",
+                "max": "5"
+            },
+            "maintenancedose": {
+                "min": "10",
+                "max": "10"
+            },
+            "perkg": "no"
+        },
+        "adults": {
+            "initialdose": {
+                "min": "5",
+                "max": "5"
+            },
+            "maintenancedose": {
+                "min": "10",
+                "max": "10"
+            },
+            "perkg": "no"
+        }
+    },
+    "Nitrazepam": {
+        "value": "26",
+        "text": "listadoFarmacos.NITRAZEPAM",
+        "data": "no",
+        "kids": {
+            "initialdose": {
+                "min": "0",
+                "max": "0"
+            },
+            "maintenancedose": {
+                "min": "0",
+                "max": "0"
+            },
+            "perkg": "yes"
+        },
+        "adults": {
+            "initialdose": {
+                "min": "0",
+                "max": "0"
+            },
+            "maintenancedose": {
+                "min": "0",
+                "max": "0"
+            },
+            "perkg": "no"
+        }
+    },
+    "Oxcarbazepine - Trileptal": {
+        "value": "27",
+        "text": "listadoFarmacos.OXCARBAZEPINE TRILEPTAL",
+        "data": "yes",
+        "kids": {
+            "initialdose": {
+                "min": "8",
+                "max": "10"
+            },
+            "maintenancedose": {
+                "min": "1.5",
+                "max": "60"
+            },
+            "perkg": "yes"
+        },
+        "adults": {
+            "initialdose": {
+                "min": "600",
+                "max": "600"
+            },
+            "maintenancedose": {
+                "min": "600",
+                "max": "2400"
+            },
+            "perkg": "no"
+        }
+    },
+    "Perampanel - Fycompa": {
+        "value": "28",
+        "text": "listadoFarmacos.PERAMPANEL FYCOMPA",
+        "data": "yes",
+        "kids": {
+            "initialdose": {
+                "min": "2",
+                "max": "2"
+            },
+            "maintenancedose": {
+                "min": "8",
+                "max": "12"
+            },
+            "perkg": "no"
+        },
+        "adults": {
+            "initialdose": {
+                "min": "2",
+                "max": "4"
+            },
+            "maintenancedose": {
+                "min": "8",
+                "max": "12"
+            },
+            "perkg": "no"
+        }
+    },
+    "Phenobarbital - Luminal": {
+        "value": "29",
+        "text": "listadoFarmacos.PHENOBARBITAL LUMINAL",
+        "data": "yes",
+        "kids": {
+            "initialdose": {
+                "min": "15",
+                "max": "20"
+            },
+            "maintenancedose": {
+                "min": "3",
+                "max": "6"
+            },
+            "perkg": "yes"
+        },
+        "adults": {
+            "initialdose": {
+                "min": "20",
+                "max": "320"
+            },
+            "maintenancedose": {
+                "min": "20",
+                "max": "320"
+            },
+            "perkg": "no"
+        }
+    },
+    "Phenytoin - Dilantin": {
+        "value": "30",
+        "text": "listadoFarmacos.PHENYTOIN DILANTIN",
+        "data": "yes",
+        "kids": {
+            "initialdose": {
+                "min": "5",
+                "max": "5"
+            },
+            "maintenancedose": {
+                "min": "4",
+                "max": "8"
+            },
+            "perkg": "yes"
+        },
+        "adults": {
+            "initialdose": {
+                "min": "300",
+                "max": "300"
+            },
+            "maintenancedose": {
+                "min": "300",
+                "max": "1800"
+            },
+            "perkg": "no"
+        }
+    },
+    "Piracetam": {
+        "value": "31",
+        "text": "listadoFarmacos.PIRACETAM",
+        "data": "no",
+        "kids": {
+            "initialdose": {
+                "min": "0",
+                "max": "0"
+            },
+            "maintenancedose": {
+                "min": "0",
+                "max": "0"
+            },
+            "perkg": "yes"
+        },
+        "adults": {
+            "initialdose": {
+                "min": "0",
+                "max": "0"
+            },
+            "maintenancedose": {
+                "min": "0",
+                "max": "0"
+            },
+            "perkg": "no"
+        }
+    },
+    "Pregabalin": {
+        "value": "32",
+        "text": "listadoFarmacos.PREGABALIN",
+        "data": "yes",
+        "kids": {
+            "initialdose": {
+                "min": "2.5",
+                "max": "3.5"
+            },
+            "maintenancedose": {
+                "min": "2.5",
+                "max": "14"
+            },
+            "perkg": "yes"
+        },
+        "adults": {
+            "initialdose": {
+                "min": "150",
+                "max": "150"
+            },
+            "maintenancedose": {
+                "min": "150",
+                "max": "600"
+            },
+            "perkg": "no"
+        }
+    },
+    "Primidone": {
+        "value": "33",
+        "text": "listadoFarmacos.PRIMIDONE",
+        "data": "yes",
+        "kids": {
+            "initialdose": {
+                "min": "50",
+                "max": "100"
+            },
+            "maintenancedose": {
+                "min": "375",
+                "max": "1500"
+            },
+            "perkg": "no"
+        },
+        "adults": {
+            "initialdose": {
+                "min": "100",
+                "max": "125"
+            },
+            "maintenancedose": {
+                "min": "750",
+                "max": "2000"
+            },
+            "perkg": "no"
+        }
+    },
+    "Risperidone - Risperdal": {
+        "value": "34",
+        "text": "listadoFarmacos.RISPERIDONE RISPERDAL",
+        "data": "yes",
+        "kids": {
+            "initialdose": {
+                "min": "0.25",
+                "max": "0.5"
+            },
+            "maintenancedose": {
+                "min": "0.5",
+                "max": "3"
+            },
+            "perkg": "no"
+        },
+        "adults": {
+            "initialdose": {
+                "min": "0.25",
+                "max": "0.5"
+            },
+            "maintenancedose": {
+                "min": "0.5",
+                "max": "3"
+            },
+            "perkg": "no"
+        }
+    },
+    "Rufinamide - Inovelon": {
+        "value": "35",
+        "text": "listadoFarmacos.RUFINAMIDE INOVELON",
+        "data": "yes",
+        "kids": {
+            "initialdose": {
+                "min": "10",
+                "max": "10"
+            },
+            "maintenancedose": {
+                "min": "45",
+                "max": "45"
+            },
+            "perkg": "yes"
+        },
+        "adults": {
+            "initialdose": {
+                "min": "400",
+                "max": "800"
+            },
+            "maintenancedose": {
+                "min": "3200",
+                "max": "3200"
+            },
+            "perkg": "no"
+        }
+    },
+    "Stiripentol (STP) - Diacomit": {
+        "value": "36",
+        "text": "listadoFarmacos.STIRIPENTOL DIACOMIT",
+        "data": "yes",
+        "kids": {
+            "initialdose": {
+                "min": "50",
+                "max": "50"
+            },
+            "maintenancedose": {
+                "min": "75",
+                "max": "75"
+            },
+            "perkg": "yes"
+        },
+        "adults": {
+            "initialdose": {
+                "min": "50",
+                "max": "50"
+            },
+            "maintenancedose": {
+                "min": "75",
+                "max": "75"
+            },
+            "perkg": "yes"
+        }
+    },
+    "Tiagabine Hydrocloride - Gabitril": {
+        "value": "37",
+        "text": "listadoFarmacos.TIAGABINE HYDROCHLORIDE GABITRIL",
+        "data": "yes",
+        "kids": {
+            "initialdose": {
+                "min": "4",
+                "max": "4"
+            },
+            "maintenancedose": {
+                "min": "4",
+                "max": "32"
+            },
+            "perkg": "no"
+        },
+        "adults": {
+            "initialdose": {
+                "min": "4",
+                "max": "4"
+            },
+            "maintenancedose": {
+                "min": "4",
+                "max": "56"
+            },
+            "perkg": "no"
+        }
+    },
+    "Topiramate - Topamax": {
+        "value": "38",
+        "text": "listadoFarmacos.TOPIRAMATE - TOPAMAX",
+        "data": "yes",
+        "kids": {
+            "initialdose": {
+                "min": "25",
+                "max": "25"
+            },
+            "maintenancedose": {
+                "min": "150",
+                "max": "400"
+            },
+            "perkg": "no"
+        },
+        "adults": {
+            "initialdose": {
+                "min": "50",
+                "max": "50"
+            },
+            "maintenancedose": {
+                "min": "400",
+                "max": "400"
+            },
+            "perkg": "no"
+        }
+    },
+    "Triple Bromide": {
+        "value": "39",
+        "text": "listadoFarmacos.TRIPLE BROMIDE",
+        "data": "no",
+        "kids": {
+            "initialdose": {
+                "min": "0",
+                "max": "0"
+            },
+            "maintenancedose": {
+                "min": "0",
+                "max": "0"
+            },
+            "perkg": "yes"
+        },
+        "adults": {
+            "initialdose": {
+                "min": "0",
+                "max": "0"
+            },
+            "maintenancedose": {
+                "min": "0",
+                "max": "0"
+            },
+            "perkg": "no"
+        }
+    },
+    "Valproate Sodium - Depacon Injection": {
+        "value": "40",
+        "text": "listadoFarmacos.VALPROATE SODIUM DEPACON INJECTION",
+        "data": "yes",
+        "kids": {
+            "initialdose": {
+                "min": "10",
+                "max": "15"
+            },
+            "maintenancedose": {
+                "min": "15",
+                "max": "60"
+            },
+            "perkg": "yes"
+        },
+        "adults": {
+            "initialdose": {
+                "min": "10",
+                "max": "15"
+            },
+            "maintenancedose": {
+                "min": "15",
+                "max": "60"
+            },
+            "perkg": "yes"
+        }
+    },
+    "Valproic Acid (VPA) - Depakene": {
+        "value": "41",
+        "text": "listadoFarmacos.VALPROIC ACID DEPAKENE",
+        "data": "yes",
+        "kids": {
+            "initialdose": {
+                "min": "10",
+                "max": "15"
+            },
+            "maintenancedose": {
+                "min": "15",
+                "max": "60"
+            },
+            "perkg": "yes"
+        },
+        "adults": {
+            "initialdose": {
+                "min": "10",
+                "max": "15"
+            },
+            "maintenancedose": {
+                "min": "15",
+                "max": "60"
+            },
+            "perkg": "yes"
+        }
+    },
+    "Vigabatrin": {
+        "value": "42",
+        "text": "listadoFarmacos.VIGABATRIN",
+        "data": "yes",
+        "kids": {
+            "initialdose": {
+                "min": "50",
+                "max": "50"
+            },
+            "maintenancedose": {
+                "min": "50",
+                "max": "150"
+            },
+            "perkg": "yes"
+        },
+        "adults": {
+            "initialdose": {
+                "min": "1000",
+                "max": "1000"
+            },
+            "maintenancedose": {
+                "min": "1500",
+                "max": "3000"
+            },
+            "perkg": "no"
+        }
+    },
+    "Zonisamide - Zonegran": {
+        "value": "43",
+        "text": "listadoFarmacos.ZONISAMIDE ZONEGRAN",
+        "data": "onlyadults",
+        "kids": {
+            "initialdose": {
+                "min": "0",
+                "max": "0"
+            },
+            "maintenancedose": {
+                "min": "0",
+                "max": "0"
+            },
+            "perkg": "yes"
+        },
+        "adults": {
+            "initialdose": {
+                "min": "100",
+                "max": "100"
+            },
+            "maintenancedose": {
+                "min": "400",
+                "max": "600"
+            },
+            "perkg": "no"
+        }
+    }
+}

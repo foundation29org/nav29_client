@@ -1,0 +1,707 @@
+<div class="main-container" *ngIf="!loadedPatientInfo">
+    <div class="text-center">
+        <div class="">
+            <h3>{{'wizard.p0.1' | translate }}</h3>
+        </div>
+        <div class="card-body">
+            <p><em class="fa fa-spinner fa-spin fa-fw primary"></em></p>
+        </div>
+    </div>
+</div>
+<div *ngIf="loadedPatientInfo">
+
+    <div class="main-container" *ngIf="startOpt==''">
+
+      <div class="bg-white round heightpanelsm">
+        <div class="row m-0 mb-4">
+        <div class="text-center">
+          <h1 class="card-title text-bold-500">
+            {{'wizard.p2.0' | translate }}
+          </h1>
+            <h1 class="card-title text-bold-500">
+              {{'wizard.p2.1' | translate }}
+            <hr class="hr-custom">
+            </h1>
+            <div class="row mt-4">
+            <div class="col-md-4">
+                <button class="btn btn-dark text-bold-700 mt-2" (click)="changeStartOpt('doc')">{{'wizard.p2.2' | translate }}</button>
+            </div>
+            <div class="col-md-4">
+                <button class="btn btn-dark text-bold-700 mt-2" (click)="changeStartOpt('form')">{{'wizard.p2.3' | translate }}</button>
+            </div>
+            <div class="col-md-4">
+              <button class="btn btn-dark text-bold-700 mt-2" (click)="goToPatients()">{{'wizard.p2.4' | translate }}</button>
+            </div>
+        </div>
+        </div>
+        </div>
+    </div>
+    </div>
+
+    <div class="text-center" *ngIf="startOpt!=''">
+        
+        <div *ngIf="startOpt=='doc'" class="main-container">
+            <div class="">
+              <div class="offset-md-2 col-md-8 offset-lg-3 col-lg-6 bg-white round heightpanelsm">
+                <h1 class="mt-3 card-title text-bold-500">{{'demo.How do you want to start?' | translate }}</h1>
+                <p class="">{{'demo.startsubtitle' | translate }}</p>
+                <p class="">{{'wizard.p3.1' | translate }}</p>
+                <hr class="hr-custom mb-5">
+                
+                <div class="mb-4 row">
+                    <div [ngClass]="{'col-md-4': showCameraButton, 'col-6': !showCameraButton}" *ngIf="showCameraButton">
+                        <div class="col-md-12">
+                            <i class="fa fa-camera dark fa-3x pointer" aria-hidden="true" (click)="entryOpt('opt1', contentPhoto)"></i>
+                        </div>
+                        <button class="btn btn-dark btn-sm text-bold-700 mt-2" (click)="entryOpt('opt1', contentPhoto)">{{'demo.Take a photo' | translate }}</button>
+                        
+                        
+                    </div>
+                    <div [ngClass]="{'col-md-4': showCameraButton, 'col-6': !showCameraButton}">
+                        <div class="col-md-12">
+                            <i class="fa fa-upload dark fa-3x pointer" aria-hidden="true"></i>
+                            <!--<img class="logo-img" [src]="icons[4].data" />-->
+                        </div>
+                        <div class="container-custom2">
+                            <input class="pointer" aria-label="new file" type="file" #fileDropRef id="fileDropRef" multiple (change)="onFileChangePDF($event);"
+                            accept=".pdf, .docx, .jpg, .png, .jpeg, .bmp, .tiff, .heif, .pptx, .txt" />
+                            <label for="fileDropRef" class="btn btn-dark btn-sm text-bold-700 mt-2" style="z-index:2;position: relative;" (change)="onFileChangePDF($event);">{{'generics.Upload' | translate }}</label>
+                            <span class="text-muted small d-block">{{'demo.Max. 5 documents' | translate }}</span>
+                        </div>
+                    </div>
+                    <div [ngClass]="{'col-md-4': showCameraButton, 'col-6': !showCameraButton}">
+                      <div class="col-md-12">
+                        <i class="fa-solid fa-paste dark fa-3x pointer" aria-hidden="true" (click)="entryOpt('opt2', contentManual)"></i>
+                      </div>
+                      <button class="btn btn-dark btn-sm text-bold-700 mt-2" (click)="entryOpt('opt2', contentManual)">{{'demo.Write text' | translate }}</button>
+                    </div>
+                </div>
+                <span type="button" class="float-left" (click)="resetStartOpt();">< {{'generics.Back' | translate }}</span>
+              </div>
+            </div>
+            
+        </div>
+        <div *ngIf="startOpt=='form'" >
+            <div *ngIf="loadingInitialEvents" class="main-container">
+                <div class="">
+                    <h3>{{'wizard.p4.1' | translate }}</h3>
+                    <h3>{{'generics.Please wait, this process usually takes 1-2 minutes' | translate }}</h3>
+                    <div class="card-body">
+                        <p><em class="fa fa-spinner fa-spin fa-fw primary fa-2x"></em></p>
+                    </div>
+                </div>
+                
+                
+            </div>
+            <div *ngIf="!loadingInitialEvents && stepform==0" class="main-container">
+              <div class="">
+                <div class="offset-md-2 col-md-8 offset-lg-3 col-lg-6 bg-white round heightpanelsm">
+                  <h1 *ngIf="initialEvents.length==0" class="card-title text-bold-500">
+                    {{'wizard.p4.2' | translate }}
+                  <hr class="hr-custom">
+                  </h1>
+                  <h1 *ngIf="initialEvents.length>0" class="card-title text-bold-500">
+                    {{'wizard.p4.3' | translate }}
+                  <hr class="hr-custom">
+                  </h1>
+                  <div class="mt-4 mb-2">
+                    <button type="button" class="btn btn-dark" (click)="nextStep();">{{'wizard.Continue' | translate }}</button>
+                  </div>
+                  <span type="button" class="float-left" *ngIf="docs.length==0" (click)="resetStartOpt();">< {{'generics.Back' | translate }}</span>
+                </div>
+              </div>
+                
+            </div>
+            <div *ngIf="!loadingInitialEvents && stepform!=0" class="main-container">
+              <button *ngIf="(startOpt!='form' || stepform==0) && !loadingInitialEvents || startOpt=='doc'" class="mb-2 buttomback btn btn-sm btn-primary text-bold-700 mt-2" (click)="resetStartOpt()"><em class="fa fa-arrow-left"></em> {{'generics.Back' | translate }}</button>
+                <div class="bg-white round heightpanel">
+                    <div class="panelprogress">
+                        <span>{{stepform}}/16</span>
+                        <div class="progress">
+                            <div 
+                              class="progress-bar" 
+                              role="progressbar" 
+                              [style.width]="(stepform / 16) * 100 + '%'" 
+                              [attr.aria-valuenow]="stepform" 
+                              aria-valuemin="0" 
+                              aria-valuemax="16">
+                            </div>
+                          </div>
+                    </div>
+                    
+                    <form action="#" class="panelform2 form form-horizontal" [formGroup]="initialEventsForm">
+                        <div class="form-progress-container" *ngIf="stepform >= 1">
+                            <ul class="progress-indicator">
+                              <li [class.active]="stepform >= 0" [ngClass]="(stepform>=6)?'dark':''">{{'steps.generalInformation' | translate }}
+                                <span *ngIf="stepform >= 6" class="fa fa-check"></span>
+                                <span *ngIf="stepform < 6" class="fa fa-edit"></span>
+                              </li>
+                              <li [class.active]="stepform >= 6" [ngClass]="(stepform>=10)?'dark':''">{{'steps.medicalHistory' | translate }}
+                                <span *ngIf="stepform >= 10" class="fa fa-check"></span>
+                                <span *ngIf="stepform >= 6 && stepform < 10" class="fa fa-edit"></span>
+                              </li>
+                              <li *ngIf="!havetreatment" [class.active]="stepform >= 10" [ngClass]="(stepform>=11)?'dark':''">{{'steps.medications' | translate }}
+                                <span *ngIf="stepform >= 11" class="fa fa-check"></span>
+                                <span *ngIf="stepform >= 10 && stepform < 11" class="fa fa-edit"></span>
+                              </li>
+                              <li [class.active]="stepform >= 11" [ngClass]="(stepform>=16)?'dark':''">{{'steps.lifePatternsAndHabits' | translate }}
+                                <span *ngIf="stepform >= 16" class="fa fa-check"></span>
+                                <span *ngIf="stepform >= 11 && stepform < 16" class="fa fa-edit"></span>
+                              </li>
+                            </ul>
+                            <div class="panelprogress2">
+                                <div class="progress2">
+                                  <div 
+                                    class="progress-bar2" 
+                                    role="progressbar" 
+                                    [style.transform]="'scaleY(' + (stepform / 16) + ')'" 
+                                    [style.height]="(stepform / 16) * 100 + '%'" 
+                                    [attr.aria-valuenow]="stepform" 
+                                    aria-valuemin="0" 
+                                    aria-valuemax="16">
+                                  </div>
+                                </div>
+                              </div>
+                          </div>
+                        <div class="form-body">
+                            <div *ngIf="stepform==1" class="form-step-section">
+                                <h3 class="card-title text-bold-700 mt-3 mb-0">{{'steps.whatShouldWeCallYou' | translate }}</h3>
+                                <p>{{'steps.privacyNickname' | translate }}</p>
+                                <div class="form-group">
+                                    <input type="text"  class="col-12 form-control" id="numericos2" formControlName="name" 
+                                                [ngClass]="{ 'is-invalid': submitted && initialEventsForm.get('name').errors }" 
+                                                name="numericos2">
+                                    <small class="form-text text-muted danger" 
+                                            *ngIf="submitted && initialEventsForm.get('name').errors">{{ 'generics.required' | translate }}</small>
+                                </div>
+                            </div>
+                            <div *ngIf="stepform==2" class="form-step-section">
+                                <h3 class="card-title mb-0">{{'steps.generalInformation' | translate }}</h3>
+                                <p>{{'personalinfo.Birth Date' | translate }}</p>
+                                <p>{{'steps.ageImportance' | translate }}</p>
+                                <div class="">
+                                    <mat-form-field class="mr-sm-24" fxFlex>
+                                        <input matInput (focus)="picker.open()" class="grey" readonly [matDatepicker]="picker"
+                                            autocomplete="off" name="dob" formControlName="dob" [ngClass]="{ 'is-invalid': submitted && initialEventsForm.get('dob').errors }">
+                                            <button *ngIf="initialEventsForm.value.dob!=null && initialEventsForm.value.dob!='' " matSuffix mat-icon-button aria-label="Clear" (click)="initialEventsForm.controls['dob'].setValue(null)" style="position: absolute; left: 30px;">
+                                                <em class="fa fa-trash danger"></em>
+                                            </button>
+                                        <mat-datepicker-toggle matSuffix
+                                            [for]="picker"></mat-datepicker-toggle>
+                                        <mat-datepicker touchUi="true" [startAt]="datedob" [max]="maxDate" #picker></mat-datepicker>
+                                    </mat-form-field>
+                                    <small class="form-text text-muted danger" 
+                                        *ngIf="submitted && initialEventsForm.get('dob').errors">{{ 'generics.required' | translate }}</small>
+                                </div>
+                            </div>
+                            <div *ngIf="stepform==3" class="form-step-section">
+                              <h3 class="card-title mb-0">{{'steps.generalInformation' | translate }}</h3>
+                              <p>{{'steps.gender' | translate }}</p>
+                              <p>{{'steps.genderImpact' | translate }}</p>
+                              
+                              <div class="options-container">
+                                <!-- Opción para 'male' -->
+                                <label class="option-card">
+                                  <input type="radio" class="radio-input" value="male" formControlName="gender" (change)="nextStep()">
+                                  <div class="option-content">{{'steps.male' | translate }}</div>
+                                </label>
+                                <!-- Opción para 'Female' -->
+                                <label class="option-card">
+                                  <input type="radio" class="radio-input" value="female" formControlName="gender" (change)="nextStep()">
+                                  <div class="option-content">{{'steps.female' | translate }}</div>
+                                </label>
+                                <!-- Opción para 'Other' -->
+                                <label class="option-card">
+                                  <input type="radio" class="radio-input" value="other" formControlName="gender" (change)="nextStep()">
+                                  <div class="option-content">{{'steps.other' | translate }}</div>
+                                </label>
+                              </div>
+                              <small class="form-text text-muted danger" 
+                                      *ngIf="submitted && initialEventsForm.get('gender').errors">{{ 'generics.required' | translate }}</small>
+                          </div>
+                            <div *ngIf="stepform==4" class="form-step-section">
+                                <h3 class="card-title mb-0">{{'steps.generalInformation' | translate }}</h3>
+                                <p>{{'steps.measurementSystem' | translate }}</p>
+                                <div class="measurement-system-selector">
+                                  <mat-button-toggle-group name="measurementSystem" formControlName="measurementSystem" aria-label="Measurement System" (change)="adjustMeasurementValidators()">
+                                    <mat-button-toggle value="metric">kg/cm</mat-button-toggle>
+                                    <mat-button-toggle value="imperial">lbs/ft/in</mat-button-toggle>
+                                  </mat-button-toggle-group>
+                                </div>
+                                <div *ngIf="initialEventsForm.get('measurementSystem').value === 'metric'" class="mt-3">
+                                    <div class="form-group">
+                                        <label class="d-block" for="weightMetric">{{'steps.weight' | translate }}</label>
+                                        <input type="number" class="form-control inputnumber" id="weightMetric" formControlName="weightMetric" placeholder="e.g., 70">
+                                        <span class="ml-1">kg</span> <!-- or lbs based on the toggle selection -->
+                                        <small class="form-text text-muted danger" *ngIf="submitted && initialEventsForm.get('weightMetric').errors?.required">{{ 'generics.required' | translate }}</small>
+                                        <small class="form-text text-muted danger" *ngIf="submitted && initialEventsForm.get('weightMetric').errors?.pattern">{{ 'generics.numeric' | translate }}</small>
+                                        
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="d-block" for="heightCm">{{'steps.height' | translate }}</label>
+                                        <input type="number" class="form-control inputnumber" id="heightCm" formControlName="heightCm" placeholder="e.g., 170">
+                                        <span class="ml-1">cm</span> <!-- or ft/in based on the toggle selection -->
+                                        <small class="form-text text-muted danger" *ngIf="submitted && initialEventsForm.get('heightCm').errors?.required">{{ 'generics.required' | translate }}</small>
+                                        <small class="form-text text-muted danger" *ngIf="submitted && initialEventsForm.get('heightCm').errors?.pattern">{{ 'generics.numeric' | translate }}</small>
+                                    </div>
+                                </div>
+                                <div *ngIf="initialEventsForm.get('measurementSystem').value === 'imperial'" class="mt-3">
+                                    <div class="form-group">
+                                        <label class="d-block" for="weightImperial">{{'steps.weight' | translate }}</label>
+                                        <input type="number" class="form-control inputnumber" id="weightImperial" formControlName="weightImperial" placeholder="e.g., 155">
+                                        <span class="ml-1">lbs</span> <!-- or kg based on the toggle selection -->
+                                        <small class="form-text text-muted danger" *ngIf="submitted && initialEventsForm.get('weightImperial').errors?.required">{{ 'generics.required' | translate }}</small>
+                                        <small class="form-text text-muted danger" *ngIf="submitted && initialEventsForm.get('weightImperial').errors?.pattern">{{ 'generics.numeric' | translate }}</small>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="d-block" for="heightFt">{{'steps.height' | translate }}</label>
+                                        <div class="row">
+                                          <div class="col-lg-6">
+                                            <input type="number" class="form-control inputnumber" id="heightFt" formControlName="heightFt" placeholder="e.g., 5">
+                                            <span class="ml-1">ft</span>
+                                            <small class="form-text text-muted danger" *ngIf="submitted && initialEventsForm.get('heightFt').errors?.required">{{ 'generics.required' | translate }}</small>
+                                            <small class="form-text text-muted danger" *ngIf="submitted && initialEventsForm.get('heightFt').errors?.pattern">{{ 'generics.numeric' | translate }}</small>
+                                          </div>
+                                          <div class="col-lg-6">
+                                            <input type="number" class="form-control inputnumber" id="heightIn" formControlName="heightIn" placeholder="e.g., 8">
+                                            <span class="ml-1">in</span> <!-- or cm based on the toggle selection -->
+                                            <small class="form-text text-muted danger" *ngIf="submitted && initialEventsForm.get('heightIn').errors?.required">{{ 'generics.required' | translate }}</small>
+                                            <small class="form-text text-muted danger" *ngIf="submitted && initialEventsForm.get('heightIn').errors?.pattern">{{ 'generics.numeric' | translate }}</small>
+                                          </div>
+                                        </div>
+                                        
+                                        
+                                    </div>
+                                </div>
+                            </div>
+                            <div *ngIf="stepform==5" class="form-step-section">
+                                <h3 class="card-title mb-0">{{'steps.generalInformation' | translate }}</h3>
+                                <p>{{'steps.ethnicGroup' | translate }}</p>
+                                <p>{{'steps.ethnicGroupDescription' | translate }}</p>
+                                
+                                <mat-form-field class="w-100" appearance="fill">
+                                  <mat-label>{{'steps.Select' | translate }}</mat-label>
+                                  <mat-select formControlName="ethnicGroup">
+                                    <mat-option value="white_european">{{'steps.white_european' | translate }}</mat-option>
+                                    <mat-option value="black_african">{{'steps.black_african' | translate }}</mat-option>
+                                    <mat-option value="hispanic_latino">{{'steps.hispanic_latino' | translate }}</mat-option>
+                                    <mat-option value="south_asian">{{'steps.south_asian' | translate }}</mat-option>
+                                    <mat-option value="east_asian">{{'steps.east_asian' | translate }}</mat-option>
+                                    <mat-option value="middle_eastern">{{'steps.middle_eastern' | translate }}</mat-option>
+                                    <mat-option value="pacific_islander">{{'steps.pacific_islander' | translate }}</mat-option>
+                                    <mat-option value="multiracial_other">{{'steps.multiracial_other' | translate }}</mat-option>
+                                  </mat-select>
+                                </mat-form-field>
+                                <small class="form-text text-muted danger" 
+                                        *ngIf="submitted && initialEventsForm.get('ethnicGroup').errors">{{ 'generics.required' | translate }}</small>
+                            </div>
+                            <div *ngIf="stepform==6" class="form-step-section">
+                              <h3 class="card-title mb-0">{{'steps.medicalHistory' | translate }}</h3>
+                              <p>{{'steps.knownAllergies' | translate }}</p>
+                              
+                              <div class="options-container">
+                                <!-- Opción 'No' -->
+                                <label class="option-card">
+                                  <input type="radio" class="radio-input" value="no" formControlName="knownAllergies" (change)="nextStep()">
+                                  <div class="option-content">{{'generics.No' | translate }}</div>
+                                </label>
+                                <!-- Opción 'Yes' -->
+                                <label class="option-card">
+                                  <input type="radio" class="radio-input" value="yes" formControlName="knownAllergies">
+                                  <div class="option-content">{{'generics.Yes' | translate }}</div>
+                                </label>
+                              </div>
+                              
+                              <!-- Área de texto que aparece si se selecciona 'Yes' -->
+                              <textarea autoResize rows="3" class="form-control w-100"  *ngIf="initialEventsForm.get('knownAllergies').value === 'yes'" 
+                                        formControlName="allergiesDetails" 
+                                        placeholder="{{'steps.placeholderknownAllergies' | translate }}"></textarea>
+                              <small class="form-text text-muted danger" 
+                                          *ngIf="submitted && initialEventsForm.get('allergiesDetails').value==''">{{ 'generics.required' | translate }}</small>
+                          </div>
+                            <div *ngIf="stepform==7" class="form-step-section">
+                                <h3 class="card-title mb-0">{{'steps.medicalHistory' | translate }}</h3>
+                                <p>{{'steps.chronicConditions' | translate }}</p>
+                                <p>{{'steps.chronicConditionsDescription' | translate }}</p>
+                                
+                                <div class="options-container">
+                                  <!-- Opción 'No' -->
+                                  <label class="option-card">
+                                    <input type="radio" class="radio-input" value="no" formControlName="chronicConditions" (change)="nextStep()">
+                                    <div class="option-content">{{'generics.No' | translate }}</div>
+                                  </label>
+                                  <!-- Opción 'Yes' -->
+                                  <label class="option-card">
+                                    <input type="radio" class="radio-input" value="yes" formControlName="chronicConditions">
+                                    <div class="option-content">{{'generics.Yes' | translate }}</div>
+                                  </label>
+                                </div>
+                                <small class="form-text text-muted danger" 
+                                      *ngIf="submitted && initialEventsForm.get('chronicConditions').errors">{{ 'generics.required' | translate }}</small>
+                                <div *ngIf="initialEventsForm.get('chronicConditions').value === 'yes'">
+                                    <label class="d-block">{{ 'summary.brief description' | translate }}</label>
+                                    <textarea autoResize rows="3" class="form-control w-100" formControlName="diagnosis" [ngClass]="{ 'is-invalid': submitted && initialEventsForm.get('diagnosis').errors }" placeholder="{{'steps.placeholderchronicConditions' | translate }}"></textarea>
+                                    <small class="form-text text-muted danger" 
+                                            *ngIf="submitted && initialEventsForm.get('diagnosis').value==''">{{ 'generics.required' | translate }}</small>
+                                </div>
+                            </div>
+                            <div *ngIf="stepform==8" class="form-step-section">
+                                <h3 class="card-title mb-0">{{'steps.medicalHistory' | translate }}</h3>
+                                <p>{{'steps.familyHealthHistory' | translate }}</p>
+                                <p>{{'steps.familyHealthHistoryDescription' | translate }}</p>
+                                
+                                <div class="options-container">
+                                  <!-- Opción 'No' -->
+                                  <label class="option-card">
+                                    <input type="radio" class="radio-input" value="no" formControlName="familyHealthHistory" (change)="nextStep()">
+                                    <div class="option-content">{{'generics.No' | translate }}</div>
+                                  </label>
+                                  <!-- Opción 'Yes' -->
+                                  <label class="option-card">
+                                    <input type="radio" class="radio-input" value="yes" formControlName="familyHealthHistory">
+                                    <div class="option-content">{{'generics.Yes' | translate }}</div>
+                                  </label>
+                                </div>
+                                <small class="form-text text-muted danger" 
+                                      *ngIf="submitted && initialEventsForm.get('familyHealthHistory').errors">{{ 'generics.required' | translate }}</small>
+                                <div *ngIf="initialEventsForm.get('familyHealthHistory').value === 'yes'">
+                                    <textarea autoResize rows="3" class="form-control w-100"  
+                                    formControlName="familyHealthHistoryDetails" 
+                                    placeholder="{{'steps.placeholderfamilyHealthHistory' | translate }}"></textarea>
+                                    <small class="form-text text-muted danger" 
+                                            *ngIf="submitted && initialEventsForm.get('familyHealthHistoryDetails').value==''">{{ 'generics.required' | translate }}</small>
+                                </div>
+                                
+                            </div>
+                            <div *ngIf="stepform==9" class="form-step-section">
+                                <h3 class="card-title mb-0">{{'steps.medicalHistory' | translate }}</h3>
+                                <p>{{'steps.surgicalHistory' | translate }}</p>
+                                <div class="options-container">
+                                  <label class="option-card">
+                                    <input type="radio" class="radio-input" value="no" formControlName="surgicalHistory" (change)="nextStep()">
+                                    <div class="option-content">{{'generics.No' | translate }}</div>
+                                  </label>
+                                  <label class="option-card">
+                                    <input type="radio" class="radio-input" value="yes" formControlName="surgicalHistory">
+                                    <div class="option-content">{{'generics.Yes' | translate }}</div>
+                                  </label>
+                                </div>
+                                <textarea autoResize rows="3" *ngIf="initialEventsForm.get('surgicalHistory').value === 'yes'" class="form-control w-100"  
+                                          formControlName="surgicalHistoryDetails" 
+                                          placeholder="{{'steps.placeholdersurgicalHistory' | translate }}"></textarea>
+                                          <small class="form-text text-muted danger" 
+                                            *ngIf="submitted && initialEventsForm.get('surgicalHistoryDetails').value==''">{{ 'generics.required' | translate }}</small>
+                            </div>
+                            <div *ngIf="stepform==10" class="form-step-section">
+                                <h3 class="card-title mb-0">{{'steps.medications' | translate }}</h3>
+                                <p>{{'steps.currentMedications' | translate }}</p>
+                                <div class="options-container">
+                                  <label class="option-card">
+                                    <input type="radio" class="radio-input" value="no" formControlName="currentMedications" (change)="nextStep()">
+                                    <div class="option-content">{{'generics.No' | translate }}</div>
+                                  </label>
+                                  <label class="option-card">
+                                    <input type="radio" class="radio-input" value="yes" formControlName="currentMedications">
+                                    <div class="option-content">{{'generics.Yes' | translate }}</div>
+                                  </label>
+                                </div>
+                                <textarea autoResize rows="3" *ngIf="initialEventsForm.get('currentMedications').value === 'yes'" class="form-control w-100"
+                                          formControlName="treatment"
+                                          placeholder="{{'steps.placeholdercurrentMedications' | translate }}"></textarea>
+                                          <small class="form-text text-muted danger" 
+                                            *ngIf="submitted && initialEventsForm.get('treatment').value==''">{{ 'generics.required' | translate }}</small>
+                            </div>
+                            <div *ngIf="stepform==11" class="form-step-section">
+                                <h3 class="card-title mb-0">{{'steps.lifePatternsAndHabits' | translate }}</h3>
+                                <p>{{'steps.smokingIntensity' | translate }}</p>
+                                <div class="options-container">
+                                  <label class="option-card">
+                                    <input type="radio" class="radio-input" value="nonSmoker" formControlName="smokingIntensity" (change)="nextStep()">
+                                    <div class="option-content">{{'steps.nonSmoker' | translate }}</div>
+                                  </label>
+                                  <label class="option-card">
+                                    <input type="radio" class="radio-input" value="oneToTenCigarettes" formControlName="smokingIntensity" (change)="nextStep()">
+                                    <div class="option-content">{{'steps.oneToTenCigarettes' | translate }}</div>
+                                  </label>
+                                  <label class="option-card">
+                                    <input type="radio" class="radio-input" value="aboutOnePack" formControlName="smokingIntensity" (change)="nextStep()">
+                                    <div class="option-content">{{'steps.aboutOnePack' | translate }}</div>
+                                  </label>
+                                  <label class="option-card">
+                                    <input type="radio" class="radio-input" value="moreThanOnePack" formControlName="smokingIntensity" (change)="nextStep()">
+                                    <div class="option-content">{{'steps.moreThanOnePack' | translate }}</div>
+                                  </label>
+                                  <label class="option-card">
+                                    <input type="radio" class="radio-input" value="eCigarettes" formControlName="smokingIntensity" (change)="nextStep()">
+                                    <div class="option-content">{{'steps.eCigarettes' | translate }}</div>
+                                  </label>
+                                </div>
+                                <small class="form-text text-muted danger" 
+                                        *ngIf="submitted && initialEventsForm.get('smokingIntensity').errors">{{ 'generics.required' | translate }}</small>
+                            </div>
+                            <div *ngIf="stepform==12" class="form-step-section">
+                                <h3 class="card-title mb-0">{{'steps.lifePatternsAndHabits' | translate }}</h3>
+                                <p>{{'steps.alcoholIntake' | translate }}</p>
+                                <p>{{'steps.alcoholIntakeDescription' | translate }}</p>
+                                <div class="options-container">
+                                  <label class="option-card">
+                                    <input type="radio" class="radio-input" value="nonDrinker" formControlName="alcoholIntake" (change)="nextStep()">
+                                    <div class="option-content">{{'steps.nonDrinker' | translate }}</div>
+                                  </label>
+                                  <label class="option-card">
+                                    <input type="radio" class="radio-input" value="oneToThreeDrinks" formControlName="alcoholIntake" (change)="nextStep()">
+                                    <div class="option-content">{{'steps.oneToThreeDrinks' | translate }}</div>
+                                  </label>
+                                  <label class="option-card">
+                                    <input type="radio" class="radio-input" value="fourToSevenDrinks" formControlName="alcoholIntake" (change)="nextStep()">
+                                    <div class="option-content">{{'steps.fourToSevenDrinks' | translate }}</div>
+                                  </label>
+                                  <label class="option-card">
+                                    <input type="radio" class="radio-input" value="eightToFourteenDrinks" formControlName="alcoholIntake" (change)="nextStep()">
+                                    <div class="option-content">{{'steps.eightToFourteenDrinks' | translate }}</div>
+                                  </label>
+                                  <label class="option-card">
+                                    <input type="radio" class="radio-input" value="fifteenPlusDrinks" formControlName="alcoholIntake" (change)="nextStep()">
+                                    <div class="option-content">{{'steps.fifteenPlusDrinks' | translate }}</div>
+                                  </label>
+                                </div>
+                                <small class="form-text text-muted danger" 
+                                        *ngIf="submitted && initialEventsForm.get('alcoholIntake').errors">{{ 'generics.required' | translate }}</small>
+                            </div>
+                            <div *ngIf="stepform==13" class="form-step-section">
+                                <h3 class="card-title mb-0">{{'steps.lifePatternsAndHabits' | translate }}</h3>
+                                <p>{{'steps.dietaryHabits' | translate }}</p>
+                                <div class="options-container">
+                                  <label class="option-card">
+                                    <input type="radio" class="radio-input" value="nonSpecificDiet" formControlName="dietaryHabits" (change)="nextStep()">
+                                    <div class="option-content">{{'steps.nonSpecificDiet' | translate }}</div>
+                                  </label>
+                                  <label class="option-card">
+                                    <input type="radio" class="radio-input" value="balancedMeals" formControlName="dietaryHabits" (change)="nextStep()">
+                                    <div class="option-content">{{'steps.balancedMeals' | translate }}</div>
+                                  </label>
+                                  <label class="option-card">
+                                    <input type="radio" class="radio-input" value="frequentFastFood" formControlName="dietaryHabits" (change)="nextStep()">
+                                    <div class="option-content">{{'steps.frequentFastFood' | translate }}</div>
+                                  </label>
+                                  <label class="option-card">
+                                    <input type="radio" class="radio-input" value="specificDietPlan" formControlName="dietaryHabits">
+                                    <div class="option-content">{{'steps.specificDietPlan' | translate }}</div>
+                                  </label>
+                                </div>
+                                <!-- Área de texto que aparece si se selecciona 'Yes' -->
+                                <textarea autoResize rows="3" *ngIf="initialEventsForm.get('dietaryHabits').value === 'specificDietPlan'" class="form-control w-100" 
+                                          formControlName="dietaryHabitsDetails"
+                                          placeholder="{{'steps.Please specify' | translate }}"></textarea>
+                                          <small class="form-text text-muted danger" 
+                                            *ngIf="submitted && initialEventsForm.get('dietaryHabitsDetails').value==''">{{ 'generics.required' | translate }}</small>
+                            </div>
+                            <div *ngIf="stepform==14" class="form-step-section">
+                                <h3 class="card-title mb-0">{{'steps.lifePatternsAndHabits' | translate }}</h3>
+                                <p>{{'steps.physicalActivityLevel' | translate }}</p>
+                                <div class="options-container">
+                                  <label class="option-card">
+                                    <input type="radio" class="radio-input" value="inactive" formControlName="physicalActivityLevel" (change)="nextStep()">
+                                    <div class="option-content">{{'steps.inactive' | translate }}</div>
+                                  </label>
+                                  <label class="option-card">
+                                    <input type="radio" class="radio-input" value="lightlyActive" formControlName="physicalActivityLevel" (change)="nextStep()">
+                                    <div class="option-content">{{'steps.lightlyActive' | translate }}</div>
+                                  </label>
+                                  <label class="option-card">
+                                    <input type="radio" class="radio-input" value="moderatelyActive" formControlName="physicalActivityLevel" (change)="nextStep()">
+                                    <div class="option-content">{{'steps.moderatelyActive' | translate }}</div>
+                                  </label>
+                                  <label class="option-card">
+                                    <input type="radio" class="radio-input" value="veryActive" formControlName="physicalActivityLevel" (change)="nextStep()">
+                                    <div class="option-content">{{'steps.veryActive' | translate }}</div>
+                                  </label>
+                                </div>
+                                <small class="form-text text-muted danger" 
+                                        *ngIf="submitted && initialEventsForm.get('physicalActivityLevel').errors">{{ 'generics.required' | translate }}</small>
+                            </div>
+                            <div *ngIf="stepform==15" class="form-step-section">
+                                <h3 class="card-title mb-0">{{'steps.lifePatternsAndHabits' | translate }}</h3>
+                                <p>{{'steps.sleepPattern' | translate }}</p>
+                                <div class="options-container">
+                                  <label class="option-card">
+                                    <input type="radio" class="radio-input" value="sevenToNineHours" formControlName="sleepPattern" (change)="nextStep()">
+                                    <div class="option-content">{{'steps.sevenToNineHours' | translate }}</div>
+                                  </label>
+                                  <label class="option-card">
+                                    <input type="radio" class="radio-input" value="lessThanSevenHours" formControlName="sleepPattern" (change)="nextStep()">
+                                    <div class="option-content">{{'steps.lessThanSevenHours' | translate }}</div>
+                                  </label>
+                                  <label class="option-card">
+                                    <input type="radio" class="radio-input" value="moreThanNineHours" formControlName="sleepPattern" (change)="nextStep()">
+                                    <div class="option-content">{{'steps.moreThanNineHours' | translate }}</div>
+                                  </label>
+                                  <label class="option-card">
+                                    <input type="radio" class="radio-input" value="variedOrInterruptedSleep" formControlName="sleepPattern" (change)="nextStep()">
+                                    <div class="option-content">{{'steps.variedOrInterruptedSleep' | translate }}</div>
+                                  </label>
+                                </div>
+                                <small class="form-text text-muted danger" 
+                                        *ngIf="submitted && initialEventsForm.get('sleepPattern').errors">{{ 'generics.required' | translate }}</small>
+                            </div>
+                            <div *ngIf="stepform==16" class="form-step-section">
+                                <h3 class="card-title mb-0">{{'steps.lifePatternsAndHabits' | translate }}</h3>
+                                <p>{{'steps.stressLevel' | translate }}</p>
+                                <div class="options-container">
+                                  <label class="option-card">
+                                    <input type="radio" class="radio-input" value="rarelystressed" formControlName="stressLevel">
+                                    <div class="option-content">{{'steps.rarelystressed' | translate }}</div>
+                                  </label>
+                                  <label class="option-card">
+                                    <input type="radio" class="radio-input" value="manageablestress" formControlName="stressLevel">
+                                    <div class="option-content">{{'steps.manageablestress' | translate }}</div>
+                                  </label>
+                                  <label class="option-card">
+                                    <input type="radio" class="radio-input" value="regularstress" formControlName="stressLevel">
+                                    <div class="option-content">{{'steps.regularstress' | translate }}</div>
+                                  </label>
+                                  <label class="option-card">
+                                    <input type="radio" class="radio-input" value="almostalwaysstressed" formControlName="stressLevel">
+                                    <div class="option-content">{{'steps.almostalwaysstressed' | translate }}</div>
+                                  </label>
+                                </div>
+                                <small class="form-text text-muted danger" 
+                                        *ngIf="submitted && initialEventsForm.get('stressLevel').errors">{{ 'generics.required' | translate }}</small>
+                            </div>
+                            <div class="button-container center-elements mt-2">
+                                <span *ngIf="stepform > 0" type="button" class="mt-2 float-left" (click)="prevStep();">< {{'wizard.Previous' | translate }}</span>
+                                <button *ngIf="stepform < 16" type="button" class="btn btn-dark float-right" [ngClass]="(stepform==0)?'':'ml-1'" (click)="nextStep();">{{'wizard.Continue' | translate }}</button>
+                                <button *ngIf="stepform == 16" type="button" class="btn btn-dark float-right" [ngClass]="(submitted2)?'center-spinner':''" (click)="nextStep();" [disabled]="submitted2" >
+                                  <em class="fa fa-save mr-1"></em>{{'generics.Finish' | translate }}
+                                  <span *ngIf="submitted2" class="fa fa-spinner fa-spin fa-fw primary d-block"></span>
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                
+                <!--
+                    <div formArrayName="medication">
+                                    <label class="mb-2">{{ 'summary.medication list' | translate }}</label>
+                                    <div *ngFor="let med of initialEventsForm.get('medication').controls; let i=index" [formGroupName]="i" class="border-top border-bottom">
+                                      
+                                        <div class="form-group mt-2">
+                                            <label class="mb-0">Medication Name</label>
+                                            <input type="text" formControlName="medication_name" class="mt-1 form-control">
+                                            </div>
+                                            <div class="row">
+                                            <div class="col-md-4 form-group">
+                                                <label class="mb-0">Dosage</label>
+                                                <input type="text" formControlName="dosage" class="mt-1 form-control">
+                                                </div>
+                                                <div class="col-md-8 form-group">
+                                                <label class="mb-0">Frequency</label>
+                                                <input type="text" formControlName="frequency" class="mt-1 form-control">
+                                                </div>
+                                            </div>
+                                            
+                                            <button class="mb-3" (click)="deleteMedication(i)">Eliminar Medicamento</button>
+                                        </div>
+                                        <button class="mt-2 mb-2" (click)="addMedication()">Añadir Medicamento</button>
+                                        </div>
+                -->
+
+            </div>
+        </div>     
+    </div>
+</div>
+<ng-template #contentPhoto let-c="close" let-d="dismiss" appendTo="body">
+    <div class="modal-header" id="idHeader">
+        <button type="button" class="close" aria-label="Close" (click)="closeModal();">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+    <div class="modal-body">
+      <div class="row text-left">
+        <div class="card-body col-md-12">
+          <div class="row">
+            <div class="col-sm-12" *ngIf="stepPhoto==1">
+                <video #videoElement id="videoElement" class="w-100" autoplay></video>
+            </div>
+            <div class="col-sm-12" *ngIf="stepPhoto==2">
+              <div class="mb-3">
+                <label for="nameFileCamera" class=""><strong>{{'demo.Document name' | translate }}</strong></label>
+                <input type="text" class="mt-0 form-control" [(ngModel)]="nameFileCamera" placeholder="{{'demo.Document name' | translate }}">
+            </div>
+                <img *ngIf="capturedImage" class="w-100" [src]="capturedImage" />
+                <div class="center-elements">
+                  <button type="button" class="mt-2 btn btn-primary btn-sm" (click)="prevCamera();">{{'demo.Repeat photo' | translate }}</button>
+                </div>
+                
+                
+            </div>
+          </div>
+        </div>
+      </div>
+      <div *ngIf="docs.length>0">
+          <strong>{{'demo.Photos taken' | translate }}:</strong>
+          <p *ngFor="let doc of docs; let i = index" class="mb-0">
+            <span>{{doc.dataFile.name}} <em class="ml-1 danger fa fa-trash pointer" (click)="deletephoto(i)"></em></span>
+          </p>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <div class="form-actions col-md-12 center-elements">
+        
+        <button type="button" *ngIf="stepPhoto==1" class="btn btn-dark btn-sm float-right" (click)="captureImage()">{{'demo.Capture photo' | translate }}</button>
+        <button type="button" *ngIf="stepPhoto==2" class="btn btn-dark btn-sm float-left" (click)="otherPhoto(true)">{{'demo.Add another photo' | translate }}</button>
+        <button type="button" *ngIf="stepPhoto==2" class="btn btn-dark btn-sm float-right" (click)="otherPhoto(false)">{{'generics.Finish' | translate }}</button>
+      </div>
+    </div>
+</ng-template>
+<ng-template #contentManual id="contentManual" let-c="close" let-d="dismiss" appendTo="body">
+  <div class="modal-header" id="idHeader">
+      <div class="content-header text-left">
+          <h4 class="mb-0">{{'demo.Create report' | translate }}</h4>
+      </div>
+      <button type="button" class="close" aria-label="Close" (click)="closeModal();">
+          <span aria-hidden="true">&times;</span>
+      </button>
+  </div>
+  <div class="modal-body content-wrapper p-2" id="idBody">
+      <div class="p-1">
+          <div>
+              <div class="row">
+                  <div class="col-md-12 center-elements">
+                    <div class="d-flex align-items-center mb-3">
+                        <input type="text" 
+                               class="form-control mt-0 mr-2" 
+                               [(ngModel)]="tempFileName" 
+                               placeholder="{{'voice.Enter file name' | translate }}" />
+                        
+                        <!-- Voice recorder button -->
+                        <button *ngIf="supported" 
+                                class="btn btn-outline-primary d-flex align-items-center" 
+                                (click)="toggleRecording()"
+                                [ngClass]="{'btn-danger': recording}"
+                                title="{{recording ? 'voice.Stop Voice Recognition' : 'voice.Start Voice Recognition' | translate}}">
+                            <i class="fa" [ngClass]="recording ? 'fa-stop' : 'fa-microphone'"></i>
+                            <span *ngIf="recording" class="ml-2">{{ timerDisplay }}</span>
+                        </button>
+                    </div>
+
+                    <textarea #inputTextArea 
+                              class="form-control data-hj-allow" 
+                              style="height:320px;" 
+                              [(ngModel)]="medicalText"
+                              name="medicalText" 
+                              placeholder="{{'generics.Create-paste a report' | translate }}"></textarea>
+                
+                    <button type="button" 
+                            class="mt-2 btn btn-sm btn-dark" 
+                            [disabled]="callingSummary || recording || medicalText.length==0" 
+                            title="{{'generics.Save' | translate }}"
+                            (click)="createFile();">
+                        <span>{{'generics.Save' | translate }}</span>
+                    </button>
+                  </div>
+              </div>
+          </div>
+      </div>
+  </div>
+</ng-template>

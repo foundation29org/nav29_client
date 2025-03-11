@@ -1,0 +1,169 @@
+<div class="mb-5">
+    <div #containerboton class="containerboton" id="containerboton">
+        <ng-lottie class="ani" [options]="part1Options" (animationCreated)="animationCreated($event)"></ng-lottie>
+        
+        <span #btnaction id="btnaction" class="btnaction pointer" [style.bottom]="bottomPosition" (click)="toggleAnimation()">
+            <img *ngIf="lang=='en'" src="assets/img/home/animation/btn_en.png" alt="start bottom"/>
+            <img *ngIf="lang!='en'" src="assets/img/home/animation/btn_es.png" alt="boton para empezar"/>
+        </span>
+        <div class="col-md-12 pt-4 center-elements pl-3">
+            <h1 class="text-bold-700">{{'demo.demot' | translate }}</h1>
+            <h3 class="text-bold-500">{{'demo.demot2' | translate }}</h3>
+          </div>
+      </div>
+      <section class="mt-5" style="padding-bottom: 70px !important;">
+        <div class="col-12 d-flex justify-content-center">
+          <div class="card-body" style="max-width: 1200px;">
+            <div class="row m-0">
+              <div class="col-lg-12 justify-content-center align-items-center text-center" style="padding-top: 1.5rem;padding-right: 1.5rem;padding-left: 1.5rem;">
+                <h1 class="card-title text-bold-500">
+                    {{'demo.Advantages.title' | translate }}
+                  <hr class="hr-custom">
+                </h1>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="p-3 center-elements">
+          <div class="row reg-panel d-block d-sm-none">
+              <div class="row pb-2 pt-2">
+                <div class="col-12">
+                  <img class="w-reg-img" src='assets/img/home/reg/func1.webp' />
+                </div>
+                <span class="col-12 text-center">
+                  <p class="mb-0"><strong>{{'demo.Advantages.t1' | translate }}</strong></p>
+                  <p class="d-block">{{'demo.Advantages.d1' | translate }}</p>
+                </span>
+              </div>
+              <div class="row pb-2 pt-2">
+                <div class="col-12">
+                  <img class="w-reg-img" src='assets/img/home/reg/func2.webp' />
+                </div>
+                <span class="col-12 text-center">
+                  <p class="mb-0"><strong>{{'demo.Advantages.t2' | translate }}</strong></p>
+                  <p class="d-block">{{'demo.Advantages.d2' | translate }}</p>
+                </span>
+              </div>
+            <div class="row pb-2 pt-2">
+              <div class="col-12">
+                <img class="w-reg-img" src='assets/img/home/reg/func3.webp' />
+              </div>
+              <span class="col-12 text-center">
+                <p class="mb-0"><strong>{{'demo.Advantages.t3' | translate }}</strong></p>
+                <p class="d-block">{{'demo.Advantages.d3' | translate }}</p>
+              </span>
+            </div>
+            <div class="row pb-2 pt-2">
+              <div class="col-12">
+                <img class="w-reg-img" src='assets/img/home/reg/func4.webp' />
+              </div>
+              <span class="col-12 text-center">
+                <p class="mb-0"><strong>{{'demo.Advantages.t4' | translate }}</strong></p>
+                <p class="d-block">{{'demo.Advantages.d4' | translate }}</p>
+              </span>
+            </div>
+            <div class="row pb-2 pt-2">
+                <div class="col-12">
+                  <img class="w-reg-img" src='assets/img/home/reg/func5.webp' />
+                </div>
+                <span class="col-12 text-center">
+                  <p class="mb-0"><strong>{{'demo.Advantages.t5' | translate }}</strong></p>
+                  <p class="d-block">{{'demo.Advantages.d5' | translate }}</p>
+                </span>
+              </div>
+              <div class="row pb-2 pt-2">
+                <div class="col-12">
+                  <img class="w-reg-img" src='assets/img/home/reg/func6.webp' />
+                </div>
+                <span class="col-12 text-center">
+                  <p class="mb-0"><strong>{{'demo.Advantages.t6' | translate }}</strong></p>
+                  <p class="d-block">{{'demo.Advantages.d6' | translate }}</p>
+                </span>
+              </div>
+          </div>
+          <div class="row reg-panel d-none d-sm-block">
+            <div class="col-md-12 offset-lg-1 col-lg-10 offset-xl-2 col-xl-8">
+              <div class="row">
+                <div class="col-sm-6 pb-3 pt-3">
+                  <div class="row">
+                    <div class="col-3">
+                      <img class="w-reg-img" src='assets/img/home/reg/func1.webp' />
+                    </div>
+                    <span class="col-9 text-left" style="display: inline-block;">
+                      <p class="mb-0"><strong>{{'demo.Advantages.t1' | translate }}</strong></p>
+                      <p class="d-block">{{'demo.Advantages.d1' | translate }}</p>
+                    </span>
+                  </div>
+                </div>
+                <div class="col-sm-6 pb-3 pt-3">
+                  <div class="row">
+                    <div class="col-3">
+                      <img class="w-reg-img" src='assets/img/home/reg/func2.webp' />
+                    </div>
+                    <span class="col-9 text-left" style="display: inline-block;">
+                      <p class="mb-0"><strong>{{'demo.Advantages.t2' | translate }}</strong></p>
+                      <p class="d-block">{{'demo.Advantages.d2' | translate }}</p>
+                    </span>
+                  </div>
+                </div>
+                <div class="col-sm-6 pb-3 pt-3">
+                  <div class="row">
+                    <div class="col-3">
+                      <img class="w-reg-img" src='assets/img/home/reg/func3.webp' />
+                    </div>
+                    <span class="col-9 text-left" style="display: inline-block;">
+                      <p class="mb-0"><strong>{{'demo.Advantages.t3' | translate }}</strong></p>
+                      <p class="d-block">{{'demo.Advantages.d3' | translate }}</p>
+                    </span>
+                  </div>
+                </div>
+                <div class="col-sm-6 pb-3 pt-3">
+                  <div class="row">
+                    <div class="col-3">
+                      <img class="w-reg-img" src='assets/img/home/reg/func4.webp' />
+                    </div>
+                    <span class="col-9 text-left" style="display: inline-block;">
+                      <p class="mb-0"><strong>{{'demo.Advantages.t4' | translate }}</strong></p>
+                      <p class="d-block">{{'demo.Advantages.d4' | translate }}</p>
+                    </span>
+                  </div>
+                </div>
+                <div class="col-sm-6 pb-3 pt-3">
+                    <div class="row">
+                      <div class="col-3">
+                        <img class="w-reg-img" src='assets/img/home/reg/func5.webp' />
+                      </div>
+                      <span class="col-9 text-left" style="display: inline-block;">
+                        <p class="mb-0"><strong>{{'demo.Advantages.t5' | translate }}</strong></p>
+                        <p class="d-block">{{'demo.Advantages.d5' | translate }}</p>
+                      </span>
+                    </div>
+                  </div>
+                  <div class="col-sm-6 pb-3 pt-3">
+                    <div class="row">
+                      <div class="col-3">
+                        <img class="w-reg-img" src='assets/img/home/reg/func6.webp' />
+                      </div>
+                      <span class="col-9 text-left" style="display: inline-block;">
+                        <p class="mb-0"><strong>{{'demo.Advantages.t6' | translate }}</strong></p>
+                        <p class="d-block">{{'demo.Advantages.d6' | translate }}</p>
+                      </span>
+                    </div>
+                  </div>
+              </div>
+            </div>
+          </div>
+          <button class="mb-0 mt-3 btn btn-primary" [routerLink]="['/register']"><strong>{{'login.Sign Up' | translate }}</strong></button>
+        </div>
+      </section>
+</div>
+<ng-template #panelLogin let-c="close" let-d="dismiss" appendTo="body">
+    <div class="" id="idHeader">
+        <button type="button" class="mr-2 mt-2 close" aria-label="Close" (click)="closeModal();">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+    <div class="modal-body pt-0">
+        <app-logincomp-page mode="register"></app-logincomp-page>
+    </div>
+</ng-template>

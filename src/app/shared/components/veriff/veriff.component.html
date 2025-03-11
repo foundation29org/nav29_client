@@ -1,0 +1,44 @@
+<div *ngIf="!infoVerified.isVerified && loadVerifiedInfo" id='veriff-root'></div>
+<div class="" style="line-height: 1.2em;max-width: 30rem;min-width: 300px;">
+    <!--One notification-->
+    <div class="center-elements" *ngIf="!infoVerified.isVerified && infoVerified.status=='Not started'">
+        <em class="fa fa-3x fa-info-circle"></em>
+        <div class="col-12 pt-2">
+            <p class="">{{'identity.t2' | translate }}</p>
+        </div>
+        <div class="col-12">
+            <a class="btn btn-white btn-sm w-100" style="word-wrap: normal;" (click)="getUserInfo(true)">
+                <span class="">
+                    {{'identity.t0' | translate }}
+                </span>
+                </a>
+        </div>
+    </div>
+    <div class="center-elements" *ngIf="!infoVerified.isVerified && infoVerified.status!='Not started'">
+        <em class="fa fa-3x fa-info-circle pb-2"></em>
+        <div class="col-12 pl-2 pr-0" *ngIf="infoVerified.status =='created' || infoVerified.status =='submitted' || infoVerified.status =='started'">
+            <p>{{'identity.t7' | translate }}</p>
+            <p>{{'identity.t8' | translate }}</p>
+            <p>{{'identity.t9' | translate }} <a class="primary" (click)="getUserInfo(true)">{{'identity.click here' | translate }}</a> {{'identity.t10' | translate }}</p>
+        </div>
+        <div class="col-12 pl-2 pr-0" *ngIf="infoVerified.status =='resubmission_requested'">
+            <p>{{'identity.t5' | translate }}</p>
+            <p>{{'identity.t9' | translate }} <a class="primary" (click)="getUserInfo(true)">{{'identity.click here' | translate }}</a> {{'identity.t10' | translate }}</p>
+        </div>
+        <div class="col-12 pl-2 pr-0" *ngIf="infoVerified.status =='declined'">
+            <p>{{'identity.t11' | translate }}</p>
+            <p>{{'identity.t12' | translate }}: {{infoVerified.info.value}}</p>
+            <p>{{'identity.t13' | translate }}</p>
+        </div>
+        <div class="col-12">
+            <a class="btn btn-white btn-sm w-100" [disabled]="checking" style="word-wrap: normal;" (click)="getUserInfo(true)" *ngIf="infoVerified.status =='created' || infoVerified.status =='submitted'">
+                <span class="">
+                    {{'identity.t0.1' | translate }}
+                </span>
+                <span *ngIf="checking" class="ml-1">
+                    <i class="fa fa-spinner pink fa-spin fa-fw"></i>
+                </span>
+                </a>
+        </div>
+    </div>
+</div>

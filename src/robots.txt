@@ -1,0 +1,3 @@
+User-agent: *
+Disallow:
+Sitemap: https://nav29.org/sitemap.xml

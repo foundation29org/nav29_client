@@ -1,0 +1,139 @@
+<h3 class="text-center" *ngIf="panelmode=='login' && mode=='register'">{{'login.Sign Up' | translate }}</h3>
+<h3 class="text-center" *ngIf="mode=='login'">{{'login.Log In' | translate }}</h3>
+<div class="row m-0" *ngIf="panelmode=='login'">
+
+  <!--<div class="col-lg-6 d-none d-lg-flex justify-content-center align-items-center auth-img-bg p-3">
+    <img src="assets/img/logobig.webp" alt="" class="img-fluid" width="300" height="230">
+  </div>-->
+  <div class="col-lg-12 col-12 panelLogin">
+    <p *ngIf="showTryAgain" class="danger mb-2">
+      <span>{{'login.The token is invalid' | translate}}</span>
+      <span class="d-block">{{'login.Sign in again' | translate}}</span>
+    </p>
+    <div *ngIf="isLoginFailed && mode=='login'" class="mb-4 mt-2 center-elements ">
+      <p class="danger mb-0">
+        <span class="d-block">{{'login.Sign in failed' | translate }}</span>
+      </p>
+      <p class="mb-2">
+        <span class="d-block">{{'login.Dont have an account?' | translate }}</span>
+        <span class="d-block">{{'login.Create an account clicking here' | translate }}</span>
+        <a class="mt-2 btn btn-primary mb-0 btn-navbar btn-bolder" [routerLink]="['/register']" [queryParams]="getInvitationParams()" (click)="trackEventsService.lauchEvent('Register btn 1')">{{'login.Sign Up' | translate }}</a>
+      </p>
+      <hr>
+    </div>
+    
+    
+    <h4 class="mb-2 card-title text-center">{{'login.What is your email' | translate }}</h4>
+    <form (submit)="sendSignInLink(userName.value, $event)">
+      <div class="formGroup">
+        <input type="email" name="email" autocomplete="email" class="form-control"
+          placeholder="{{'generics.Email' | translate }}" #userName required>
+      </div>
+      <div class="formGroup mt-2">
+        <button type="submit" class="btn btn-dark btn-block" [disabled]="isLoading">
+          {{'login.Continue' | translate}}
+          <span *ngIf="isLoading" class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+        </button>
+      </div>
+    </form>
+    <div class="divider mt-4">
+      <span class="divider-text">{{'demo.or' | translate}}</span>
+    </div>
+    <!--<hr class="mt-4">-->
+    <div *ngIf="!isLoading2">
+      <button type="button" class="btn btn-sm btn-block btn-white d-flex justify-content-center align-items-center"
+        (click)="signMethod('google')">
+        <i class="fa fa-google fa-2x mr-2"></i> <span class="">{{'login.Continue with' | translate }} Google</span>
+      </button>
+      <button type="button" class="btn btn-sm btn-block btn-white d-flex justify-content-center align-items-center"
+        (click)="signMethod('microsoft')">
+        <i class="fa fa-windows fa-2x mr-1"></i> <span class="">{{'login.Continue with' | translate }} Microsoft</span>
+      </button>
+      <button type="button" class="btn btn-sm btn-block btn-white d-flex justify-content-center align-items-center"
+        (click)="signMethod('apple')">
+        <i class="fa fa-apple fa-2x mr-2"></i> <span class="">{{'login.Continue with' | translate }} Apple</span>
+      </button>
+    </div>
+    <div *ngIf="isLoading2" class="center-elements">
+      <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+    </div>
+    <div class="" *ngIf="isLoginFailed2">
+      <p class="danger mb-2">
+        <span class="d-block">{{'login.Sign in failed' | translate }}</span>
+      </p>
+    </div>
+    <div class="col-md-12 mb-2 center-elements" *ngIf="mode=='register'">
+      <hr>
+      <span class="d-block">{{'login.Already have an account?' | translate }}</span>
+      <a class="mt-2 bold" [routerLink]="['/login']" [queryParams]="getInvitationParams()">{{'login.Log In' | translate }}</a>
+     
+    </div>
+    <div class="col-md-12 mb-2 center-elements" *ngIf="mode=='login'">
+      <hr>
+      <span class="d-block">{{'login.Dont have an account?' | translate }}</span>
+      <!--<span class="d-block">{{'login.Create an account clicking here' | translate }}</span>-->
+      <a class="mt-2 bold" [routerLink]="['/register']" [queryParams]="getInvitationParams()">{{'login.Sign Up' | translate }}</a>
+    </div>
+  </div>
+</div>
+<div class="row m-0" *ngIf="panelmode=='register'">
+  <div class="text-center">
+    <div class="">
+      <h3 class="mb-0">{{'wizard.p1.1' | translate }}</h3>
+      <p>{{'wizard.p1.2' | translate }}</p>
+    </div>
+    <div>
+      <p class="mt-2 mb-0">{{'wizard.p1.3' | translate }}</p>
+      <p>{{'wizard.p1.4' | translate }} <a (click)="showConsent(contentPrivacy)" class="primary">{{'consenttext.p1' | translate }}</a></p>
+    </div>
+    <div class="col-video">
+      <div class="video-frame">
+        <div id="player"></div>
+        <div class="video-progress">
+          <div class="progress">
+            <div class="progress-bar" 
+                 role="progressbar" 
+                 [style.width]="(currentTime / videoDuration * 100) + '%'">
+            </div>
+          </div>
+          <!--<div class="time-remaining text-center">
+            {{getRemainingTime()}}
+          </div>-->
+        </div>
+      </div>
+      
+
+      <!--<iframe src="https://www.youtube.com/embed/RTAmHX2lHdc?controls=0&rel=0&cc_load_policy=1&hl=es" frameborder="0" webkitallowfullscreen mozallowfullscreen allowfullscreen class="video-frame"></iframe>-->
+    </div>
+    <div class="card-body">
+      
+      <button class="mt-1 btn btn-dark" (click)="checkConsent()"
+        [attr.title]="!videoEnded ? ('wizard.legaltext' | translate) : ''" [disabled]="submitted"
+        style="display: inline-flex; flex-direction: column; align-items: center;">
+        <span>{{'wizard.p1.6' | translate }} </span>
+        <span *ngIf="submitted" class="fa fa-spinner fa-spin fa-fw primary d-block fa-2x"></span>
+      </button>
+    </div>
+  </div>
+</div>
+<ng-template #contentPrivacy let-c="close" let-d="dismiss" appendTo="body">
+  <a id="contentPrivacy"></a>
+  <div class="modal-header" id="idHeader">
+    <h4 class="mb-0">{{'consenttext.p1' | translate }}</h4>
+    <!--<button type="button" class="close" aria-label="Close" (click)="closeModal();">
+      <span aria-hidden="true">&times;</span>
+    </button>-->
+  </div>
+  <div class="modal-body">
+    <div class="row text-left">
+      <div class="card-body col-md-12">
+        <app-policy></app-policy>
+      </div>
+    </div>
+  </div>
+  <div class="modal-footer">
+    <div class="col-md-12 center-elements">
+      <button type="button" class="btn btn-dark" (click)="acceptConsent();">{{'wizard.p1.6' | translate }}</button>
+    </div>
+  </div>
+</ng-template>

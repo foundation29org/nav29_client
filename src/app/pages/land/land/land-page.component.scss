@@ -1,0 +1,458 @@
+.containerboton {
+  //width: 100%;
+  min-height: calc(100vh - 4.3rem); /* Altura ajustada */
+  position: relative;
+  //display: flex; /* Asegura un layout flexible */
+  //justify-content: center; /* Centra horizontalmente */
+  //align-items: center; /* Centra verticalmente */
+  //overflow: hidden; /* Oculta cualquier desbordamiento */
+}
+
+.w-reg-img{
+  max-width: 120px;
+}
+
+.w-reg-img-wait{
+  max-width: 70px;
+}
+
+/* Estilos para las animaciones Lottie */
+.containerboton ng-lottie {
+  width: 100%; /* Ocupa todo el ancho posible */
+  height: 100%; /* Ocupa toda la altura posible */
+  display: inline-block;
+  position: absolute;
+  top: 0px;
+  margin: auto; /* Centra la animación si es más pequeña que el contenedor */
+}
+
+.btnaction {
+  position: absolute; /* Posición respecto al contenedor .containerboton */
+  //top: calc(100vw - 20% ); /* Ajusta este valor para controlar qué tan abajo quieres la imagen */
+  left: 50%; /* Centrar horizontalmente */
+  transform: translateX(-50%); /* Ajuste fino para el centrado horizontal */
+  width: calc(18vw + 60px); /* Ancho de la imagen basado en el ancho de la ventana */
+  //max-width: 280px; /* Ajusta esto según el tamaño máximo deseado */
+  //min-width: 120px; /* Ajusta esto según el tamaño mínimo deseado */
+}
+
+.btnaction:hover {
+  transform: translateX(-50%) scale(1.05);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+  border-radius: 1.5rem;
+}
+
+.btnaction img {
+  width: 100%; /* Hace que la imagen escale con el contenedor .btnaction */
+  height: auto; /* Mantiene la proporción de la imagen */
+}
+
+.aligself-start{
+  align-items: self-start !important;
+}
+
+.timeline {
+  position: relative;
+  padding-left: 20px;
+  border-left: 2px solid #e52421; /* Línea vertical de la timeline */
+}
+
+.timeline-item {
+  display: block;
+  padding-top: 10px;
+  padding-bottom: 10px;
+}
+
+.timeline-dot {
+  position: absolute;
+  left: -6px; /* Ajustar basado en el tamaño del punto y el borde de la timeline */
+  background-color: #fff;
+  border: 2px solid #e52421; /* Color del borde igual al de la timeline */
+  border-radius: 50%;
+  width: 12px;
+  height: 12px;
+}
+
+.timeline-content {
+  padding-left: 20px; /* Espacio entre el punto y el contenido */
+}
+
+.timeline-month-title {
+  font-weight: bold;
+  margin-top: 10px;
+  margin-bottom: 5px;
+}
+
+.container-home {
+  //display: flex;
+  //flex-direction: column;
+  //justify-content: start;
+  //align-items: center;
+  min-height: calc(100vh - 100px);
+  padding: 0;
+}
+
+.container-home2 {
+  //display: flex;
+  //flex-direction: column;
+  //justify-content: center;
+  //align-items: center;
+  //min-height: calc(100vh - 100px);
+  padding: 0;
+}
+
+
+.buttomback{
+  margin-left: 1.5rem !important;
+  margin-top: 1.5rem !important;
+  //position: fixed;
+  position: initial;
+  z-index: 2;
+}
+
+.buttomback2{
+  float: left;
+}
+
+.col-md-4 {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+}
+
+.container-main {
+  display: flex;
+  flex-direction: column;
+  min-height: calc(100vh - 100px);
+}
+
+.footer {
+  height: 40px;
+  margin-top: auto;
+  text-align: center;
+}
+
+.voice-recorder {
+  text-align: center;
+  margin-top: 20px;
+}
+
+.mic-icon {
+  cursor: pointer;
+  display: inline-block;
+  //font-size: 40px;
+  //color: #007bff; /* Bootstrap primary color */
+  color: #253240;
+  font-weight: 700;
+  font-size: 1.25rem;
+}
+
+.mic-icon:hover {
+  //color: #0056b3; /* Darker shade for hover effect */
+  color: #b0b6bb;
+}
+
+.recording-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: red;
+  margin-top: 10px;
+}
+
+.record-icon {
+  margin-right: 5px;
+  color: red;
+  animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.2);
+    opacity: 0.7;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+ul, ol {
+  list-style: none;
+}
+
+.options-container {
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  padding: 20px;
+}
+
+.option-button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.option-button img {
+  width: 50px; /* Ajustar según necesidad */
+  height: auto;
+}
+
+.option-button span {
+  margin-top: 10px;
+  font-size: 16px;
+}
+
+
+.chat-container {
+  display: flex;
+  flex-direction: column;
+  height: 80%;
+  width: 100%;
+  box-sizing: border-box;
+  padding-top: 1rem;
+  padding-bottom: 1rem;
+}
+
+.chat-messages {
+  display: flex;
+  flex-direction: row;
+}
+
+.chat-messages.user-is-sender {
+  justify-content: flex-end;
+}
+
+.ia-message-container {
+  display: flex;
+  align-items: start; /* opcional, alinea los elementos al inicio verticalmente */
+}
+
+
+.user-message {
+  background-color: #fff;
+  border-radius: 1rem;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  text-align: right;
+  word-wrap: break-word;
+  white-space: pre-line;
+  max-width: 95%; /* limita el ancho al 95% */
+  align-self: flex-end; /* alinea a la derecha */
+}
+
+.response-message {
+  background-color: lightgray;
+  border-radius: 1rem;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  word-wrap: break-word;
+  white-space: pre-line;
+  max-width: 95%; /* limita el ancho al 95% */
+  align-self: flex-start; /* alinea a la izquierda */
+}
+
+.response-form {
+  border: 1px solid #E0E0E0 !important;
+  background-color: #f0f0f0;
+  border-radius: 1rem;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  word-wrap: break-word;
+  white-space: pre-line;
+  max-width: 95%; /* limita el ancho al 95% */
+  align-self: flex-start; /* alinea a la izquierda */
+}
+
+.input-container {
+  background-color: white;
+  padding: 7px;
+  border-radius: 10px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24);
+}
+
+
+.btn-chat {
+  margin-left: 10px;
+}
+
+input[type="text"],
+.btn-chat {
+  width: 100%;
+  padding: 0.7rem;
+  box-sizing: border-box;
+  margin-top: 1rem;
+  font-size: 1rem;
+  border-radius: 1rem;
+}
+
+.suggestion-items{
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-flow: wrap;
+  gap: 100% 8px;
+  padding-left: 2px;
+  overflow-y: hidden;
+}
+
+.suggestion-item{
+  display: block;
+  min-height: 34px;
+  margin-top: 0.4em;
+}
+
+.gradient-green {
+  background-image: linear-gradient(60deg, #000, #0b8793) !important;
+}
+
+.bottonsactionsDefault{
+  position: absolute; 
+  right: 15px;
+  bottom: 0px;
+  float: right !important;
+  margin-bottom: 0.75rem !important;
+}
+
+.bottonsactionsSm{
+  position: relative; bottom: 0px;
+  float: left !important;
+  margin-left: 2.25rem !important;
+}
+
+.fileover {
+  border: 2px solid #33648a73 !important;
+  background: #33648a0e;
+}
+
+.container-custom {
+  padding: 2rem;
+  text-align: center;
+  border: dashed 1px #979797;
+  position: relative;
+  margin: 0 auto;
+  min-height: 300px;
+
+  input {
+    opacity: 0;
+    position: absolute;
+    z-index: 2;
+    width: 100%;
+    height: 100%;
+    top: 0;
+    left: 0;
+  }
+
+  label {
+    color: white;
+    width: 183px;
+    height: 44px;
+    border-radius: 21.5px;
+    background-color: #db202f;
+    padding: 8px 16px;
+  }
+
+  h3 {
+    font-size:  1.25rem !important;
+    color: #38424c;
+  }
+}
+
+.container-custom2 {
+  input {
+    opacity: 0;
+    position: absolute;
+    z-index: 2;
+    width: 100%;
+    height: 100%;
+    top: 0;
+    left: 0;
+  }
+
+  label {
+    color: white;
+    background-color: #343a40;
+  }
+
+  h3 {
+    font-size:  1.25rem !important;
+    color: #38424c;
+  }
+}
+
+@media ( max-width: 1400px ){
+  .w-reg-img{
+    max-width: 100px;
+  }
+}
+
+@media ( max-width: 991px ){
+  .logo-img {
+    height: 150px !important;
+  }
+  .btnblock{
+    display: block !important;
+    margin-bottom: 1.5em !important;
+  } 
+
+  .btnaction {
+    width: calc(18vw + 80px);
+  }
+}
+
+@media ( max-width: 767px ){
+
+  .title-home{
+    margin-top: 2em;
+  }
+
+  .logo-img {
+    height: 100px !important;
+  }
+
+  .col-md-4{
+    margin-bottom: 1rem;
+  }
+  .btnaction {
+    width: calc(18vw + 60px);
+  }
+  .w-reg-img{
+    max-width: 70px;
+  }
+}
+
+
+@media ( max-width: 575px ){
+  .buttomback{
+    position: relative !important;
+  }
+
+  .buttomback2{
+    float: none !important;
+  }
+  
+  
+}
+
+@media ( max-width: 449px ){
+  .container-custom {
+  
+    h3 {
+      font-size: 12px;
+    }
+  } 
+
+  .logo-img {
+    height: 50px !important;
+  }
+}

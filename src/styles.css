@@ -1,0 +1,585 @@
+@import "../node_modules/angular-calendar/css/angular-calendar.css";
+
+/*html body{
+  font-family: sans-serif !important;
+}
+
+h1, h2, h3, h4, h5, h6, .h1, .h2, .h3, .h4, .h5, .h6 {
+  font-family: inherit;
+}*/
+
+.tutorial-list {
+  padding-left: 20px;
+  margin-top: 10px;
+  
+  li {
+    margin-bottom: 8px;
+    list-style-type: none;
+  }
+}
+
+.hopscotch-bubble {
+  .hopscotch-content {
+    ul {
+      margin-bottom: 0;
+    }
+  }
+}
+
+.hopscotch-bubble-arrow {
+  display: none;
+}
+
+.hr-custom {
+  background-color: #e52421;
+  height: 3px;
+  border: 0;
+  width: 30%;
+}
+
+.btn{
+  font-size: 1rem !important;
+}
+
+.btn-bolder{
+  font-weight: bolder;
+}
+
+body{
+  font-size: 1rem !important;
+}
+
+.dropdown-menu{
+  font-size: 1rem !important;
+}
+
+.text-decoration-underline{
+  text-decoration: underline !important;
+}
+
+
+.btn-sm, .btn-group-sm > .btn {
+  font-size: 0.8rem !important;
+}
+
+.autoajustable{
+  min-height: 50px !important;
+}
+
+.panelLogin{
+  width: 475px;
+}
+
+.fa-google {
+  background: conic-gradient(from -45deg, #ea4335 110deg, #4285f4 90deg 180deg, #34a853 180deg 270deg, #fbbc05 270deg) 73% 55%/150% 150% no-repeat;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+}
+
+h1, h2, h3, h4, h5, h6, .h1, .h2, .h3, .h4, .h5, .h6 {
+  font-family: "Rubik", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+.dropdown-menu[x-placement^="top"], .dropdown-menu[x-placement^="right"], .dropdown-menu[x-placement^="bottom"], .dropdown-menu[x-placement^="left"] {
+  right: auto;
+  bottom: auto;
+}
+
+html body.layout-dark:not(.layout-transparent) .modal-content {
+  background-color: #000 !important;
+  background: #000 !important;
+}
+
+html body.layout-dark:not(.layout-transparent) .card {
+  box-shadow: none;
+}
+
+.layout-transparent .primary {
+  color: #FFCDD3 !important;
+}
+
+.chart-legend .legend-label {
+  color: #5a5c62 !important;
+  cursor: auto !important;
+}
+
+a {
+  color: #e52421;
+}
+
+.close {
+  font-size: 2rem !important;
+}
+
+input{
+  accent-color: #ffffff !important;
+}
+
+.gradient-red-ocean {
+  background-image: linear-gradient(60deg, #1D4350, #A43931) !important;
+  color: #fff !important;
+}
+
+.gradient-bloody-mary {
+  background-image: linear-gradient(60deg, #FF512F, #DD2476) !important;
+  color: #fff !important;
+}
+
+.swal2-title {
+  font-size: 1em !important;
+}
+
+.wrapper .content-header {
+  font-size: 1.2rem;
+}
+
+.card, .form-control, form label {
+  font-size: 1rem;
+}
+
+
+p{
+  /*font-size: 11px !important;*/
+}
+
+span{
+  /*font-size: 11px !important;*/
+}
+
+.swal2-icon > span{
+  font-size: 1rem !important;
+}
+
+/*body{
+  font-size: 11px !important;
+}*/
+
+.dark{
+  color: #343a40;
+}
+
+form label, .form-group label {
+  /*color: #75787d;
+  font-size: 11px;*/
+  font-size: 1rem !important;
+  text-transform: none !important;
+  letter-spacing: 0px;
+  font-weight: 500;
+}
+
+.form-control{
+  /*font-size: 11px;*/
+}
+.card{
+  /*font-size: 11px;*/
+}
+
+form .form-group {
+  margin-bottom: 1rem;
+}
+
+.popover .popover-header {
+  background-color: #343a40;
+  border-color: #060606;
+  color: white;
+}
+
+.btn-white, .btn-white {
+  background-color: #fff !important;
+  color: #343a40 !important;
+  border-color: #fff;
+  border: 1px solid #dee2e6 !important;
+}
+
+.btn-white:hover {
+  color: #ffffff !important;
+  background-color: #343a40 !important;
+  border-color: rgb(24, 23, 23) !important;
+}
+
+.btn-white:focus, .btn-white.focus {
+  outline: 0;
+  box-shadow: 0 0 0 0.2rem #222222 !important;
+}
+
+
+.dropdown-item.active{
+  background-color: #343a40;
+}
+
+.app-sidebar{
+  overflow-y: auto;
+}
+.invalid-feedback{
+  display: block !important;
+}
+
+.w-80 {
+  width: 80% !important;
+}
+
+.w-13{
+  width: 13px;
+}
+
+.navbar {
+  padding: 0.4rem 1.5rem !important;
+}
+
+.btn-dark:hover {
+  background-color: #58585a;
+}
+
+footer{
+  margin-top: 1em;
+}
+
+body {
+  /* Disables pull-to-refresh but allows overscroll glow effects. */
+  overscroll-behavior-y: contain;
+  /*background-color: #fff;*/
+}
+
+.spinner-absolute{
+  position: absolute;
+  right: 6%;
+  margin-top: 0.175rem !important;
+}
+
+.btn-raised {
+  border-radius: 1rem;
+}
+
+.alert-warning {
+  border: 1px solid #dee2e6 !important;
+  background-color: #A1CBEA !important;
+  color: #282828 !important;
+}
+
+.mat-expansion-panel-content {
+  font: inherit;
+}
+
+a:hover, a:focus {
+  color: #b0b6bb;
+  text-decoration: none;
+}
+
+.swal2-styled {
+  border-radius: 1.5rem !important;
+}
+
+.swal2-actions:not(.swal2-loading) .swal2-styled:hover {
+  background-color: #b0b6bb !important;
+}
+
+.swal2-icon.swal2-warning {
+  border-color: #e52421 !important;
+  color: #e52421 !important;
+}
+
+.tab-content {
+  min-height: 430px !important;
+}
+
+.btn-outline-secondary:hover {
+  color: #ffffff;
+}
+
+.nav-tabs .nav-link {
+  padding-top: 0.75rem !important;
+  color: #b0b6bb;
+  border-top-color: none;
+  border-right-color: #b0b6bb;
+  border-bottom-color: #b0b6bb;
+  border-left-color: #b0b6bb;
+  border-top-left-radius: 0rem;
+  border-top-right-radius: 0rem;
+}
+
+.color-footer{
+  background-color: #ededed;
+}
+
+.bt-nav{
+  width: 100px;
+}
+
+.bt-custom-md{
+  width: 170px;
+}
+
+.btn-primary:hover {
+  background-color: #b0b6bb !important;
+  border-color: #a9b3bb !important;
+}
+
+.btn-info:hover {
+  background-color: #b0b6bb !important;
+  border-color: #a9b3bb !important;
+}
+
+.btn-info:focus, .btn-info.focus {
+  box-shadow: 0 0 0 0.2rem #b0b6bb;
+}
+
+.btn-info:not(:disabled):not(.disabled):active:focus, .btn-info:not(:disabled):not(.disabled).active:focus, .show > .btn-info.dropdown-toggle:focus {
+  box-shadow: 0 0 0 0.2rem #b0b6bb;
+}
+
+.btn-info:not(:disabled):not(.disabled):active, .btn-info:not(:disabled):not(.disabled).active, .show > .btn-info.dropdown-toggle {
+  border-color: #b0b6bb;
+}
+
+
+.btn-primary:focus, .btn-primary.focus {
+  box-shadow: 0 0 0 0.2rem #b0b6bb !important;
+}
+
+.secondary{
+  color:#b0b6bb;
+}
+
+.badge-secondary {
+  color: #fff;
+  background-color: #b0b6bb;
+}
+
+.btn-primary {
+  color: #fff !important;
+}
+
+.btn-secondary {
+  color: #fff;
+  background-color: #b0b6bb;
+  border-color: #b0b6bb;
+}
+
+.fijado{
+  position: sticky;
+  top: 80px;
+  height: 100%;
+}
+.popover{
+  min-width: 300px;
+  max-width: 600px;
+}
+
+ .pointer{
+   cursor: pointer;
+ }
+
+ .avatar{
+   width: 40px;
+   height: 40px;
+ }
+
+ .btn-no-style{
+   background: none;
+	color: inherit;
+	border: none;
+	padding: 0;
+	font: inherit;
+	cursor: pointer;
+	outline: inherit;
+ }
+
+.labelLower{
+  text-transform: lowercase;
+}
+
+/*.modal-dialog {
+    max-width: 90%;
+}*/
+
+.vertical-horizontal-align {
+  margin: 0;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  -ms-transform: translate(-50%, -50%);
+  transform: translate(-50%, -50%);
+}
+
+.fa-1_5x{
+  font-size: 1.5em;
+}
+
+.fa-1_3x{
+  font-size: 1.3em;
+}
+
+.fa-1_1x{
+  font-size: 1.1em;
+}
+
+/*.fa-1_5x:hover {
+     -webkit-transform: scale(2.2);
+     -moz-transform: scale(2.2);
+     -o-transform: scale(2.2);
+     -ms-transform: scale(2.2);
+     transform: scale(2.2)
+}*/
+
+.smart-table-container{
+    overflow-x: scroll;
+}
+
+.center-elements{
+  text-align: center;
+}
+
+.right-elements{
+  text-align: right;
+}
+.left-elements{
+  text-align: left;
+}
+
+.textExtractedNcr > a > b{
+  background-color: #e52421;
+}
+.textExtractedNcr >  b{
+  background-color: #e52421;
+}
+
+.bold {
+  font-weight: bold;
+}
+
+.dot{
+  list-style: initial !important;
+}
+
+mark{
+  text-decoration: underline;
+  -webkit-text-decoration-color: #e52421; /* Safari */  
+  text-decoration-color: #e52421;
+  background-color: #FFF;
+  text-decoration-thickness: 3px;
+}
+
+.cdk-global-overlay-wrapper, .cdk-overlay-container {
+     z-index: 99999 !important;
+  }
+
+ .mat-expansion-panel-body {
+      padding: 0 !important;
+  }
+
+  .almost-full-height-vh{
+    height: 84vh !important;
+  }
+  .almost-xl-height-vh{
+    height: 60vh !important;
+  }
+
+  .ModalClass-xl .modal-dialog {
+    max-width: 98% !important;
+  }
+  .ModalClass-lg .modal-dialog {
+    max-width: 65% !important;
+  }
+
+  .ModalClass-sm .modal-dialog {
+    max-width: 45% !important;
+  }
+
+  @media ( max-width: 991px ){
+    .width30rem{
+      max-width: 30rem !important;
+    }
+  }
+
+  @media ( max-width: 900px ){
+    .ModalClass-lg .modal-dialog {
+      max-width: 98% !important;
+    }
+
+    .ModalClass-sm .modal-dialog {
+      max-width: 98% !important;
+    }
+  }
+
+@media ( max-width: 575px ){
+
+  body{
+    font-size: 12px !important;
+  }
+  p {
+    font-size: 12px !important;
+  }
+  h1, .h1 {
+    font-size: 1.4rem;
+  }
+  h2, .h2 {
+    font-size: 1.3rem;
+  }
+  h3, .h3 {
+    font-size: 1.2rem;
+  }
+  h4, .h4 {
+    font-size: 1.1rem;
+  }
+  h5, .h5 {
+    font-size: 1rem;
+  }
+
+  .btn{
+    font-size: 0.9rem;
+  }
+
+  .spinner-absolute{
+    position: absolute;
+    right: 15%;
+    margin-top: 0.175rem !important;
+  }
+
+  .none-laterals-m{
+    padding-right: 0px !important;
+    padding-left: 0px !important;
+  }
+
+  .panelLogin{
+    width: 300px;
+  }
+}
+
+@media ( max-height: 550px ){
+  .full-height-vh{
+  	height: 100% !important;
+  }
+  .almost-full-height-vh{
+    height: 100% !important;
+  }
+}
+
+.form .form-actions {
+    border-top: none;
+  }
+
+.bt-n{
+  border-top: none;
+}
+
+.inactiveLink {
+   pointer-events: unset;
+   cursor: auto !important;
+}
+/* You can add global styles to this file, and also import other style files */
+
+/* @import url("assets/css/bootstrap.min.css"); */
+/* @import url("../src/assets/css/prism.min.css");
+@import url("../src/assets/css/sweetalert2.min.css");
+@import url("../src/assets/css/bootstrap-timepicker.min.css");
+@import url("../src/assets/css/wizard.css");
+@import url("../src/assets/css/leaflet.css");
+@import url("../src/assets/css/jquery-jvectormap-2.0.3.css");
+@import url("../src/assets/css/ng2-toastr.min.css");
+@import url("../src/assets/css/nouislider.min.css");
+@import url("../src/assets/css/data-table/index.css");
+@import url("../src/assets/css/data-table/icons.css");
+@import url("../src/assets/css/demo.css"); 
+@import "../css/custom.css";*/

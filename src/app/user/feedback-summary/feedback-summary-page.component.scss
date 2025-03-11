@@ -1,0 +1,27 @@
+:host ::ng-deep ngb-rating span {
+  font-size: 2.5rem;
+}
+
+.my-rating {
+  color: #e52421;
+}
+
+
+@media ( max-width: 575px ){
+
+  :host ::ng-deep ngb-rating span {
+    font-size: 1.5rem;
+  }
+
+  .titleQuestion{
+    margin-bottom: 0 !important;
+  }
+}
+
+@media ( max-width: 380px ){
+
+  .centerdiv{
+    clear: both;
+    float: none !important;
+  }
+}

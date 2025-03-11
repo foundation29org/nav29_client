@@ -1,0 +1,38 @@
+<!-- Navbar (Header) Starts -->
+<nav class="navbar navbar-expand-lg navbar-light header-navbar navbar-sticky" style="margin-left: 0px;width: 100% !important;background-color: #fff;box-shadow: 0 6px 0 0 rgba(0,0,0,.01),0 15px 32px 0 rgba(0,0,0,.06);min-height: 4.3rem;">
+    <div class="container-fluid">
+      <div>
+        <span class="navbar-header-logos d-none d-sm-inline">
+          <img *ngIf="isHomePage" class="logo-img-big" src='assets/img/logo-lg-white.png' (click)="trackEventsService.trackEventsService.lauchEvent('Logo');"/>
+          <img *ngIf="!isHomePage" class="logo-img-big pointer" src='assets/img/logo-lg-white.png' routerLink="/." (click)="trackEventsService.lauchEvent('Logo');" style="cursor: pointer;"/>
+        </span>
+        <span class="navbar-header-logos d-inline d-sm-none">
+          <img *ngIf="isHomePage" class="logo-img" src='assets/img/logo.png' (click)="trackEventsService.lauchEvent('Logo');"/>
+          <img *ngIf="!isHomePage" class="logo-img pointer" src='assets/img/logo.png' routerLink="/." (click)="trackEventsService.lauchEvent('Logo');" style="cursor: pointer;"/>
+        </span>
+      </div>
+        <div class="navbar-container pl-0">
+            <div  id="navbarSupportedContent">
+                <ul class="navbar-nav m-r-0">
+                  <li class="nav-item mr-2 d-inline" ngbDropdown display="dynamic" placement="bottom-right">
+                    <a class="position-relative colorlink" id="dropdownLang" ngbDropdownToggle role="button">
+                        <u>{{currentLang}}</u>
+                    </a>
+                    <div ngbDropdownMenu aria-labelledby="dropdownLang" class="dropdownLang">
+                        <a *ngFor="let lang of langs" class="dropdown-item py-1 lang" href="javascript:;" (click)="ChangeLanguage(lang.code);trackEventsService.lauchEvent('Change lang 1')">
+                            <span>{{lang.name}}</span>
+                        </a>
+                    </div>
+                </li>
+                <li class="nav-item mr-2 d-none d-sm-inline" *ngIf="!isHomePage">
+                  <a class="btn btn-dark mb-0 btn-navbar btn-bolder" [routerLink]="['/.']" (click)="trackEventsService.lauchEvent('Dashboard btn 1')">{{'menu.Dashboard' | translate }}</a>
+                </li>
+                <li class="nav-item mr-2"  *ngIf="!isLoginPage">
+                    <a class="btn btn-dark mb-0 btn-navbar btn-bolder" [routerLink]="['/login']" (click)="trackEventsService.lauchEvent('Login btn 1')">{{'login.Sign in' | translate }}</a>
+                  </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</nav>
+<!-- Navbar (Header) Ends -->

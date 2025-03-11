@@ -1,0 +1,50 @@
+<div class="modal-header">
+  <h4 class="modal-title">{{ 'events.UpdateEvent' | translate }}</h4>
+  <button type="button" class="close" aria-label="Close" (click)="activeModal.dismiss()">
+    <span aria-hidden="true">&times;</span>
+  </button>
+</div>
+<div class="modal-body">
+  <form [formGroup]="eventForm">
+    <div class="form-group">
+      <label for="eventName">{{ 'generics.Name' | translate }}</label>
+      <input type="text" class="form-control" id="eventName" formControlName="name">
+    </div>
+    <div class="form-group">
+      <label class="mb-0">{{ 'generics.Date' | translate }}</label>
+      <div class="">
+        <mat-form-field class="mr-sm-24" fxFlex>
+          <input matInput class="grey" readonly [matDatepicker]="picker" autocomplete="off" name="date" formControlName="date">
+          <button *ngIf="eventForm.value.date!=null" matSuffix mat-icon-button aria-label="Clear" (click)="eventForm.controls['date'].setValue(null)" style="position: absolute; left: 30px;">
+            <em class="fa fa-trash danger"></em>
+          </button>
+          <mat-datepicker-toggle matSuffix [for]="picker"></mat-datepicker-toggle>
+          <mat-datepicker touchUi="true" #picker></mat-datepicker>
+        </mat-form-field>
+      </div>
+    </div>
+    <div class="form-group">
+      <label for="key">{{ 'events.Type' | translate }}</label>
+      <select class="form-control" id="key" formControlName="key" required>
+        <option value="">{{ 'generics.Select type' | translate }}</option>
+        <option value="diagnosis">🩺 {{ 'timeline.Diagnoses' | translate }}</option>
+        <option value="treatment">💉 {{ 'timeline.Treatment' | translate }}</option>
+        <option value="test">🔬 {{ 'timeline.Tests' | translate }}</option>
+        <option value="appointment">📅 {{ 'events.appointment' | translate }}</option>
+        <option value="symptom">🤒 {{ 'timeline.Symptoms' | translate }}</option>
+        <option value="medication">💊 {{ 'timeline.Medications' | translate }}</option>
+        <option value="other">🔍 {{ 'timeline.Other' | translate }}</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label for="notes">{{ 'generics.notes' | translate }}</label>
+      <textarea maxlength="150" name="notes" formControlName="notes"
+        placeholder="{{'generics.Write down any details' | translate }}"
+        class="autoajustable form-control"></textarea>
+    </div>
+  </form>
+</div>
+<div class="modal-footer">
+  <button type="button" class="btn btn-secondary" (click)="activeModal.dismiss()">{{ 'Cancel' | translate }}</button>
+  <button type="button" class="btn btn-primary" (click)="save()" [disabled]="eventForm.invalid">{{ 'Save' | translate }}</button>
+</div>

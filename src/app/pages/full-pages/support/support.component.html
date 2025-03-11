@@ -1,0 +1,89 @@
+<div class="h-100 pt-5">
+  <div class="card border card-block mx-auto" style="max-width: 30rem !important;">
+      <div class="card-body">
+          <div class="row">
+              <div class="col-12 col-sm-12 align-items-center">
+                  <div>
+                      <h2 class="content-header mt-0 mb-2">{{'support.New message' | translate }}</h2>
+                      <section>
+                        <div class="row card">
+                          <div class="">
+                            <div class="card">
+                              <div class="card-block">
+                                <form class="form" (ngSubmit)="sendMsg()" #f="ngForm">
+                                  <div class="form-body">
+                                    <div class="row">
+                                      <div class="col-md-12">
+                                        <div class="form-group">
+                                          <label for="subject">{{'support.Subject' | translate }}</label>
+                                          <input type="text" id="subject" class="form-control"  name="subject" [(ngModel)]="supportInfo.subject" required ngModel required #subject="ngModel">
+                                          <small class="form-text text-muted danger" *ngIf="!subject.valid && (subject.dirty || subject.touched)">{{'generics.required' | translate }}</small>
+                                        </div>
+                                      </div>
+                                      <div class="col-md-12">
+                                        <div class="form-group">
+                                          <label for="description">{{'support.Message' | translate }}</label>
+                                          <textarea name="description" id="textarea1" class="autoajustable form-control" [(ngModel)]="supportInfo.description" name="description" required ngModel required #description="ngModel"></textarea>
+                                          <small class="form-text text-muted danger" *ngIf="!description.valid && (description.dirty || description.touched)">{{'generics.required' | translate }}</small>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                  <div class="form-actions">
+                                    <span *ngIf="!sending">
+                                      <div *ngIf="f.valid;then formValid else formError"></div>
+                                      <ng-template #formValid><button class="btn btn-dark" type="submit"> {{'support.Send' | translate }}</button></ng-template>
+                                      <ng-template #formError><button class="btn btn-dark" type="button" (click)="submitInvalidForm()">{{'support.Send' | translate }}</button></ng-template>
+                                    </span>
+                                    <span *ngIf="sending">
+                                      <i class="fa fa-spinner fa-spin fa-3x fa-fw"></i>
+                                    </span>
+                                  </div>
+                                </form>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </section>
+                  </div>
+              </div>
+          </div>
+      </div>
+  </div>
+</div>
+
+
+
+<div *ngIf="msgList.length > 0">
+  <div class="row">
+    <div class="col-sm-12">
+      <div class="content-header">{{'support.Old messages' | translate }}</div>
+    </div>
+  </div>
+  <section>
+    <div class="row">
+      <div class="col-12">
+        <div class="card">
+          <div class="card-block">
+            <table class="col-md-12 table text-center">
+    					<thead>
+    						<tr>
+    							<th>{{'support.Subject' | translate }}</th>
+    							<th>{{'support.Message' | translate }}</th>
+    							<th>{{'generics.Date' | translate }}</th>
+    						</tr>
+    					</thead>
+    					<tbody>
+    						<tr *ngFor="let msg of msgList ; let i = index">
+    							<td>{{msg.subject}}</td>
+                  <td>{{msg.description}}</td>
+                  <td>{{msg.date | date}}</td>
+    						</tr>
+    					</tbody>
+    				</table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>

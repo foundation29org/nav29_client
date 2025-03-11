@@ -1,0 +1,63 @@
+<div class="modal-header">
+  <h4 class="modal-title">{{ 'events.NewEvent' | translate }}</h4>
+  <button type="button" class="close" aria-label="Close" (click)="cancel()">
+    <span aria-hidden="true">&times;</span>
+  </button>
+</div>
+<div class="modal-body">
+  <form [formGroup]="eventForm">
+    <div class="form-group">
+      <label for="name">{{ 'generics.Name' | translate }}</label>
+      <input type="text" class="form-control" id="name" formControlName="name" required
+        [ngClass]="{'is-invalid': submitted && eventForm.get('name').errors}">
+      <div class="invalid-feedback" *ngIf="submitted && eventForm.get('name').errors?.['required']">
+        {{ 'generics.required' | translate }}
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="mb-0">{{ 'generics.Date' | translate }}</label>
+      <div class="">
+        <mat-form-field class="mr-sm-24" fxFlex>
+          <input matInput class="grey" readonly [matDatepicker]="picker" 
+            autocomplete="off" name="date" formControlName="date"
+            [ngClass]="{'is-invalid': submitted && eventForm.get('date').errors}">
+          <button *ngIf="eventForm.value.date!=null" matSuffix mat-icon-button aria-label="Clear" (click)="eventForm.controls['date'].setValue(null)" style="position: absolute; left: 30px;">
+            <em class="fa fa-trash danger"></em>
+          </button>
+          <mat-datepicker-toggle matSuffix [for]="picker"></mat-datepicker-toggle>
+          <mat-datepicker touchUi="true" #picker></mat-datepicker>
+        </mat-form-field>
+        <div class="text-danger small" *ngIf="submitted && eventForm.get('date').errors?.['required']">
+          {{ 'generics.required' | translate }}
+        </div>
+      </div>
+    </div>
+    <div class="form-group">
+      <label for="key">{{ 'events.Type' | translate }}</label>
+      <select class="form-control" id="key" formControlName="key" required
+        [ngClass]="{'is-invalid': submitted && eventForm.get('key').errors}">
+        <option value="">{{ 'timeline.Select type' | translate }}</option>
+        <option value="diagnosis">🩺 {{ 'timeline.Diagnoses' | translate }}</option>
+        <option value="treatment">💉 {{ 'timeline.Treatment' | translate }}</option>
+        <option value="test">🔬 {{ 'timeline.Tests' | translate }}</option>
+        <option value="appointment">📅 {{ 'events.appointment' | translate }}</option>
+        <option value="symptom">🤒 {{ 'timeline.Symptoms' | translate }}</option>
+        <option value="medication">💊 {{ 'timeline.Medications' | translate }}</option>
+        <option value="other">🔍 {{ 'timeline.Other' | translate }}</option>
+      </select>
+      <div class="invalid-feedback" *ngIf="submitted && eventForm.get('key').errors?.['required']">
+        {{ 'generics.required' | translate }}
+      </div>
+    </div>
+    <div class="form-group">
+      <label for="notes">{{ 'generics.notes' | translate }}</label>
+      <textarea maxlength="150" name="notes" formControlName="notes"
+        placeholder="{{'generics.Write down any details' | translate }}"
+        class="autoajustable form-control"></textarea>
+    </div>
+  </form>
+</div>
+<div class="modal-footer">
+  <button type="button" class="btn btn-outline-dark" (click)="cancel()">{{ 'generics.Cancel' | translate }}</button>
+  <button type="button" class="btn btn-primary" (click)="save()" [disabled]="submitted && eventForm.invalid">{{ 'generics.Save' | translate }}</button>
+</div>

@@ -1,0 +1,13 @@
+export const environment = {
+    production: true,
+    api: undefined,  //Server URL: 'http://<direction>:<port>'
+    firebase: {
+        apiKey: undefined,
+        authDomain: undefined,
+        projectId: undefined,
+        storageBucket: undefined,
+        messagingSenderId: undefined,
+        appId: undefined,
+        measurementId: undefined
+    }
+};

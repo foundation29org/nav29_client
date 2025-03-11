@@ -1,0 +1,165 @@
+<div class="welcome-container" *ngIf="!showPanelDelete">
+	<div class="welcome-header text-center mb-5">
+	  <button class="btn btn-dark position-absolute" style="left: 1rem; top: 1rem;" (click)="goBack()">
+		<i class="fa fa-arrow-left"></i> {{'generics.Back' | translate }}
+	  </button>
+	  <h1 class="display-4 mb-3">{{'profile.Settings' | translate }}</h1>
+	  <div class="save-status" *ngIf="saveStatus">
+		<small class="text-success">
+		  <i class="fa fa-check"></i> {{'generics.ChangesSaved' | translate }}
+		</small>
+	  </div>
+	</div>
+  
+	<div class="center-elements" *ngIf="loading">
+	  <div>
+		<p class="centerSpinner"><i class="fa fa-spinner fa-spin fa-3x fa-fw primary"></i></p>
+	  </div>
+	</div>
+  
+	<div class="settings-grid" *ngIf="!loading">
+	  <!-- Idioma de la interfaz -->
+	  <div class="settings-card">
+		<div class="card-icon">
+		  <i class="fa fa-language"></i>
+		</div>
+		<h3>{{'profile.Language' | translate}}</h3>
+		<select id="lang" name="lang" class="form-control" [(ngModel)]="user.lang" #langselected (ngModelChange)="onChangeLang($event)">
+		  <option *ngFor="let lang of langs" [ngValue]="lang.code">{{lang.name}}</option>
+		</select>
+	  </div>
+  
+	  <!-- Idioma de las respuestas -->
+	  <div class="settings-card">
+		<div class="card-icon">
+		  <i class="fa fa-comments"></i>
+		</div>
+		<h3>{{'lang.Select the language of the responses' | translate}}</h3>
+		<p class="text-muted">{{'lang.ExplainLang' | translate}}</p>
+		<p class="text-muted">{{'lang.ExplainLang1' | translate}}</p>
+		<select id="preferredResponseLanguage" name="preferredResponseLanguage" class="form-control" [(ngModel)]="user.preferredResponseLanguage" (ngModelChange)="onChangePreferredResponseLanguage($event)">
+		  <option *ngIf="!user.preferredResponseLanguage" value="null" disabled selected>{{ 'lang.Select the language' | translate }}</option>
+		  <option *ngFor="let lang of allLangs" [ngValue]="lang.code">{{lang.nativeName}}</option>
+		</select>
+	  </div>
+  
+	  <!-- Rol del usuario -->
+	  <div class="settings-card">
+		<div class="card-icon">
+		  <i class="fa fa-user"></i>
+		</div>
+		<h3>{{'steps.primaryGoal' | translate}}</h3>
+		<p class="text-muted">{{'steps.primaryGoalDescription' | translate}}</p>
+		<div class="role-options">
+		  <label class="role-option" [class.selected]="user.role === 'User'">
+			<input type="radio" name="role" value="User" [(ngModel)]="user.role" (change)="onRoleChange('User')">
+			<i class="fa fa-user-circle"></i>
+			<span>{{'steps.personalHealthInsights' | translate}}</span>
+		  </label>
+		  <label class="role-option" [class.selected]="user.role === 'Caregiver'">
+			<input type="radio" name="role" value="Caregiver" [(ngModel)]="user.role" (change)="onRoleChange('Caregiver')">
+			<i class="fa fa-heart"></i>
+			<span>{{'steps.someoneElsesHealth' | translate}}</span>
+		  </label>
+		  <label class="role-option" [class.selected]="user.role === 'Clinical'">
+			<input type="radio" name="role" value="Clinical" [(ngModel)]="user.role" (change)="onRoleChange('Clinical')">
+			<i class="fa fa-user-md"></i>
+			<span>{{'steps.professionalUse' | translate}}</span>
+		  </label>
+		</div>
+	  </div>
+  
+	  <!-- Nivel de conocimiento -->
+	  <div class="settings-card">
+		<div class="card-icon">
+		  <i class="fa fa-graduation-cap"></i>
+		</div>
+		<h3>{{'profile.Level of health knowledge' | translate}}</h3>
+		<p class="text-muted">{{'profile.Medical Level Explanation' | translate}}</p>
+		<div class="knowledge-levels">
+		  <label class="knowledge-level" [class.selected]="user.medicalLevel === '0'">
+			<input type="radio" name="medicalLevel" value="0" [(ngModel)]="user.medicalLevel" (change)="onMedicalLevelChange('0')">
+			<span>{{'profile.No knowledge' | translate}}</span>
+		  </label>
+		  <label class="knowledge-level" [class.selected]="user.medicalLevel === '1'">
+			<input type="radio" name="medicalLevel" value="1" [(ngModel)]="user.medicalLevel" (change)="onMedicalLevelChange('1')">
+			<span>{{'profile.Basic knowledge' | translate}}</span>
+		  </label>
+		  <label class="knowledge-level" [class.selected]="user.medicalLevel === '2'">
+			<input type="radio" name="medicalLevel" value="2" [(ngModel)]="user.medicalLevel" (change)="onMedicalLevelChange('2')">
+			<span>{{'profile.Intermediate knowledge' | translate}}</span>
+		  </label>
+		  <label class="knowledge-level" [class.selected]="user.medicalLevel === '3'">
+			<input type="radio" name="medicalLevel" value="3" [(ngModel)]="user.medicalLevel" (change)="onMedicalLevelChange('3')">
+			<span>{{'profile.Advanced knowledge' | translate}}</span>
+		  </label>
+		</div>
+		<p class="text-muted mt-3">
+		  * {{'profile.If you change the health knowledge level' | translate }}
+		</p>
+	  </div>
+	</div>
+  
+	<div class="text-center mt-5">
+	  <button type="button" class="btn btn-danger" (click)="deleteAccount()">
+		<i class="fa fa-trash"></i> {{'profile.Delete account' | translate }}
+	  </button>
+	</div>
+  </div>
+<div class="offset-md-2 col-md-8 offset-lg-3 col-lg-6 offset-xl-4 col-xl-4">
+	
+	<div class="mt-2 pt-5" *ngIf="showPanelDelete">
+		<div class="card card-block mx-auto">
+			<div class="card-body">
+				<div class="row">
+					
+					<div class="col-md-12" *ngIf="!deleting">
+						<span style="position: absolute;right: 5px;" (click)="cancelDeleteAccount()" title="{{'generics.Cancel' | translate }}" class="pointer"><em class="fa fa-times fa-1_5x"></em></span>
+						<h4 class="form-section"><i class="fa fa-exclamation-triangle danger"></i> {{'profile.Delete account' |
+							translate }}</h4>
+						<p>{{'profile.To continue, we need to verify that it is you' | translate }}</p>
+						<p *ngIf="showTryAgain" class="danger mb-2">
+							<span>{{'login.The token is invalid' | translate}}</span>
+							<span class="d-block">{{'login.Sign in again' | translate}}</span>
+						  </p>
+						<p *ngIf="isLoginFailed" class="danger mb-2">
+							<span class="d-block">{{'login.Sign in failed' | translate }}</span>
+						  </p>
+						<form (submit)="sendVeriffEmail(userName.value, $event)">
+							<div class="formGroup">
+								<input type="email" name="email" autocomplete="email" class="form-control" placeholder="{{'generics.Email' | translate }}" #userName required>
+							</div>
+							<div class="formGroup mt-2">
+								<input type="submit" class="btn btn-dark btn-block" value="{{'wizard.Continue' | translate}}" [disabled]="isLoading">
+							    <span *ngIf="isLoading" class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+							</div>
+						</form>
+						<div class="divider mt-4">
+							<span class="divider-text">{{'demo.or' | translate}}</span>
+						  </div>
+						  <div *ngIf="!isLoading2">
+							<button type="button" class="btn btn-sm btn-block btn-white d-flex justify-content-center align-items-center" (click)="signMethod('google')">
+							  <i class="fa fa-google fa-2x mr-2"></i> <span class="">{{'login.Continue with' | translate }} Google</span>
+							</button>
+							<button type="button" class="btn btn-sm btn-block btn-white d-flex justify-content-center align-items-center" (click)="signMethod('microsoft')">
+							  <i class="fa fa-windows fa-2x mr-1"></i> <span class="">{{'login.Continue with' | translate }} Microsoft</span>
+							</button>
+							<button type="button" class="btn btn-sm btn-block btn-white d-flex justify-content-center align-items-center" (click)="signMethod('apple')">
+							  <i class="fa fa-apple fa-2x mr-2"></i> <span class="">{{'login.Continue with' | translate }} Apple</span>
+							</button>
+						  </div>
+						  <div *ngIf="isLoading2" class="center-elements">
+							<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+						  </div>
+					</div>
+					<div class="col-md-12" *ngIf="deleting">
+						<div class="center-elements">
+							<p class="centerSpinner"><i class="fa fa-spinner fa-spin fa-3x fa-fw primary"></i></p>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+	
+</div>
