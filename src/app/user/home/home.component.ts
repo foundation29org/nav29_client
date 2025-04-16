@@ -2602,7 +2602,7 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     let ngbModalOptions: NgbModalOptions = {
       backdrop: 'static',
       keyboard: false,
-      windowClass: 'ModalClass-sm' // xl, lg, sm
+      windowClass: 'ModalClass-lg' // xl, lg, sm
     };
     if (this.modalReference != undefined) {
       this.modalReference.close();
