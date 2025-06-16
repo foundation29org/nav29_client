@@ -1029,6 +1029,7 @@
        "Unknown":"Inconnu",
        "Saving":"Sauvegarde",
        "Write a message": "Écrivez un message",
+       "Please write a message": "Veuillez écrire un message",
        "Not provided": "Non fourni",
        "actualEvent": "Si vous l'avez actuellement, ne sélectionnez pas la date de fin.",
        "Select a category": "Sélectionnez une catégorie",
