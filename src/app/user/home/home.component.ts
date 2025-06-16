@@ -931,7 +931,10 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
 
   private handleNavigator(parsedData: any) {
     if (parsedData.status === 'generando sugerencias') {
-      this.gettingSuggestions = true;
+      // Solo activar gettingSuggestions si no estamos procesando una respuesta
+      if (this.callingOpenai) {
+        this.gettingSuggestions = true;
+      }
     } else if (parsedData.status === 'respuesta generada') {
       this.processNavigatorAnswer(parsedData);
     } else if (parsedData.status === 'sugerencias generadas') {
@@ -946,6 +949,11 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
   }
 
   private async processNavigatorAnswer(parsedData: any) {
+    // Limpiar el estado inmediatamente al recibir la respuesta
+    this.callingOpenai = false;
+    this.gettingSuggestions = false;
+    this.actualStatus = '';
+    
     this.context.push({ role: 'user', content: this.message });
     this.context.push({ role: 'assistant', content: parsedData.answer });
     let tempMessage = this.message;
