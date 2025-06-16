@@ -54,6 +54,20 @@ import { ActivityService } from 'app/shared/services/activity.service';
       transition('voidRight => enterFromRight', [animate('0.5s ease-out')]),
       transition('voidLeft => enterFromLeft', [animate('0.5s ease-out')]),
     ]),
+    trigger('messageAnimation', [
+      transition(':enter', [
+        style({ 
+          opacity: 0, 
+          transform: 'translateX(-20px)'
+        }),
+        animate('0.6s ease-out', 
+          style({ 
+            opacity: 1, 
+            transform: 'translateX(0)'
+          })
+        )
+      ])
+    ])
   ]
 })
 
@@ -800,7 +814,19 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
       message.text = message.text.replace(/<h2>/g, '<h6>').replace(/<\/h2>/g, '</h6>');
       message.text = message.text.replace(/<h3>/g, '<h6>').replace(/<\/h3>/g, '</h6>');
     }
+    // Add timestamp to track new messages
+    message.timestamp = Date.now();
+    message.isNew = true;
     this.messages.push(message);
+    
+    // Remove the isNew flag after animation completes
+    setTimeout(() => {
+      const lastMessage = this.messages[this.messages.length - 1];
+      if (lastMessage && lastMessage.timestamp === message.timestamp) {
+        lastMessage.isNew = false;
+      }
+    }, 500);
+    
     this.scrollToBottom();
   }
 
@@ -1137,16 +1163,17 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     const words = this.messagesExpect.split(' ');
     let index = 0;
 
+    // 100ms is the speed at which characters appear in the typing animation
     this.intervalId = setInterval(() => {
-      if (index < words.length && (this.callingOpenai || this.gettingSuggestions)) {
-        const word = words[index];
-        this.messagesExpectOutPut += (index > 0 ? ' ' : '') + word;
+      if (index < this.messagesExpect.length && (this.callingOpenai || this.gettingSuggestions)) {
+        const char = this.messagesExpect[index];
+        this.messagesExpectOutPut += char;
         index++;
       } else {
         clearInterval(this.intervalId);
         this.intervalId = null;
       }
-    }, 20);
+    }, 7);
   }
 
   private showRandomMsg() {

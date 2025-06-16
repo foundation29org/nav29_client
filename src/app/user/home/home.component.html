@@ -430,7 +430,8 @@
                     <div *ngIf="messages.length > 0" class="main-chat-container">
                         <div class="chat-container">
                             <div *ngFor="let message of messages; let i = index" class="chat-messages"
-                                [ngClass]="{'user-is-sender': message.isUser}">
+                                [ngClass]="{'user-is-sender': message.isUser}"
+                                [@messageAnimation]>
                                 <div class="message-row"
                                     [ngClass]="{'user-message': message.isUser, 'response-message': !message.isUser, 'response-form': !message.isUser}">
                                     <ng-container *ngIf="message.task">
@@ -516,12 +517,17 @@
                                 </div>
                             </div>
                             <div class="chat-messages pt-2"
-                                *ngIf="(callingOpenai || gettingSuggestions) || actualStatus == 'generando sugerencias'"
-                                style="border-radius: 1rem;">
-                                <span class="response-message" style="background-color: white !important;"
-                                    [innerHTML]="messagesExpectOutPut">
-                                </span>
-                                <em class="ml-1 fa fa-spinner fa-spin primary fa-fw" style="align-self: center;"></em>
+                                *ngIf="(callingOpenai || gettingSuggestions) || actualStatus == 'generando sugerencias'">
+                                <div style="display: inline-block;">
+                                    <div class="loading-dots">
+                                        <em class="fa fa-circle"></em>
+                                        <em class="fa fa-circle"></em>
+                                        <em class="fa fa-circle"></em>
+                                    </div>
+                                    <span class="typewriter-text" style="color: #6c757d; font-size: 0.95rem;"
+                                        [innerHTML]="messagesExpectOutPut">
+                                    </span>
+                                </div>
                             </div>
                             <span>
                                 <span *ngIf="proposedEvents.length > 0" class="mb-2" style="display: flex;">
