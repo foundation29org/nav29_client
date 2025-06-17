@@ -33,6 +33,12 @@
             <i class="fa fa-comments"></i>
             <span class="ml-2" *ngIf="!isXSScreen()">{{'diary.title' | translate}}</span>
         </button>
+        <button class="btn btn-dark flex-grow-1" id="dxgpt-title"
+            [ngClass]="{'active-view': currentView === 'dxgpt'}"
+            (click)="setView('dxgpt')" title="{{'dxgpt.button' | translate}}">
+            <i class="fa fa-stethoscope"></i>
+            <span class="ml-2" *ngIf="!isXSScreen()">{{'dxgpt.button' | translate}}</span>
+        </button>
     </div>
 </div>
     <div class="main-container-user pb-4">
@@ -72,6 +78,13 @@
                     (click)="setView('diary')">
                     <i class="fa fa-comments"></i>
                     <span id="diary-title" class="ml-2">{{'diary.title' | translate}}</span>
+                </button>
+                <!-- DxGPT Button -->
+                <button class="btn btn-dark mx-2" 
+                    [ngClass]="{'active-view': currentView === 'dxgpt'}"
+                    (click)="setView('dxgpt')">
+                    <i class="fa fa-stethoscope"></i>
+                    <span id="dxgpt-title" class="ml-2">{{'dxgpt.button' | translate}}</span>
                 </button>                
             </div>
 
@@ -85,7 +98,7 @@
             </div>
         </div>
 
-        <div *ngIf="currentView != 'diary' && currentView != 'notes' && role != 'Caregiver'" class="sidebar border-right"
+        <div *ngIf="currentView != 'diary' && currentView != 'notes' && currentView != 'dxgpt' && role != 'Caregiver'" class="sidebar border-right"
             [ngClass]="{'open': sidebarOpen || !isSmallScreen()}">
             <div class="sidebar-content" id="sidebar-content">
                 <!-- Header -->
@@ -796,6 +809,64 @@
 
             </div>
             
+        </div>
+
+        <!-- DxGPT View -->
+        <div *ngIf="currentView === 'dxgpt'" class="col-md-12" [ngClass]="{'pt-custom2': !isSmallScreen()}">
+            <div class="dxgpt-content p-4">
+                <div class="text-center">
+                    <h3 class="mb-4">{{'dxgpt.title' | translate}}</h3>
+
+                    <!-- Loading state -->
+                    <div *ngIf="isDxGptLoading" class="my-5">
+                        <!-- ... spinner ... -->
+                    </div>
+
+                    <!-- Button to fetch results (Initial state) -->
+                    <!-- Se muestra si no está cargando Y no hay dxGptResults O dxGptResults.analysis está vacío (y no es un error de success:false) -->
+                    <div *ngIf="!isDxGptLoading && (!dxGptResults || !dxGptResults.analysis) && !(dxGptResults && dxGptResults.success === false)" class="my-5">
+                        <p class="mb-4">{{'dxgpt.description' | translate}}</p>
+                        <button class="btn btn-primary btn-lg" (click)="fetchDxGptResults()" [disabled]="!currentPatientId">
+                            <i class="fa fa-stethoscope mr-2"></i>
+                            {{'dxgpt.analyze' | translate}}
+                        </button>
+                        <!-- Mensaje si no hay paciente seleccionado para el botón -->
+                        <p *ngIf="!currentPatientId" class="text-danger mt-2">{{ 'patients.No patient selected' | translate }}</p>
+                    </div>
+
+                    <!-- Results -->
+                    <!-- Se muestra si no está cargando Y hay dxGptResults Y dxGptResults.analysis tiene contenido Y (success es true o no está definido, implicando que no es un error de red) -->
+                    
+                    <!-- DEBUG: Mostrar valores de las condiciones -->
+                    <div *ngIf="true" class="alert alert-info">
+                        <small>
+                            DEBUG - isDxGptLoading: {{isDxGptLoading}} | 
+                            dxGptResults exists: {{!!dxGptResults}} | 
+                            analysis exists: {{!!(dxGptResults && dxGptResults.analysis)}} | 
+                            success: {{dxGptResults?.success}}
+                        </small>
+                    </div>
+                    
+                    <div *ngIf="!isDxGptLoading && dxGptResults && dxGptResults.analysis && dxGptResults.success !== false" class="text-left">
+                        <div class="analysis-results">
+                            <div [innerHTML]="dxGptResults.analysis" class="markdown-content"></div>
+                        </div>
+                        <div class="text-center mt-4">
+                            <button class="btn btn-secondary" (click)="dxGptResults = null"> <!-- Esto volverá a mostrar el botón "Analyze" -->
+                                <i class="fa fa-redo mr-2"></i>
+                                {{'dxgpt.analyzeAgain' | translate}}
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Error state (para errores donde success es explícitamente false, ej. errores de red/HTTP) -->
+                    <div *ngIf="!isDxGptLoading && dxGptResults && dxGptResults.success === false" class="alert alert-danger mt-4">
+                        <i class="fa fa-exclamation-triangle mr-2"></i>
+                        <!-- Mostrar el 'analysis' si contiene el mensaje de error, o un mensaje genérico -->
+                        {{ dxGptResults.analysis || ('dxgpt.errorMessage' | translate) }}
+                    </div>
+                </div>
+            </div>
         </div>
 
     </div>

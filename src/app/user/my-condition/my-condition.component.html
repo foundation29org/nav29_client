@@ -1,0 +1,50 @@
+<div class="content-wrapper">
+  <div class="content-header row">
+    <div class="content-header-left col-12 mb-2 breadcrumb-new">
+      <h3 class="content-header-title mb-0 d-inline-block">{{ 'menu.My condition' | translate }}</h3>
+    </div>
+  </div>
+
+  <div class="content-body">
+    <section class="card">
+      <div class="card-content">
+        <div class="card-body">
+          <!-- Loading state -->
+          <div *ngIf="isLoading" class="text-center">
+            <div class="spinner-border text-primary" role="status">
+              <span class="sr-only">{{ 'generics.loading' | translate }}...</span>
+            </div>
+            <p class="mt-2">{{ 'generics.loading' | translate }}...</p>
+          </div>
+
+          <!-- Error state -->
+          <div *ngIf="!isLoading && errorMessage" class="alert alert-danger" role="alert">
+            <i class="fa fa-exclamation-triangle mr-2"></i>
+            {{ errorMessage }}
+            <!-- Show link to select patient if no patient is selected -->
+            <div *ngIf="noPatientSelected" class="mt-3">
+              <button type="button" class="btn btn-primary" (click)="navigateToPatients()">
+                <i class="fa fa-users mr-2"></i>
+                {{ 'topbar.Select patient' | translate }}
+              </button>
+            </div>
+          </div>
+
+          <!-- Content state -->
+          <div *ngIf="!isLoading && !errorMessage && rarescopeData && rarescopeData.analysis" class="analysis-content">
+            <div [innerHTML]="rarescopeData.analysis | markdown" class="markdown-content"></div>
+          </div>
+
+          <!-- Empty state (ajustado para mayor claridad) -->
+          <!-- Se muestra si no está cargando, no hay error, Y (no hay rarescopeData O rarescopeData.analysis está vacío) -->
+          <div *ngIf="!isLoading && !errorMessage && (!rarescopeData || !rarescopeData.analysis || rarescopeData.analysis.trim() === '')" class="text-center text-muted py-5">
+            <i class="fa fa-notes-medical fa-3x mb-3"></i>
+            <p>{{ 'generics.noDataToShow' | translate }}</p>
+            <!-- Podrías añadir un mensaje más específico si rarescopeData.analysis está vacío,
+                 indicando que el análisis no produjo resultados, quizás por falta de datos del paciente. -->
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+</div>

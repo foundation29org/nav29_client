@@ -134,4 +134,31 @@ export class ApiDx29ServerService {
       );
     }
 
+    getRarescopeAnalysis(patientId: string) {
+      return this.http.post(environment.api + '/api/ai/rarescope/' + patientId, {}).pipe(
+        map((res: any) => {
+          return res;
+        }),
+        catchError((err) => {
+          console.log(err);
+          this.insightsService.trackException(err);
+          return err;
+        })
+      );
+    }
+
+    getDifferentialDiagnosis(patientId: string, useSummary?: boolean) {
+      const body = useSummary ? { useSummary: useSummary } : {};
+      return this.http.post(environment.api + '/api/ai/dxgpt/' + patientId, body).pipe(
+        map((res: any) => {
+          return res;
+        }),
+        catchError((err) => {
+          console.log(err);
+          this.insightsService.trackException(err);
+          return err;
+        })
+      );
+    }
+
 }

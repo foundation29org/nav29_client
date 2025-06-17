@@ -162,6 +162,8 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
   usedNewSuggestions: string[] = [];
   isDonating: boolean = false;
   changingDonation: boolean = true;
+  dxGptResults: any;
+  isDxGptLoading: boolean = false;
   hasChangesEvents: boolean = false;
   loadingDoc: boolean = false;
   summaryDate: Date = null;
@@ -247,6 +249,8 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
   currentView: string = 'chat';
   previousView: string;
   private isInitialLoad = true;
+  currentPatientId: string | null = null;
+  private patientSubscription: Subscription;
 
   constructor(private http: HttpClient, private authService: AuthService, public translate: TranslateService, private formBuilder: FormBuilder, private authGuard: AuthGuard, public toastr: ToastrService, private patientService: PatientService, private sortService: SortService, private modalService: NgbModal, private apiDx29ServerService: ApiDx29ServerService, private dateService: DateService, private eventsService: EventsService, private webPubSubService: WebPubSubService, private searchService: SearchService, public jsPDFService: jsPDFService, private clipboard: Clipboard, public trackEventsService: TrackEventsService, private route: ActivatedRoute, public insightsService: InsightsService, private cdr: ChangeDetectorRef, private router: Router, private langService: LangService, private highlightService: HighlightService, private activityService: ActivityService) {
     this.screenWidth = window.innerWidth;
@@ -504,6 +508,9 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     if (this.messageSubscription) {
       this.messageSubscription.unsubscribe();
     }
+    if (this.patientSubscription) {
+      this.patientSubscription.unsubscribe();
+    }
     this.eventsService.destroy();
     hopscotch.endTour(true);
 
@@ -629,6 +636,19 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
         this.isInitialLoad = false;
       }
     }));
+    
+    this.patientSubscription = this.authService.currentPatient$.subscribe(patient => {
+      if (patient && patient.sub) {
+        this.currentPatientId = patient.sub;
+        // Si cambias de paciente y estabas en la vista dxgpt, podrías querer limpiar resultados
+        if (this.currentView === 'dxgpt') {
+          this.dxGptResults = null;
+        }
+      } else {
+        this.currentPatientId = null;
+        this.dxGptResults = null; // Limpiar si no hay paciente
+      }
+    });
     let currentLang = this.translate.currentLang;
     await this.updateSuggestions(currentLang);
     this.getTranslations();
@@ -665,6 +685,12 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     }else if(view === 'notes'){
       this.sidebarOpen = false;
       this.notesSidebarOpen = true;
+    }else if(view === 'dxgpt'){
+      this.sidebarOpen = false;
+      this.notesSidebarOpen = false;
+      // Opcional: podrías llamar a fetchDxGptResults() aquí si quieres que se auto-cargue
+      // al cambiar a la vista, o dejar que el usuario pulse el botón.
+      // Por ahora, lo dejamos para el botón.
     }else{
       this.sidebarOpen = false;
       this.notesSidebarOpen = false;
@@ -4377,6 +4403,70 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
       (doc.originaldate && new Date(doc.originaldate).toLocaleDateString().includes(term))
     );
     this.selectAllDocuments = this.filteredDocs.length > 0 && this.filteredDocs.every(doc => doc.selected);
+  }
+
+  fetchDxGptResults() {
+    console.log('=== FRONTEND DXGPT DEBUG START ===');
+    console.log('1. Current patient ID:', this.currentPatientId);
+    
+    if (!this.currentPatientId) {
+      // Mostrar algún error o deshabilitar el botón si no hay paciente
+      // Esto es improbable si la UI se muestra correctamente, pero por si acaso.
+      console.error("No patient selected to fetch DxGPT results.");
+      // Podrías usar Swal para notificar al usuario.
+      this.dxGptResults = { success: false, analysis: this.translate.instant('patients.No patient selected') };
+      return;
+    }
+
+    console.log('2. Setting loading state...');
+    this.isDxGptLoading = true;
+    this.dxGptResults = null; // Limpiar resultados anteriores
+
+    console.log('3. Calling API service...');
+    // Suponiendo que quieres usar el resumen (useSummary: true)
+    // Cambia a false o quita el segundo argumento si no quieres usar el resumen.
+    this.apiDx29ServerService.getDifferentialDiagnosis(this.currentPatientId /*, true */ ).subscribe(
+      (res: any) => {
+        console.log('4. API Response received:', res);
+        console.log('4.1. res.success:', res.success);
+        console.log('4.2. res.analysis exists:', !!res.analysis);
+        console.log('4.3. res.analysis length:', res.analysis ? res.analysis.length : 0);
+        
+        if (res && res.analysis && res.analysis.trim() !== '') {
+           // El backend siempre manda success: true si llega al controller
+           // Así que sólo necesitamos verificar que 'analysis' tenga contenido.
+          console.log('5. Setting success result');
+          this.dxGptResults = res; // res ya debería tener { success: true, analysis: "..." }
+          console.log('5.1. this.dxGptResults assigned:', this.dxGptResults);
+          console.log('5.2. this.isDxGptLoading:', this.isDxGptLoading);
+          
+          // Forzar la detección de cambios
+          this.cdr.detectChanges();
+        } else {
+          // Si analysis está vacío o no vino como se esperada.
+          // El backend actual SIEMPRE devuelve 'analysis', incluso para errores o mocks.
+          // Este caso es por si el backend cambia o hay un error inesperado
+          // que no fue un error HTTP.
+          console.log('6. Analysis is empty, setting error result');
+          this.dxGptResults = {
+            success: false, // Marcar como no exitoso para la UI si es necesario
+            analysis: this.translate.instant('dxgpt.errorMessage') // Mensaje genérico
+          };
+        }
+        this.isDxGptLoading = false;
+        console.log('=== FRONTEND DXGPT DEBUG END SUCCESS ===');
+      },
+      (error) => {
+        // Error de red o HTTP 500, etc. (no un error "controlado" por aiFeaturesController)
+        console.log('=== FRONTEND DXGPT DEBUG ERROR ===');
+        console.error('Error fetching DxGPT results:', error);
+        this.dxGptResults = {
+          success: false, // Importante para la condición de error en el HTML
+          analysis: this.translate.instant('dxgpt.errorMessage') // O un error más específico si 'error' lo proporciona
+        };
+        this.isDxGptLoading = false;
+      }
+    );
   }
 
   openTimelineModal(timelineModal) {
