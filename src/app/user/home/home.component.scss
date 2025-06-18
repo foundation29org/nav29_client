@@ -297,7 +297,7 @@
 }
 
 .badge{
-  font-size: 65% !important;
+  font-size: 100% !important;
 }
 
 .new-chat-button:hover {
@@ -1117,6 +1117,57 @@ input[type="text"],
   transition: opacity 0.6s ease;
 }
 
+// Styles for symptom icons
+.symptom-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background-color: white;
+  margin-right: 8px;
+  
+  &.symptom-icon-match {
+    border: 2px solid #28a745;
+    color: #28a745;
+    
+    &::before {
+      content: '✓';
+      font-weight: bold;
+      font-size: 12px;
+    }
+  }
+  
+  &.symptom-icon-additional {
+    border: 2px solid #dc3545;
+    color: #dc3545;
+    
+    &::before {
+      content: '×';
+      font-weight: bold;
+      font-size: 14px;
+    }
+  }
+}
+
+// Symptoms columns layout
+.symptoms-columns {
+  display: flex;
+  gap: 2rem;
+  
+  .symptoms-column {
+    flex: 1;
+    
+    .symptom-item {
+      display: flex;
+      align-items: center;
+      margin-bottom: 0.5rem;
+      font-size: 0.875rem;
+    }
+  }
+}
+
 @keyframes fadeInUp {
   from {
     opacity: 0;
@@ -1138,16 +1189,20 @@ input[type="text"],
   // Contenedor de tarjetas
   .diagnosis-cards-container {
     margin-top: 1.5rem;
+    max-width: 50%;
+    margin-left: auto;
+    margin-right: auto;
   }
   
   // Tarjeta de diagnóstico base
   .diagnosis-card {
     transition: all 0.3s ease;
     border: 2px solid #dee2e6;
+    box-shadow: none !important;
     
     &:hover {
-      transform: translateY(-4px);
-      box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
+      transform: none;
+      box-shadow: none !important;
     }
     
     // Variantes según severidad
@@ -1256,6 +1311,9 @@ input[type="text"],
       background-color: #e7f3ff;
       border-color: #b8daff;
       color: #004085;
+      max-width: 50%;
+      margin-left: auto;
+      margin-right: auto;
       
       .alert-heading {
         color: #004085;

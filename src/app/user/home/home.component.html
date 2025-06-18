@@ -864,54 +864,47 @@
                                 <div class="card diagnosis-card">
                                     <div class="card-body">
                                         <!-- Diagnosis header -->
-                                        <div class="d-flex align-items-start mb-3">
-                                            <span class="badge badge-primary mr-3" style="min-width: 2rem;">
-                                                {{ i + 1 }}
-                                            </span>
-                                            <div class="flex-grow-1">
-                                                <h5 class="diagnosis-name mb-2">
-                                                    {{ diagnosis.diagnosis }}
-                                                </h5>
-                                                <p class="card-text text-muted">
-                                                    {{ diagnosis.description }}
-                                                </p>
+                                        <div class="mb-3">
+                                            <!-- Primera fila: número + título + learn more -->
+                                            <div class="d-flex align-items-center justify-content-between mb-2">
+                                                <div class="d-flex align-items-center">
+                                                    <span class="badge badge-danger mr-2" style="min-width: 2rem;">
+                                                        {{ i + 1 }}
+                                                    </span>
+                                                    <h5 class="diagnosis-name mb-0">
+                                                        {{ diagnosis.diagnosis }}
+                                                    </h5>
+                                                </div>
+                                                <a href="#" class="text-danger" style="font-size: 0.875rem; text-decoration: none;">
+                                                    {{ 'dxgpt.Learn more' | translate }}
+                                                </a>
                                             </div>
+                                            
+                                            <!-- Segunda fila: descripción -->
+                                            <p class="card-text text-dark mb-3">
+                                                {{ diagnosis.description }}
+                                            </p>
                                         </div>
                                         
                                         <!-- Symptoms section -->
-                                        <div class="symptoms-section pl-5">
-                                            <!-- Matching symptoms -->
-                                            <div class="mb-2" 
-                                                 *ngIf="diagnosis.symptoms_in_common">
-                                                <div class="symptoms-header text-success mb-2">
-                                                    <i class="fa fa-check-circle mr-1"></i>
-                                                    {{ 'dxgpt.matchingSymptoms' | translate }}
-                                                    <span class="badge badge-success badge-pill ml-2">
-                                                        {{ diagnosis.symptoms_in_common.length }}
-                                                    </span>
+                                        <div class="symptoms-section">
+                                            <div class="symptoms-columns">
+                                                <!-- Matching symptoms column -->
+                                                <div class="symptoms-column" *ngIf="diagnosis.symptoms_in_common">
+                                                    <h6 class="mb-3">{{ 'dxgpt.matchingSymptoms' | translate }}</h6>
+                                                    <div *ngFor="let symptom of diagnosis.symptoms_in_common" class="symptom-item">
+                                                        <span class="symptom-icon symptom-icon-match"></span>
+                                                        <span>{{ symptom }}</span>
+                                                    </div>
                                                 </div>
-                                                <div class="symptoms-list">
-                                                    <span *ngFor="let symptom of diagnosis.symptoms_in_common" 
-                                                          class="badge badge-success mr-1 mb-1">
-                                                        {{ symptom }}
-                                                    </span>
-                                                </div>
-                                            </div>
-                                            
-                                            <!-- Additional symptoms -->
-                                            <div *ngIf="diagnosis.symptoms_not_in_common">
-                                                <div class="symptoms-header text-muted mb-2">
-                                                    <i class="fa fa-plus-circle mr-1"></i>
-                                                    {{ 'dxgpt.additionalSymptoms' | translate }}
-                                                    <span class="badge badge-secondary badge-pill ml-2">
-                                                        {{ diagnosis.symptoms_not_in_common.length }}
-                                                    </span>
-                                                </div>
-                                                <div class="symptoms-list">
-                                                    <span *ngFor="let symptom of diagnosis.symptoms_not_in_common" 
-                                                          class="badge badge-secondary mr-1 mb-1">
-                                                        {{ symptom }}
-                                                    </span>
+                                                
+                                                <!-- Additional symptoms column -->
+                                                <div class="symptoms-column" *ngIf="diagnosis.symptoms_not_in_common">
+                                                    <h6 class="mb-3">{{ 'dxgpt.additionalSymptoms' | translate }}</h6>
+                                                    <div *ngFor="let symptom of diagnosis.symptoms_not_in_common" class="symptom-item">
+                                                        <span class="symptom-icon symptom-icon-additional"></span>
+                                                        <span>{{ symptom }}</span>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
