@@ -224,6 +224,7 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
   private questionSymptoms = new Map<string, any[]>();
   isEditingPatientInfo: boolean = false;
   editedPatientInfo: string = '';
+  isLoadingMoreDiagnoses: boolean = false;
   loadingDoc: boolean = false;
   summaryDate: Date = null;
   generatingPDF: boolean = false;
@@ -4483,7 +4484,7 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     const currentLang = localStorage.getItem('lang') || 'en';
     // Suponiendo que quieres usar el resumen (useSummary: true)
     // Cambia a false o quita el segundo argumento si no quieres usar el resumen.
-    this.apiDx29ServerService.getDifferentialDiagnosis(this.currentPatientId, currentLang /*, true */ ).subscribe({
+    this.apiDx29ServerService.getDifferentialDiagnosis(this.currentPatientId, currentLang, false, null).subscribe({
       next: (res: any) => {
         console.log('4. API Response received:', res);
         console.log('4.1. res.success:', res.success);
@@ -4740,7 +4741,8 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     this.apiDx29ServerService.getDifferentialDiagnosis(
       this.actualPatient.sub,
       this.translate.currentLang,
-      true // useSummary
+      true, // useSummary
+      null // no diseases to exclude
     ).subscribe({
       next: (res) => {
         console.log('DxGPT rerun response:', res);
@@ -4781,6 +4783,73 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
       const r = Math.random() * 16 | 0;
       const v = c == 'x' ? r : (r & 0x3 | 0x8);
       return v.toString(16);
+    });
+  }
+
+  findMoreDiagnoses(): void {
+    // Get current disease names to exclude
+    const currentDiseases = this.dxGptResults.analysis.data.map(d => d.diagnosis);
+    
+    // Set loading state
+    this.isLoadingMoreDiagnoses = true;
+
+    // Call API with diseases_list to exclude current ones
+    this.apiDx29ServerService.getDifferentialDiagnosis(
+      this.actualPatient.sub,
+      this.translate.currentLang,
+      true, // useSummary
+      currentDiseases // diseases to exclude
+    ).subscribe({
+      next: (res) => {
+        console.log('More diagnoses response:', res);
+        if (res && res.success && res.analysis && res.analysis.data) {
+          // Append new diagnoses to existing ones
+          const newDiagnoses = res.analysis.data;
+          
+          if (newDiagnoses.length > 0) {
+            // Add new diagnoses to the existing list
+            this.dxGptResults.analysis.data = [
+              ...this.dxGptResults.analysis.data,
+              ...newDiagnoses
+            ];
+            
+            // Show success message
+            Swal.fire({
+              icon: 'success',
+              title: 'Nuevos diagnósticos encontrados',
+              text: `Se encontraron ${newDiagnoses.length} diagnósticos adicionales.`,
+              timer: 2000,
+              showConfirmButton: false
+            });
+          } else {
+            // No new diagnoses found
+            Swal.fire({
+              icon: 'info',
+              title: 'Sin diagnósticos adicionales',
+              text: 'No se encontraron más diagnósticos posibles para este caso.',
+              timer: 3000,
+              showConfirmButton: false
+            });
+          }
+        } else {
+          console.error('Failed to get more diagnoses:', res);
+          Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: 'No se pudieron obtener diagnósticos adicionales.'
+          });
+        }
+        this.isLoadingMoreDiagnoses = false;
+      },
+      error: (err) => {
+        console.error('Error getting more diagnoses:', err);
+        this.isLoadingMoreDiagnoses = false;
+        Swal.fire({
+          icon: 'error',
+          title: 'Error',
+          text: 'Error al buscar diagnósticos adicionales.'
+        });
+      }
     });
   }
 
@@ -4832,7 +4901,8 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     this.apiDx29ServerService.getDifferentialDiagnosis(
       this.actualPatient.sub,
       this.translate.currentLang,
-      true // useSummary
+      true, // useSummary
+      null // no diseases to exclude
     ).subscribe({
       next: (res) => {
         console.log('DxGPT response after edit:', res);

@@ -1051,15 +1051,20 @@
                             </div>
                         </div>
 
-                        <!-- Button to analyze again -->
+                        <!-- Button to find more diagnoses -->
                         <div class="text-center mt-5">
                             <button 
                                 type="button"
                                 class="btn btn-secondary btn-lg" 
-                                (click)="resetDxGptResults()">
-                                <i class="fa fa-redo mr-2"></i>
-                                {{ 'dxgpt.analyzeAgain' | translate }}
+                                *ngIf="!isLoadingMoreDiagnoses"
+                                (click)="findMoreDiagnoses()">
+                                <i class="fa fa-search-plus mr-2"></i>
+                                {{ 'dxgpt.findMoreDiagnoses' | translate }}
                             </button>
+                            <div *ngIf="isLoadingMoreDiagnoses" class="text-center">
+                                <i class="fa fa-spinner fa-pulse fa-2x text-secondary"></i>
+                                <p class="mt-2 text-muted">{{ 'dxgpt.searchingMoreDiagnoses' | translate }}</p>
+                            </div>
                         </div>
                     </div>
 

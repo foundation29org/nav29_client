@@ -147,7 +147,7 @@ export class ApiDx29ServerService {
       );
     }
 
-    getDifferentialDiagnosis(patientId: string, lang: string = 'en', useSummary?: boolean) {
+    getDifferentialDiagnosis(patientId: string, lang: string = 'en', useSummary?: boolean, excludeDiseases?: string[]) {
       const body: any = { lang: lang };
       if (useSummary) {
         body.useSummary = useSummary;
@@ -159,6 +159,11 @@ export class ApiDx29ServerService {
         body.customMedicalDescription = customDescription;
         // Clear it after use
         sessionStorage.removeItem('customMedicalDescription');
+      }
+      
+      // Add diseases_list if provided
+      if (excludeDiseases && excludeDiseases.length > 0) {
+        body.diseases_list = excludeDiseases.join(',');
       }
       
       return this.http.post(environment.api + '/api/ai/dxgpt/' + patientId, body).pipe(

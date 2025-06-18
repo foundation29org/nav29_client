@@ -187,7 +187,9 @@
     "symptomMatches": "Welche Übereinstimmungen gibt es zwischen den Symptomen des Patienten und der Krankheit? (erfordert medizinische Beschreibung)",
     "reanalyzeWithSymptoms": "Mit ausgewählten Symptomen erneut analysieren",
     "noMatchingSymptoms": "Keine übereinstimmenden Symptome",
-    "noAdditionalSymptoms": "Keine zusätzlichen Symptome"
+    "noAdditionalSymptoms": "Keine zusätzlichen Symptome",
+    "findMoreDiagnoses": "Weitere Diagnosen finden",
+    "searchingMoreDiagnoses": "Suche nach zusätzlichen Diagnosen..."
   },
    "categoriesPatients":{
      "title": "Patients",

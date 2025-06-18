@@ -188,7 +188,9 @@
     "reanalyzeWithSymptoms": "Reanalizar con síntomas seleccionados",
     "enterPatientDescription": "Ingrese la descripción del paciente...",
     "noMatchingSymptoms": "No hay síntomas coincidentes",
-    "noAdditionalSymptoms": "No hay síntomas adicionales"
+    "noAdditionalSymptoms": "No hay síntomas adicionales",
+    "findMoreDiagnoses": "Buscar más diagnósticos",
+    "searchingMoreDiagnoses": "Buscando diagnósticos adicionales..."
   },
   "categoriesPatients":{
     "title": "Pacientes",

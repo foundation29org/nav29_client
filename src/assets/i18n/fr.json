@@ -187,7 +187,9 @@
     "symptomMatches": "Quelles sont les correspondances entre les symptômes du patient et la maladie ? (nécessite une description médicale)",
     "reanalyzeWithSymptoms": "Réanalyser avec les symptômes sélectionnés",
     "noMatchingSymptoms": "Aucun symptôme correspondant",
-    "noAdditionalSymptoms": "Aucun symptôme supplémentaire"
+    "noAdditionalSymptoms": "Aucun symptôme supplémentaire",
+    "findMoreDiagnoses": "Rechercher plus de diagnostics",
+    "searchingMoreDiagnoses": "Recherche de diagnostics supplémentaires..."
   },
    "categoriesPatients":{
      "title": "Patients",
