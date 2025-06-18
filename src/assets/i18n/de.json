@@ -179,7 +179,13 @@
     "possibleDiagnoses": "Mögliche Diagnosen",
     "moreInfo": "Mehr erfahren",
     "matchingSymptoms": "Übereinstimmende Symptome",
-    "additionalSymptoms": "Nicht übereinstimmende Symptome"
+    "additionalSymptoms": "Nicht übereinstimmende Symptome",
+    "commonSymptoms": "Was sind die häufigsten Symptome?",
+    "detailedInformation": "Was sind die detaillierten Informationen über die Krankheit?",
+    "diagnosticTests": "Welche diagnostischen Tests werden empfohlen?",
+    "differentialSymptoms": "Was sind die differenziellen Symptome in diesem Fall? (erfordert medizinische Beschreibung)",
+    "symptomMatches": "Welche Übereinstimmungen gibt es zwischen den Symptomen des Patienten und der Krankheit? (erfordert medizinische Beschreibung)",
+    "reanalyzeWithSymptoms": "Mit ausgewählten Symptomen erneut analysieren"
   },
    "categoriesPatients":{
      "title": "Patients",
@@ -894,6 +900,7 @@
       "Uploaded on": "Hochgeladen am",
       "Go top": "Zum Seitenanfang",
       "Me": "Ich",
+      "Loading": "Wird geladen",
       "The patient does not have any information yet":"Der Patient hat noch keine Informationen",
       "Save all":"Alles speichern",
       "Delete all": "Alles löschen",

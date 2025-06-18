@@ -179,7 +179,13 @@
     "possibleDiagnoses": "Possíveis diagnósticos",
     "moreInfo": "Saber mais",
     "matchingSymptoms": "Sintomas correspondentes",
-    "additionalSymptoms": "Sintomas não correspondentes"
+    "additionalSymptoms": "Sintomas não correspondentes",
+    "commonSymptoms": "Quais são os sintomas comuns?",
+    "detailedInformation": "Quais são as informações detalhadas sobre a doença?",
+    "diagnosticTests": "Quais testes diagnósticos são recomendados?",
+    "differentialSymptoms": "Quais são os sintomas diferenciais neste caso? (requer descrição médica)",
+    "symptomMatches": "Quais correspondências existem entre os sintomas do paciente e a doença? (requer descrição médica)",
+    "reanalyzeWithSymptoms": "Reanalisar com sintomas selecionados"
   },
    "categoriesPatients":{
      "title": "Patients",
@@ -894,6 +900,7 @@
       "Uploaded on": "Carregado em",
       "Go top": "Vá para o topo",
       "Me": "Eu",
+      "Loading": "Carregando",
       "The patient does not have any information yet":"O paciente ainda não possui informações",
       "Save all": "Salvar tudo",
       "Delete all": "Excluir tudo",

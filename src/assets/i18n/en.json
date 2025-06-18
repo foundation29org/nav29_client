@@ -179,7 +179,13 @@
     "possibleDiagnoses": "Possible Diagnoses",
     "moreInfo": "Learn More",
     "matchingSymptoms": "Matching Symptoms",
-    "additionalSymptoms": "Non-matching Symptoms"
+    "additionalSymptoms": "Non-matching Symptoms",
+    "commonSymptoms": "What are the common symptoms?",
+    "detailedInformation": "What is the detailed information about the disease?",
+    "diagnosticTests": "What diagnostic tests are recommended?",
+    "differentialSymptoms": "What are the differential symptoms in this case? (requires medical description)",
+    "symptomMatches": "What matches are there between the patient's symptoms and the disease? (requires medical description)",
+    "reanalyzeWithSymptoms": "Reanalyze with selected symptoms"
   },
   "categoriesPatients":{
     "title": "Patients",
@@ -893,6 +899,7 @@
     "Uploaded on": "Uploaded on",
     "Go top": "Go top",
     "Me": "Me",
+    "Loading": "Loading",
     "The patient does not have any information yet": "The patient does not have any information yet",
     "Save all": "Save all",
     "Delete all": "Delete all",

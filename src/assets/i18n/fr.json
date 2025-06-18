@@ -179,7 +179,13 @@
     "possibleDiagnoses": "Diagnostics possibles",
     "moreInfo": "En savoir plus",
     "matchingSymptoms": "Symptômes correspondants",
-    "additionalSymptoms": "Symptômes non correspondants"
+    "additionalSymptoms": "Symptômes non correspondants",
+    "commonSymptoms": "Quels sont les symptômes courants ?",
+    "detailedInformation": "Quelles sont les informations détaillées sur la maladie ?",
+    "diagnosticTests": "Quels tests diagnostiques sont recommandés ?",
+    "differentialSymptoms": "Quels sont les symptômes différentiels dans ce cas ? (nécessite une description médicale)",
+    "symptomMatches": "Quelles sont les correspondances entre les symptômes du patient et la maladie ? (nécessite une description médicale)",
+    "reanalyzeWithSymptoms": "Réanalyser avec les symptômes sélectionnés"
   },
    "categoriesPatients":{
      "title": "Patients",
@@ -894,6 +900,7 @@
       "Uploaded on": "Téléchargé sur",
       "Go top": "Aller au sommet",
       "Me": "Moi",
+      "Loading": "Chargement",
       "The patient does not have any information yet":"Le patient n'a pas encore d'informations",
       "Save all": "Tout sauvegarder",
       "Delete all": "Supprimer tout",

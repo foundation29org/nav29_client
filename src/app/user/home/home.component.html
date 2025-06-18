@@ -928,11 +928,11 @@
                                                  [class.active]="isQuestionExpanded(i, 0)"
                                                  [class.visited]="isQuestionVisited(i, 0)"
                                                  (click)="toggleQuestion(i, 0)">
-                                                <p class="diagnosis-question mb-0">¿Cuáles son los síntomas comunes?</p>
+                                                <p class="diagnosis-question mb-0">{{'dxgpt.commonSymptoms' | translate}}</p>
                                             </div>
                                             <div class="diagnosis-answer" *ngIf="isQuestionExpanded(i, 0)" [@slideDown]>
                                                 <div *ngIf="isQuestionLoading(i, 0)" class="text-center">
-                                                    <i class="fa fa-spinner fa-pulse"></i> Cargando...
+                                                    <i class="fa fa-spinner fa-pulse"></i> {{'generics.Loading' | translate}}...
                                                 </div>
                                                 <div *ngIf="!isQuestionLoading(i, 0)" [innerHTML]="getQuestionResponse(i, 0)"></div>
                                             </div>
@@ -944,11 +944,11 @@
                                                  [class.active]="isQuestionExpanded(i, 1)"
                                                  [class.visited]="isQuestionVisited(i, 1)"
                                                  (click)="toggleQuestion(i, 1)">
-                                                <p class="diagnosis-question mb-0">¿Cuál es la información detallada sobre la enfermedad?</p>
+                                                <p class="diagnosis-question mb-0">{{'dxgpt.detailedInformation' | translate}}</p>
                                             </div>
                                             <div class="diagnosis-answer" *ngIf="isQuestionExpanded(i, 1)" [@slideDown]>
                                                 <div *ngIf="isQuestionLoading(i, 1)" class="text-center">
-                                                    <i class="fa fa-spinner fa-pulse"></i> Cargando...
+                                                    <i class="fa fa-spinner fa-pulse"></i> {{'generics.Loading' | translate}}...
                                                 </div>
                                                 <div *ngIf="!isQuestionLoading(i, 1)" [innerHTML]="getQuestionResponse(i, 1)"></div>
                                             </div>
@@ -960,11 +960,11 @@
                                                  [class.active]="isQuestionExpanded(i, 2)"
                                                  [class.visited]="isQuestionVisited(i, 2)"
                                                  (click)="toggleQuestion(i, 2)">
-                                                <p class="diagnosis-question mb-0">¿Qué pruebas diagnósticas se recomiendan?</p>
+                                                <p class="diagnosis-question mb-0">{{'dxgpt.diagnosticTests' | translate}}</p>
                                             </div>
                                             <div class="diagnosis-answer" *ngIf="isQuestionExpanded(i, 2)" [@slideDown]>
                                                 <div *ngIf="isQuestionLoading(i, 2)" class="text-center">
-                                                    <i class="fa fa-spinner fa-pulse"></i> Cargando...
+                                                    <i class="fa fa-spinner fa-pulse"></i> {{'generics.Loading' | translate}}...
                                                 </div>
                                                 <div *ngIf="!isQuestionLoading(i, 2)" [innerHTML]="getQuestionResponse(i, 2)"></div>
                                             </div>
@@ -976,11 +976,11 @@
                                                  [class.active]="isQuestionExpanded(i, 3)"
                                                  [class.visited]="isQuestionVisited(i, 3)"
                                                  (click)="toggleQuestion(i, 3)">
-                                                <p class="diagnosis-question mb-0">¿Cuáles son los síntomas diferenciales en este caso? (requiere descripción médica)</p>
+                                                <p class="diagnosis-question mb-0">{{'dxgpt.differentialSymptoms' | translate}}</p>
                                             </div>
                                             <div class="diagnosis-answer" *ngIf="isQuestionExpanded(i, 3)" [@slideDown]>
                                                 <div *ngIf="isQuestionLoading(i, 3)" class="text-center">
-                                                    <i class="fa fa-spinner fa-pulse"></i> Cargando...
+                                                    <i class="fa fa-spinner fa-pulse"></i> {{'generics.Loading' | translate}}...
                                                 </div>
                                                 <div *ngIf="!isQuestionLoading(i, 3)">
                                                     <!-- Custom symptom list with checkboxes -->
@@ -996,7 +996,7 @@
                                                         </div>
                                                         <button class="btn btn-danger btn-sm mt-3" (click)="reRunDiagnosis(i, 3)">
                                                             <i class="fa fa-redo mr-1"></i>
-                                                            Reanalizar con síntomas seleccionados
+                                                            {{'dxgpt.reanalyzeWithSymptoms' | translate}}
                                                         </button>
                                                     </div>
                                                     <!-- Normal HTML content -->
@@ -1013,11 +1013,11 @@
                                                  [class.active]="isQuestionExpanded(i, 4)"
                                                  [class.visited]="isQuestionVisited(i, 4)"
                                                  (click)="toggleQuestion(i, 4)">
-                                                <p class="diagnosis-question mb-0">¿Qué coincidencias hay entre los síntomas del paciente y la enfermedad? (requiere descripción médica)</p>
+                                                <p class="diagnosis-question mb-0">{{'dxgpt.symptomMatches' | translate}}</p>
                                             </div>
                                             <div class="diagnosis-answer" *ngIf="isQuestionExpanded(i, 4)" [@slideDown]>
                                                 <div *ngIf="isQuestionLoading(i, 4)" class="text-center">
-                                                    <i class="fa fa-spinner fa-pulse"></i> Cargando...
+                                                    <i class="fa fa-spinner fa-pulse"></i> {{'generics.Loading' | translate}}...
                                                 </div>
                                                 <div *ngIf="!isQuestionLoading(i, 4)" [innerHTML]="getQuestionResponse(i, 4)"></div>
                                             </div>
