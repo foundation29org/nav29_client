@@ -99,23 +99,22 @@ interface DxGptResponse {
       transition(':enter', [
         style({
           height: 0,
-          opacity: 0,
-          transform: 'translateY(-20px)'
+          overflow: 'hidden'
         }),
         animate('0.3s ease-out', 
           style({
-            height: '*',
-            opacity: 1,
-            transform: 'translateY(0)'
+            height: '*'
           })
         )
       ]),
       transition(':leave', [
-        animate('0.3s ease-in', 
+        style({
+          height: '*',
+          overflow: 'hidden'
+        }),
+        animate('0.3s ease-out', 
           style({
-            height: 0,
-            opacity: 0,
-            transform: 'translateY(-20px)'
+            height: 0
           })
         )
       ])
@@ -218,6 +217,8 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
   isDxGptLoading: boolean = false;
   hasChangesEvents: boolean = false;
   expandedDiagnosisCards: Set<number> = new Set();
+  expandedQuestions: Map<number, number> = new Map(); // cardIndex -> questionIndex
+  visitedQuestions: Map<number, Set<number>> = new Map(); // cardIndex -> Set of visited questionIndexes
   loadingDoc: boolean = false;
   summaryDate: Date = null;
   generatingPDF: boolean = false;
@@ -4579,14 +4580,41 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
   toggleDiagnosisCard(index: number): void {
     if (this.expandedDiagnosisCards.has(index)) {
       this.expandedDiagnosisCards.delete(index);
+      this.expandedQuestions.delete(index); // Limpia la pregunta expandida al cerrar
     } else {
       this.expandedDiagnosisCards.clear(); // Cierra todas las tarjetas
+      this.expandedQuestions.clear(); // Limpia todas las preguntas expandidas
       this.expandedDiagnosisCards.add(index); // Abre solo la seleccionada
     }
   }
 
   isDiagnosisCardExpanded(index: number): boolean {
     return this.expandedDiagnosisCards.has(index);
+  }
+
+  toggleQuestion(cardIndex: number, questionIndex: number): void {
+    // Marca la pregunta como visitada
+    if (!this.visitedQuestions.has(cardIndex)) {
+      this.visitedQuestions.set(cardIndex, new Set());
+    }
+    this.visitedQuestions.get(cardIndex).add(questionIndex);
+
+    // Toggle la pregunta expandida
+    const currentExpanded = this.expandedQuestions.get(cardIndex);
+    if (currentExpanded === questionIndex) {
+      this.expandedQuestions.delete(cardIndex); // Cierra si ya está abierta
+    } else {
+      this.expandedQuestions.set(cardIndex, questionIndex); // Abre la nueva
+    }
+  }
+
+  isQuestionExpanded(cardIndex: number, questionIndex: number): boolean {
+    return this.expandedQuestions.get(cardIndex) === questionIndex;
+  }
+
+  isQuestionVisited(cardIndex: number, questionIndex: number): boolean {
+    return this.visitedQuestions.has(cardIndex) && 
+           this.visitedQuestions.get(cardIndex).has(questionIndex);
   }
 
 }

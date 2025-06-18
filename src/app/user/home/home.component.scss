@@ -1429,6 +1429,76 @@ input[type="text"],
   }
 }
 
+// Estilos para las filas de preguntas en las cards expandibles
+.diagnosis-question-section {
+  border-bottom: 1px solid #e9ecef;
+  
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.diagnosis-question-row {
+  padding: 1rem 1.25rem;
+  transition: background-color 0.2s ease;
+  cursor: pointer;
+  position: relative;
+  
+  &:hover {
+    background-color: #f8f9fa;
+  }
+  
+  // Estado visitado - color ligeramente más oscuro
+  &.visited {
+    background-color: #f0f0f0;
+    
+    &:hover {
+      background-color: #e8e8e8;
+    }
+  }
+  
+  // Estado activo - color más oscuro
+  &.active {
+    background-color: #e2e2e2;
+    
+    &:hover {
+      background-color: #e2e2e2;
+    }
+    
+    &::after {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 4px;
+      background-color: #dc3545;
+    }
+  }
+  
+  .diagnosis-question {
+    text-align: left;
+    color: #495057;
+    font-size: 0.95rem;
+    font-weight: 500;
+  }
+}
+
+// Estilos para las respuestas
+.diagnosis-answer {
+  background-color: #fafafa;
+  border-top: 1px solid #e9ecef;
+  overflow: hidden;
+  
+  p {
+    padding: 1.25rem;
+    color: #6c757d;
+    font-size: 0.9rem;
+    line-height: 1.6;
+    margin: 0;
+  }
+}
+
 // Modo oscuro (si tu app lo soporta)
 .dark-mode {
   .dxgpt-content {

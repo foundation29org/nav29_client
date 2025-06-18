@@ -919,10 +919,73 @@
                                     </div>
                                 </div>
                                 
-                                <!-- Nueva card expandible con Hello World -->
+                                <!-- Nueva card expandible con secciones de preguntas -->
                                 <div class="card diagnosis-card mt-3" *ngIf="isDiagnosisCardExpanded(i)" [@slideDown]>
-                                    <div class="card-body text-center">
-                                        <h4>Hello World</h4>
+                                    <div class="card-body p-0">
+                                        <!-- Sección 1: Síntomas comunes -->
+                                        <div class="diagnosis-question-section">
+                                            <div class="diagnosis-question-row" 
+                                                 [class.active]="isQuestionExpanded(i, 0)"
+                                                 [class.visited]="isQuestionVisited(i, 0)"
+                                                 (click)="toggleQuestion(i, 0)">
+                                                <p class="diagnosis-question mb-0">¿Cuáles son los síntomas comunes?</p>
+                                            </div>
+                                            <div class="diagnosis-answer" *ngIf="isQuestionExpanded(i, 0)" [@slideDown]>
+                                                <p class="mb-0">Hello world</p>
+                                            </div>
+                                        </div>
+                                        
+                                        <!-- Sección 2: Información detallada -->
+                                        <div class="diagnosis-question-section">
+                                            <div class="diagnosis-question-row"
+                                                 [class.active]="isQuestionExpanded(i, 1)"
+                                                 [class.visited]="isQuestionVisited(i, 1)"
+                                                 (click)="toggleQuestion(i, 1)">
+                                                <p class="diagnosis-question mb-0">¿Cuál es la información detallada sobre la enfermedad?</p>
+                                            </div>
+                                            <div class="diagnosis-answer" *ngIf="isQuestionExpanded(i, 1)" [@slideDown]>
+                                                <p class="mb-0">Hello world</p>
+                                            </div>
+                                        </div>
+                                        
+                                        <!-- Sección 3: Pruebas diagnósticas -->
+                                        <div class="diagnosis-question-section">
+                                            <div class="diagnosis-question-row"
+                                                 [class.active]="isQuestionExpanded(i, 2)"
+                                                 [class.visited]="isQuestionVisited(i, 2)"
+                                                 (click)="toggleQuestion(i, 2)">
+                                                <p class="diagnosis-question mb-0">¿Qué pruebas diagnósticas se recomiendan?</p>
+                                            </div>
+                                            <div class="diagnosis-answer" *ngIf="isQuestionExpanded(i, 2)" [@slideDown]>
+                                                <p class="mb-0">Hello world</p>
+                                            </div>
+                                        </div>
+                                        
+                                        <!-- Sección 4: Síntomas diferenciales -->
+                                        <div class="diagnosis-question-section">
+                                            <div class="diagnosis-question-row"
+                                                 [class.active]="isQuestionExpanded(i, 3)"
+                                                 [class.visited]="isQuestionVisited(i, 3)"
+                                                 (click)="toggleQuestion(i, 3)">
+                                                <p class="diagnosis-question mb-0">¿Cuáles son los síntomas diferenciales en este caso? (requiere descripción médica)</p>
+                                            </div>
+                                            <div class="diagnosis-answer" *ngIf="isQuestionExpanded(i, 3)" [@slideDown]>
+                                                <p class="mb-0">Hello world</p>
+                                            </div>
+                                        </div>
+                                        
+                                        <!-- Sección 5: Coincidencias -->
+                                        <div class="diagnosis-question-section">
+                                            <div class="diagnosis-question-row"
+                                                 [class.active]="isQuestionExpanded(i, 4)"
+                                                 [class.visited]="isQuestionVisited(i, 4)"
+                                                 (click)="toggleQuestion(i, 4)">
+                                                <p class="diagnosis-question mb-0">¿Qué coincidencias hay entre los síntomas del paciente y la enfermedad? (requiere descripción médica)</p>
+                                            </div>
+                                            <div class="diagnosis-answer" *ngIf="isQuestionExpanded(i, 4)" [@slideDown]>
+                                                <p class="mb-0">Hello world</p>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
