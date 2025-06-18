@@ -98,7 +98,7 @@
             </div>
         </div>
 
-        <div *ngIf="currentView != 'diary' && currentView != 'notes' && currentView != 'dxgpt' && role != 'Caregiver'" class="sidebar border-right"
+        <div *ngIf="currentView === 'chat' && role != 'Caregiver'" class="sidebar border-right"
             [ngClass]="{'open': sidebarOpen || !isSmallScreen()}">
             <div class="sidebar-content" id="sidebar-content">
                 <!-- Header -->
@@ -815,22 +815,22 @@
         <div *ngIf="currentView === 'dxgpt'" class="col-md-12" [ngClass]="{'pt-custom2': !isSmallScreen()}">
             <div class="dxgpt-content p-4">
                 <div class="text-center">
-                    <h3 class="mb-4">{{ 'dxgpt.title' | translate }}</h3>
+                    <img src="assets/img/logo-dxgpt.png" alt="DxGPT Logo" class="mt-6"style="width: 170px; height: auto;">
 
                     <!-- Loading state -->
-                    <div *ngIf="isDxGptLoading" class="my-5">
-                        <div class="spinner-border text-primary" role="status">
+                    <div *ngIf="isDxGptLoading" class="my-2">
+                        <div class="spinner-border text-primary mt-3" role="status">
                             <span class="sr-only">Loading...</span>
                         </div>
                         <p class="mt-3 text-muted">{{ 'dxgpt.analyzing' | translate }}</p>
                     </div>
 
                     <!-- Button to fetch results (Initial state) -->
-                    <div *ngIf="!isDxGptLoading && !dxGptResults" class="my-5">
-                        <p class="mb-4">{{ 'dxgpt.description' | translate }}</p>
+                    <div *ngIf="!isDxGptLoading && !dxGptResults" class="my-2">
+                        <p class="mt-3 mb-4" style="max-width: 600px; margin: 0 auto; text-align: center; font-size: 1.05rem; padding: 0 1rem;">{{ 'dxgpt.description' | translate }}</p>
                         <button 
                             type="button"
-                            class="btn btn-primary btn-lg" 
+                            class="btn btn-dark btn-lg" 
                             (click)="fetchDxGptResults()" 
                             [disabled]="!currentPatientId">
                             <i class="fa fa-stethoscope mr-2"></i>
@@ -846,7 +846,7 @@
                          class="dxgpt-results text-left">
                         
                         <!-- Anonymized patient info -->
-                        <div class="patient-info-card mb-4" *ngIf="dxGptResults.analysis.anonymization">
+                        <div class="patient-info-card mb-4 mt-4" *ngIf="dxGptResults.analysis.anonymization">
                             <div class="patient-info-header">
                                 <i class="fa fa-user-shield"></i>
                                 <h5>{{ 'dxgpt.patientInfo' | translate }}</h5>
@@ -874,7 +874,7 @@
                                                     </h5>
                                                 </div>
                                                 <a href="#" class="text-danger" style="font-size: 0.95rem; text-decoration: none;">
-                                                    {{ 'dxgpt.Learn more' | translate }}
+                                                    {{ 'dxgpt.moreInfo' | translate }}
                                                 </a>
                                             </div>
                                             

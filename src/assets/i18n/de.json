@@ -170,6 +170,17 @@
       "description": "Erhalten Sie eine formelle Zusammenfassung Ihrer Krankengeschichte mit den notwendigen Daten für Versicherungsverfahren oder gesundheitliche Verwaltungsaufgaben."
     }
   },
+  "dxgpt": {
+    "description": "Analysiert automatisch die von Ihnen eingegebenen klinischen Informationen, einschließlich Berichte, Notizen und erfasste Ereignisse, und erstellt eine strukturierte Liste möglicher Diagnosen basierend auf extrahierten Symptommustern.",
+    "analyze": "Analysieren",
+    "button": "Diagnosen",
+    "analyzing": "Analysiere",
+    "patientInfo": "Patienteninformationen",
+    "possibleDiagnoses": "Mögliche Diagnosen",
+    "moreInfo": "Mehr erfahren",
+    "matchingSymptoms": "Übereinstimmende Symptome",
+    "additionalSymptoms": "Nicht übereinstimmende Symptome"
+  },
    "categoriesPatients":{
      "title": "Patients",
      "list": {

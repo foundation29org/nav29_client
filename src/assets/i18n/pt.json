@@ -170,6 +170,17 @@
       "description": "Obtenha um resumo formal do seu histórico médico, com os dados necessários para procedimentos de seguro ou tarefas administrativas de saúde."
     }
   },
+  "dxgpt": {
+    "description": "Analisa automaticamente as informações clínicas que você insere, incluindo relatórios, notas e eventos registrados, e gera uma lista estruturada de possíveis diagnósticos com base em padrões de sintomas extraídos.",
+    "analyze": "Analisar",
+    "button": "Diagnósticos",
+    "analyzing": "Analisando",
+    "patientInfo": "Informações do paciente",
+    "possibleDiagnoses": "Possíveis diagnósticos",
+    "moreInfo": "Saber mais",
+    "matchingSymptoms": "Sintomas correspondentes",
+    "additionalSymptoms": "Sintomas não correspondentes"
+  },
    "categoriesPatients":{
      "title": "Patients",
      "list": {

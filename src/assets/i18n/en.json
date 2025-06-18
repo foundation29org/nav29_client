@@ -170,6 +170,17 @@
       "description": "Get a formal summary of your medical history, with the necessary data for insurance procedures or health administrative tasks."
     }
   },
+  "dxgpt": {
+    "description": "Automatically analyzes the clinical information you enter, including reports, notes and recorded events, and generates a structured list of possible diagnoses based on extracted symptom patterns.",
+    "analyze": "Analyze",
+    "button": "Diagnoses",
+    "analyzing": "Analyzing",
+    "patientInfo": "Patient Information",
+    "possibleDiagnoses": "Possible Diagnoses",
+    "moreInfo": "Learn More",
+    "matchingSymptoms": "Matching Symptoms",
+    "additionalSymptoms": "Non-matching Symptoms"
+  },
   "categoriesPatients":{
     "title": "Patients",
     "list": {

@@ -170,6 +170,17 @@
       "description": "Ottieni un riepilogo formale della tua storia medica, con i dati necessari per le procedure assicurative o le attività amministrative sanitarie."
     }
   },
+  "dxgpt": {
+    "description": "Analizza automaticamente le informazioni cliniche che inserisci, inclusi rapporti, note ed eventi registrati, e genera un elenco strutturato di possibili diagnosi basato sui modelli di sintomi estratti.",
+    "analyze": "Analizza",
+    "button": "Diagnosi",
+    "analyzing": "Analizzando",
+    "patientInfo": "Informazioni del paziente",
+    "possibleDiagnoses": "Possibili diagnosi",
+    "moreInfo": "Ulteriori informazioni",
+    "matchingSymptoms": "Sintomi corrispondenti",
+    "additionalSymptoms": "Sintomi non corrispondenti"
+  },
    "categoriesPatients":{
      "title": "Patients",
      "list": {

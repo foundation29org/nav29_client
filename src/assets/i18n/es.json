@@ -170,6 +170,17 @@
       "description": "Obtén un resumen formal de tu historial médico, con los datos necesarios para trámites de seguros o gestiones administrativas de salud."
     }
   },
+  "dxgpt": {
+    "description": "Analiza automáticamente la información clínica que ingresas, incluyendo informes, notas y eventos registrados, y genera una lista estructurada de posibles diagnósticos basada en patrones de síntomas extraídos.",
+    "analyze": "Analizar",
+    "button": "Diagnósticos",
+    "analyzing": "Analizando",
+    "patientInfo": "Información del paciente",
+    "possibleDiagnoses": "Posibles diagnósticos",
+    "moreInfo": "Más información",
+    "matchingSymptoms": "Síntomas coincidentes",
+    "additionalSymptoms": "Síntomas no coincidentes"
+  },
   "categoriesPatients":{
     "title": "Pacientes",
     "list":{
