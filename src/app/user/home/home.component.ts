@@ -94,6 +94,31 @@ interface DxGptResponse {
           })
         )
       ])
+    ]),
+    trigger('slideDown', [
+      transition(':enter', [
+        style({
+          height: 0,
+          opacity: 0,
+          transform: 'translateY(-20px)'
+        }),
+        animate('0.3s ease-out', 
+          style({
+            height: '*',
+            opacity: 1,
+            transform: 'translateY(0)'
+          })
+        )
+      ]),
+      transition(':leave', [
+        animate('0.3s ease-in', 
+          style({
+            height: 0,
+            opacity: 0,
+            transform: 'translateY(-20px)'
+          })
+        )
+      ])
     ])
   ]
 })
@@ -192,6 +217,7 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
   dxGptResults: any;
   isDxGptLoading: boolean = false;
   hasChangesEvents: boolean = false;
+  expandedDiagnosisCards: Set<number> = new Set();
   loadingDoc: boolean = false;
   summaryDate: Date = null;
   generatingPDF: boolean = false;
@@ -4548,6 +4574,19 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
       // Modal dismissed
       console.log('Modal dismissed');
     });
+  }
+
+  toggleDiagnosisCard(index: number): void {
+    if (this.expandedDiagnosisCards.has(index)) {
+      this.expandedDiagnosisCards.delete(index);
+    } else {
+      this.expandedDiagnosisCards.clear(); // Cierra todas las tarjetas
+      this.expandedDiagnosisCards.add(index); // Abre solo la seleccionada
+    }
+  }
+
+  isDiagnosisCardExpanded(index: number): boolean {
+    return this.expandedDiagnosisCards.has(index);
   }
 
 }

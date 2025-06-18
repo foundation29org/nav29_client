@@ -873,7 +873,7 @@
                                                         {{ diagnosis.diagnosis }}
                                                     </h5>
                                                 </div>
-                                                <a href="#" class="text-danger" style="font-size: 0.95rem; text-decoration: none;">
+                                                <a href="javascript:void(0)" class="text-danger" style="font-size: 0.95rem; text-decoration: none;" (click)="toggleDiagnosisCard(i)">
                                                     {{ 'dxgpt.moreInfo' | translate }}
                                                 </a>
                                             </div>
@@ -916,6 +916,13 @@
                                                 </div>
                                             </div>
                                         </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Nueva card expandible con Hello World -->
+                                <div class="card diagnosis-card mt-3" *ngIf="isDiagnosisCardExpanded(i)" [@slideDown]>
+                                    <div class="card-body text-center">
+                                        <h4>Hello World</h4>
                                     </div>
                                 </div>
                             </div>
