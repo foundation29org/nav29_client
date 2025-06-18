@@ -185,7 +185,10 @@
     "diagnosticTests": "What diagnostic tests are recommended?",
     "differentialSymptoms": "What are the differential symptoms in this case? (requires medical description)",
     "symptomMatches": "What matches are there between the patient's symptoms and the disease? (requires medical description)",
-    "reanalyzeWithSymptoms": "Reanalyze with selected symptoms"
+    "reanalyzeWithSymptoms": "Reanalyze with selected symptoms",
+    "enterPatientDescription": "Enter patient description...",
+    "noMatchingSymptoms": "No matching symptoms",
+    "noAdditionalSymptoms": "No additional symptoms"
   },
   "categoriesPatients":{
     "title": "Patients",

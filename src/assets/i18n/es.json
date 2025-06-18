@@ -185,7 +185,10 @@
     "diagnosticTests": "¿Qué pruebas diagnósticas se recomiendan?",
     "differentialSymptoms": "¿Cuáles son los síntomas diferenciales en este caso? (requiere descripción médica)",
     "symptomMatches": "¿Qué coincidencias hay entre los síntomas del paciente y la enfermedad? (requiere descripción médica)",
-    "reanalyzeWithSymptoms": "Reanalizar con síntomas seleccionados"
+    "reanalyzeWithSymptoms": "Reanalizar con síntomas seleccionados",
+    "enterPatientDescription": "Ingrese la descripción del paciente...",
+    "noMatchingSymptoms": "No hay síntomas coincidentes",
+    "noAdditionalSymptoms": "No hay síntomas adicionales"
   },
   "categoriesPatients":{
     "title": "Pacientes",

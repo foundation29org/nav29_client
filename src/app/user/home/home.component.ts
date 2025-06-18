@@ -222,6 +222,8 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
   loadingQuestions: Map<string, boolean> = new Map(); // `${cardIndex}-${questionIndex}` -> loading state
   questionResponses: Map<string, string> = new Map(); // `${cardIndex}-${questionIndex}` -> response content
   private questionSymptoms = new Map<string, any[]>();
+  isEditingPatientInfo: boolean = false;
+  editedPatientInfo: string = '';
   loadingDoc: boolean = false;
   summaryDate: Date = null;
   generatingPDF: boolean = false;
@@ -4654,8 +4656,12 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
       // Get current patient context if needed for questions 3 and 4
       let medicalDescription = undefined;
       if (questionIndex === 3 || questionIndex === 4) {
-        // Try to get medical description from the original patient summary
-        if (this.dxGptResults.analysis.anonymization && this.dxGptResults.analysis.anonymization.anonymizedText) {
+        // Check if there's a custom description in sessionStorage first
+        const customDescription = sessionStorage.getItem('customMedicalDescription');
+        if (customDescription) {
+          medicalDescription = customDescription;
+        } else if (this.dxGptResults.analysis.anonymization && this.dxGptResults.analysis.anonymization.anonymizedText) {
+          // Try to get medical description from the original patient summary
           medicalDescription = this.dxGptResults.analysis.anonymization.anonymizedText;
         }
       }
@@ -4775,6 +4781,103 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
       const r = Math.random() * 16 | 0;
       const v = c == 'x' ? r : (r & 0x3 | 0x8);
       return v.toString(16);
+    });
+  }
+
+  startEditingPatientInfo(): void {
+    this.isEditingPatientInfo = true;
+    this.editedPatientInfo = this.dxGptResults.analysis.anonymization.anonymizedText;
+  }
+
+  cancelEditingPatientInfo(): void {
+    this.isEditingPatientInfo = false;
+    this.editedPatientInfo = '';
+  }
+
+  saveEditedPatientInfo(): void {
+    if (!this.editedPatientInfo.trim()) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'Campo vacío',
+        text: 'Por favor, ingrese una descripción del paciente.'
+      });
+      return;
+    }
+
+    // Check if the text has actually changed
+    const originalText = this.dxGptResults.analysis.anonymization.anonymizedText;
+    if (this.editedPatientInfo.trim() === originalText.trim()) {
+      // No changes made, just close the edit mode
+      this.isEditingPatientInfo = false;
+      this.editedPatientInfo = '';
+      return;
+    }
+
+    // Store the edited description for API call
+    sessionStorage.setItem('customMedicalDescription', this.editedPatientInfo);
+    
+    // Close edit mode
+    this.isEditingPatientInfo = false;
+
+    // Clear all cached responses and expanded cards
+    this.questionResponses.clear();
+    this.questionSymptoms.clear();
+    this.expandedQuestions.clear();
+    this.expandedDiagnosisCards.clear();
+
+    // Set loading state
+    this.isDxGptLoading = true;
+
+    // Re-run the differential diagnosis with the edited description
+    this.apiDx29ServerService.getDifferentialDiagnosis(
+      this.actualPatient.sub,
+      this.translate.currentLang,
+      true // useSummary
+    ).subscribe({
+      next: (res) => {
+        console.log('DxGPT response after edit:', res);
+        if (res && res.success) {
+          this.dxGptResults = res;
+          
+          // Show success message
+          Swal.fire({
+            icon: 'success',
+            title: 'Análisis actualizado',
+            text: 'Se ha realizado un nuevo análisis con la descripción editada.',
+            timer: 2000,
+            showConfirmButton: false
+          });
+        } else {
+          console.error('DxGPT analysis failed:', res);
+          
+          // Restore the previous description on error
+          if (this.dxGptResults && this.dxGptResults.analysis && this.dxGptResults.analysis.anonymization) {
+            this.dxGptResults.analysis.anonymization.anonymizedText = this.editedPatientInfo;
+          }
+          
+          Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: 'No se pudo realizar el nuevo análisis. La descripción se ha guardado pero los diagnósticos no se actualizaron.'
+          });
+        }
+        this.isDxGptLoading = false;
+      },
+      error: (err) => {
+        console.error('Error in DxGPT analysis:', err);
+        this.isDxGptLoading = false;
+        
+        // Save the description locally even if the analysis fails
+        if (this.dxGptResults && this.dxGptResults.analysis && this.dxGptResults.analysis.anonymization) {
+          this.dxGptResults.analysis.anonymization.anonymizedText = this.editedPatientInfo;
+        }
+        
+        Swal.fire({
+          icon: 'error',
+          title: 'Error',
+          text: 'Error al realizar el nuevo análisis. La descripción se ha guardado pero los diagnósticos no se actualizaron.'
+        });
+      }
     });
   }
 

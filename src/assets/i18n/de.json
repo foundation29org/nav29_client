@@ -185,7 +185,9 @@
     "diagnosticTests": "Welche diagnostischen Tests werden empfohlen?",
     "differentialSymptoms": "Was sind die differenziellen Symptome in diesem Fall? (erfordert medizinische Beschreibung)",
     "symptomMatches": "Welche Übereinstimmungen gibt es zwischen den Symptomen des Patienten und der Krankheit? (erfordert medizinische Beschreibung)",
-    "reanalyzeWithSymptoms": "Mit ausgewählten Symptomen erneut analysieren"
+    "reanalyzeWithSymptoms": "Mit ausgewählten Symptomen erneut analysieren",
+    "noMatchingSymptoms": "Keine übereinstimmenden Symptome",
+    "noAdditionalSymptoms": "Keine zusätzlichen Symptome"
   },
    "categoriesPatients":{
      "title": "Patients",

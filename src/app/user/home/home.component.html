@@ -850,8 +850,32 @@
                             <div class="patient-info-header">
                                 <i class="fa fa-user-shield"></i>
                                 <h5>{{ 'dxgpt.patientInfo' | translate }}</h5>
+                                <button class="btn btn-sm btn-link edit-patient-info-btn" 
+                                        *ngIf="!isEditingPatientInfo"
+                                        (click)="startEditingPatientInfo()">
+                                    <i class="fa fa-pencil"></i>
+                                </button>
                             </div>
-                            <p class="patient-info-text">{{ dxGptResults.analysis.anonymization.anonymizedText }}</p>
+                            <p class="patient-info-text" *ngIf="!isEditingPatientInfo">{{ dxGptResults.analysis.anonymization.anonymizedText }}</p>
+                            
+                            <!-- Edit mode -->
+                            <div *ngIf="isEditingPatientInfo" class="patient-info-edit">
+                                <textarea 
+                                    class="form-control patient-info-textarea"
+                                    [(ngModel)]="editedPatientInfo"
+                                    rows="5"
+                                    placeholder="{{ 'dxgpt.enterPatientDescription' | translate }}">
+                                </textarea>
+                                <div class="mt-2 text-right">
+                                    <button class="btn btn-sm btn-secondary mr-2" (click)="cancelEditingPatientInfo()">
+                                        {{ 'generics.Cancel' | translate }}
+                                    </button>
+                                    <button class="btn btn-sm btn-danger" (click)="saveEditedPatientInfo()">
+                                        <i class="fa fa-save mr-1"></i>
+                                        {{ 'generics.Save' | translate }}
+                                    </button>
+                                </div>
+                            </div>
                         </div>
 
                         <!-- Diagnoses title and cards container -->
