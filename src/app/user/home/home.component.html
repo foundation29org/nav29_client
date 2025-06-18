@@ -815,55 +815,141 @@
         <div *ngIf="currentView === 'dxgpt'" class="col-md-12" [ngClass]="{'pt-custom2': !isSmallScreen()}">
             <div class="dxgpt-content p-4">
                 <div class="text-center">
-                    <h3 class="mb-4">{{'dxgpt.title' | translate}}</h3>
+                    <h3 class="mb-4">{{ 'dxgpt.title' | translate }}</h3>
 
                     <!-- Loading state -->
                     <div *ngIf="isDxGptLoading" class="my-5">
-                        <!-- ... spinner ... -->
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="sr-only">Loading...</span>
+                        </div>
+                        <p class="mt-3 text-muted">{{ 'dxgpt.analyzing' | translate }}</p>
                     </div>
 
                     <!-- Button to fetch results (Initial state) -->
-                    <!-- Se muestra si no está cargando Y no hay dxGptResults O dxGptResults.analysis está vacío (y no es un error de success:false) -->
-                    <div *ngIf="!isDxGptLoading && (!dxGptResults || !dxGptResults.analysis) && !(dxGptResults && dxGptResults.success === false)" class="my-5">
-                        <p class="mb-4">{{'dxgpt.description' | translate}}</p>
-                        <button class="btn btn-primary btn-lg" (click)="fetchDxGptResults()" [disabled]="!currentPatientId">
+                    <div *ngIf="!isDxGptLoading && !dxGptResults" class="my-5">
+                        <p class="mb-4">{{ 'dxgpt.description' | translate }}</p>
+                        <button 
+                            type="button"
+                            class="btn btn-primary btn-lg" 
+                            (click)="fetchDxGptResults()" 
+                            [disabled]="!currentPatientId">
                             <i class="fa fa-stethoscope mr-2"></i>
-                            {{'dxgpt.analyze' | translate}}
+                            {{ 'dxgpt.analyze' | translate }}
                         </button>
-                        <!-- Mensaje si no hay paciente seleccionado para el botón -->
-                        <p *ngIf="!currentPatientId" class="text-danger mt-2">{{ 'patients.No patient selected' | translate }}</p>
+                        <p *ngIf="!currentPatientId" class="text-danger mt-2">
+                            {{ 'patients.No patient selected' | translate }}
+                        </p>
                     </div>
 
-                    <!-- Results -->
-                    <!-- Se muestra si no está cargando Y hay dxGptResults Y dxGptResults.analysis tiene contenido Y (success es true o no está definido, implicando que no es un error de red) -->
-                    
-                    <!-- DEBUG: Mostrar valores de las condiciones -->
-                    <div *ngIf="true" class="alert alert-info">
-                        <small>
-                            DEBUG - isDxGptLoading: {{isDxGptLoading}} | 
-                            dxGptResults exists: {{!!dxGptResults}} | 
-                            analysis exists: {{!!(dxGptResults && dxGptResults.analysis)}} | 
-                            success: {{dxGptResults?.success}}
-                        </small>
-                    </div>
-                    
-                    <div *ngIf="!isDxGptLoading && dxGptResults && dxGptResults.analysis && dxGptResults.success !== false" class="text-left">
-                        <div class="analysis-results">
-                            <div [innerHTML]="dxGptResults.analysis" class="markdown-content"></div>
+                    <!-- Results with existing styles -->
+                    <div *ngIf="!isDxGptLoading && dxGptResults && dxGptResults.success && dxGptResults.analysis" 
+                         class="dxgpt-results text-left">
+                        
+                        <!-- Anonymized patient info -->
+                        <div class="alert alert-info mb-4" *ngIf="dxGptResults.analysis.anonymization">
+                            <h5 class="alert-heading d-flex align-items-center">
+                                <i class="fa fa-user-shield mr-2"></i>
+                                {{ 'dxgpt.patientInfo' | translate }}
+                            </h5>
+                            <p class="mb-0">{{ dxGptResults.analysis.anonymization.anonymizedText }}</p>
                         </div>
-                        <div class="text-center mt-4">
-                            <button class="btn btn-secondary" (click)="dxGptResults = null"> <!-- Esto volverá a mostrar el botón "Analyze" -->
+
+                        <!-- Diagnoses title -->
+                        <h4 class="mb-4">{{ 'dxgpt.possibleDiagnoses' | translate }}</h4>
+                        
+                        <!-- Diagnoses as full-width strips -->
+                        <div class="diagnosis-cards-container">
+                            <div *ngFor="let diagnosis of dxGptResults.analysis.data; let i = index" 
+                                 class="mb-3">
+                                <div class="card diagnosis-card">
+                                    <div class="card-body">
+                                        <!-- Diagnosis header -->
+                                        <div class="d-flex align-items-start mb-3">
+                                            <span class="badge badge-primary mr-3" style="min-width: 2rem;">
+                                                {{ i + 1 }}
+                                            </span>
+                                            <div class="flex-grow-1">
+                                                <h5 class="diagnosis-name mb-2">
+                                                    {{ diagnosis.diagnosis }}
+                                                </h5>
+                                                <p class="card-text text-muted">
+                                                    {{ diagnosis.description }}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        
+                                        <!-- Symptoms section -->
+                                        <div class="symptoms-section pl-5">
+                                            <!-- Matching symptoms -->
+                                            <div class="mb-2" 
+                                                 *ngIf="diagnosis.symptoms_in_common">
+                                                <div class="symptoms-header text-success mb-2">
+                                                    <i class="fa fa-check-circle mr-1"></i>
+                                                    {{ 'dxgpt.matchingSymptoms' | translate }}
+                                                    <span class="badge badge-success badge-pill ml-2">
+                                                        {{ diagnosis.symptoms_in_common.length }}
+                                                    </span>
+                                                </div>
+                                                <div class="symptoms-list">
+                                                    <span *ngFor="let symptom of diagnosis.symptoms_in_common" 
+                                                          class="badge badge-success mr-1 mb-1">
+                                                        {{ symptom }}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            
+                                            <!-- Additional symptoms -->
+                                            <div *ngIf="diagnosis.symptoms_not_in_common">
+                                                <div class="symptoms-header text-muted mb-2">
+                                                    <i class="fa fa-plus-circle mr-1"></i>
+                                                    {{ 'dxgpt.additionalSymptoms' | translate }}
+                                                    <span class="badge badge-secondary badge-pill ml-2">
+                                                        {{ diagnosis.symptoms_not_in_common.length }}
+                                                    </span>
+                                                </div>
+                                                <div class="symptoms-list">
+                                                    <span *ngFor="let symptom of diagnosis.symptoms_not_in_common" 
+                                                          class="badge badge-secondary mr-1 mb-1">
+                                                        {{ symptom }}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Button to analyze again -->
+                        <div class="text-center mt-5">
+                            <button 
+                                type="button"
+                                class="btn btn-secondary btn-lg" 
+                                (click)="resetDxGptResults()">
                                 <i class="fa fa-redo mr-2"></i>
-                                {{'dxgpt.analyzeAgain' | translate}}
+                                {{ 'dxgpt.analyzeAgain' | translate }}
                             </button>
                         </div>
                     </div>
 
-                    <!-- Error state (para errores donde success es explícitamente false, ej. errores de red/HTTP) -->
-                    <div *ngIf="!isDxGptLoading && dxGptResults && dxGptResults.success === false" class="alert alert-danger mt-4">
-                        <i class="fa fa-exclamation-triangle mr-2"></i>
-                        <!-- Mostrar el 'analysis' si contiene el mensaje de error, o un mensaje genérico -->
-                        {{ dxGptResults.analysis || ('dxgpt.errorMessage' | translate) }}
+                    <!-- Error state -->
+                    <div *ngIf="!isDxGptLoading && dxGptResults && !dxGptResults.success" 
+                         class="alert alert-danger mt-4">
+                        <div class="alert-heading d-flex align-items-center mb-3">
+                            <i class="fa fa-exclamation-triangle mr-2"></i>
+                            <h5 class="mb-0">{{ 'general.error' | translate }}</h5>
+                        </div>
+                        <p class="mb-3">
+                            {{ dxGptResults.error || ('dxgpt.errorMessage' | translate) }}
+                        </p>
+                        <hr>
+                        <button 
+                            type="button"
+                            class="btn btn-outline-danger" 
+                            (click)="resetDxGptResults()">
+                            <i class="fa fa-redo mr-1"></i>
+                            {{ 'dxgpt.tryAgain' | translate }}
+                        </button>
                     </div>
                 </div>
             </div>

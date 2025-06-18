@@ -11,7 +11,6 @@ import { WelcomeComponent } from './welcome/welcome.component';
 import { PatientsComponent } from './patients/patients.component';
 import { DiaryComponent } from './diary/diary.component';
 import { NewPatientComponent } from './new-patient/new-patient.component';
-import { MyConditionComponent } from './my-condition/my-condition.component';
 
 const routes: Routes = [
   {
@@ -68,15 +67,6 @@ const routes: Routes = [
     },
     canActivate: [AuthGuard, RoleGuard]
   },
-  {
-    path: 'my-condition',
-    component: MyConditionComponent,
-    data: {
-      title: 'my-condition.title',
-      expectedRole: ['User', 'Clinical', 'Caregiver', 'Unknown']
-    },
-    canActivate: [AuthGuard, RoleGuard]
-  }
 ];
 
 @NgModule({

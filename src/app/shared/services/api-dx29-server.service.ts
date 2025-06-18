@@ -147,8 +147,11 @@ export class ApiDx29ServerService {
       );
     }
 
-    getDifferentialDiagnosis(patientId: string, useSummary?: boolean) {
-      const body = useSummary ? { useSummary: useSummary } : {};
+    getDifferentialDiagnosis(patientId: string, lang: string = 'en', useSummary?: boolean) {
+      const body: any = { lang: lang };
+      if (useSummary) {
+        body.useSummary = useSummary;
+      }
       return this.http.post(environment.api + '/api/ai/dxgpt/' + patientId, body).pipe(
         map((res: any) => {
           return res;

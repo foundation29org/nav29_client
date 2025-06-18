@@ -36,6 +36,33 @@ import { interval } from 'rxjs';
 import { filter, take } from 'rxjs/operators';
 import { ActivityService } from 'app/shared/services/activity.service';
 
+// Interfaces para tipar los datos (como dataclasses en Python)
+interface DxGptDiagnosis {
+  diagnosis: string;
+  description: string;
+  symptoms_in_common: string[];
+  symptoms_not_in_common: string[];
+}
+
+interface DxGptAnonymization {
+  hasPersonalInfo: boolean;
+  anonymizedText: string;
+  anonymizedTextHtml: string;
+}
+
+interface DxGptAnalysis {
+  result: string;
+  data: DxGptDiagnosis[];
+  anonymization: DxGptAnonymization;
+  detectedLang: string;
+}
+
+interface DxGptResponse {
+  success: boolean;
+  analysis?: DxGptAnalysis; // El ? significa que es opcional (puede ser undefined)
+  error?: string;
+}
+
 @Component({
   selector: 'app-home',
   templateUrl: './home.component.html',
@@ -706,9 +733,6 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
   scrollToTop() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
-
-
-
 
 
   handlePatientChanged(patient: any) {
@@ -4423,16 +4447,17 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     this.dxGptResults = null; // Limpiar resultados anteriores
 
     console.log('3. Calling API service...');
+    // Get current language from localStorage
+    const currentLang = localStorage.getItem('lang') || 'en';
     // Suponiendo que quieres usar el resumen (useSummary: true)
     // Cambia a false o quita el segundo argumento si no quieres usar el resumen.
-    this.apiDx29ServerService.getDifferentialDiagnosis(this.currentPatientId /*, true */ ).subscribe(
-      (res: any) => {
+    this.apiDx29ServerService.getDifferentialDiagnosis(this.currentPatientId, currentLang /*, true */ ).subscribe({
+      next: (res: any) => {
         console.log('4. API Response received:', res);
         console.log('4.1. res.success:', res.success);
         console.log('4.2. res.analysis exists:', !!res.analysis);
-        console.log('4.3. res.analysis length:', res.analysis ? res.analysis.length : 0);
         
-        if (res && res.analysis && res.analysis.trim() !== '') {
+        if (res && res.analysis) {
            // El backend siempre manda success: true si llega al controller
            // Así que sólo necesitamos verificar que 'analysis' tenga contenido.
           console.log('5. Setting success result');
@@ -4456,7 +4481,7 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
         this.isDxGptLoading = false;
         console.log('=== FRONTEND DXGPT DEBUG END SUCCESS ===');
       },
-      (error) => {
+      error: (error) => {
         // Error de red o HTTP 500, etc. (no un error "controlado" por aiFeaturesController)
         console.log('=== FRONTEND DXGPT DEBUG ERROR ===');
         console.error('Error fetching DxGPT results:', error);
@@ -4466,7 +4491,7 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
         };
         this.isDxGptLoading = false;
       }
-    );
+    });
   }
 
   openTimelineModal(timelineModal) {
