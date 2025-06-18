@@ -1489,13 +1489,72 @@ input[type="text"],
   background-color: #fafafa;
   border-top: 1px solid #e9ecef;
   overflow: hidden;
+  padding: 1.25rem;
   
-  p {
-    padding: 1.25rem;
+  // Estilos para el contenido HTML
+  ::ng-deep {
+    p {
+      color: #6c757d;
+      font-size: 0.9rem;
+      line-height: 1.6;
+      margin-bottom: 0.75rem;
+      
+      &:last-child {
+        margin-bottom: 0;
+      }
+    }
+    
+    ul, ol {
+      color: #6c757d;
+      font-size: 0.9rem;
+      line-height: 1.6;
+      margin-bottom: 0.75rem;
+      padding-left: 1.5rem;
+      
+      li {
+        margin-bottom: 0.25rem;
+      }
+    }
+    
+    h1, h2, h3, h4, h5, h6 {
+      color: #495057;
+      margin-top: 1rem;
+      margin-bottom: 0.5rem;
+      
+      &:first-child {
+        margin-top: 0;
+      }
+    }
+    
+    strong {
+      color: #495057;
+    }
+  }
+  
+  // Estado de carga
+  .text-center {
+    color: #6c757d;
+    
+    .fa-spinner {
+      margin-right: 0.5rem;
+    }
+  }
+  
+  // Checkboxes personalizados para síntomas
+  .custom-control-label {
     color: #6c757d;
     font-size: 0.9rem;
-    line-height: 1.6;
-    margin: 0;
+    padding-left: 0.5rem;
+    cursor: pointer;
+    
+    &:hover {
+      color: #495057;
+    }
+  }
+  
+  .custom-control-input:checked ~ .custom-control-label {
+    color: #495057;
+    font-weight: 500;
   }
 }
 

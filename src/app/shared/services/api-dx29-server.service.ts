@@ -152,7 +152,37 @@ export class ApiDx29ServerService {
       if (useSummary) {
         body.useSummary = useSummary;
       }
+      
+      // Check if there's a custom medical description to use
+      const customDescription = sessionStorage.getItem('customMedicalDescription');
+      if (customDescription) {
+        body.customMedicalDescription = customDescription;
+        // Clear it after use
+        sessionStorage.removeItem('customMedicalDescription');
+      }
+      
       return this.http.post(environment.api + '/api/ai/dxgpt/' + patientId, body).pipe(
+        map((res: any) => {
+          return res;
+        }),
+        catchError((err) => {
+          console.log(err);
+          this.insightsService.trackException(err);
+          return err;
+        })
+      );
+    }
+
+    getDiseaseInfo(patientId: string, questionType: number, disease: string, lang: string = 'en', medicalDescription?: string) {
+      const body: any = {
+        questionType: questionType,
+        disease: disease,
+        lang: lang
+      };
+      if (medicalDescription && (questionType === 3 || questionType === 4)) {
+        body.medicalDescription = medicalDescription;
+      }
+      return this.http.post(environment.api + '/api/ai/disease-info/' + patientId, body).pipe(
         map((res: any) => {
           return res;
         }),

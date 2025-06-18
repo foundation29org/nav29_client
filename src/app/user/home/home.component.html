@@ -931,7 +931,10 @@
                                                 <p class="diagnosis-question mb-0">¿Cuáles son los síntomas comunes?</p>
                                             </div>
                                             <div class="diagnosis-answer" *ngIf="isQuestionExpanded(i, 0)" [@slideDown]>
-                                                <p class="mb-0">Hello world</p>
+                                                <div *ngIf="isQuestionLoading(i, 0)" class="text-center">
+                                                    <i class="fa fa-spinner fa-pulse"></i> Cargando...
+                                                </div>
+                                                <div *ngIf="!isQuestionLoading(i, 0)" [innerHTML]="getQuestionResponse(i, 0)"></div>
                                             </div>
                                         </div>
                                         
@@ -944,7 +947,10 @@
                                                 <p class="diagnosis-question mb-0">¿Cuál es la información detallada sobre la enfermedad?</p>
                                             </div>
                                             <div class="diagnosis-answer" *ngIf="isQuestionExpanded(i, 1)" [@slideDown]>
-                                                <p class="mb-0">Hello world</p>
+                                                <div *ngIf="isQuestionLoading(i, 1)" class="text-center">
+                                                    <i class="fa fa-spinner fa-pulse"></i> Cargando...
+                                                </div>
+                                                <div *ngIf="!isQuestionLoading(i, 1)" [innerHTML]="getQuestionResponse(i, 1)"></div>
                                             </div>
                                         </div>
                                         
@@ -957,7 +963,10 @@
                                                 <p class="diagnosis-question mb-0">¿Qué pruebas diagnósticas se recomiendan?</p>
                                             </div>
                                             <div class="diagnosis-answer" *ngIf="isQuestionExpanded(i, 2)" [@slideDown]>
-                                                <p class="mb-0">Hello world</p>
+                                                <div *ngIf="isQuestionLoading(i, 2)" class="text-center">
+                                                    <i class="fa fa-spinner fa-pulse"></i> Cargando...
+                                                </div>
+                                                <div *ngIf="!isQuestionLoading(i, 2)" [innerHTML]="getQuestionResponse(i, 2)"></div>
                                             </div>
                                         </div>
                                         
@@ -970,7 +979,31 @@
                                                 <p class="diagnosis-question mb-0">¿Cuáles son los síntomas diferenciales en este caso? (requiere descripción médica)</p>
                                             </div>
                                             <div class="diagnosis-answer" *ngIf="isQuestionExpanded(i, 3)" [@slideDown]>
-                                                <p class="mb-0">Hello world</p>
+                                                <div *ngIf="isQuestionLoading(i, 3)" class="text-center">
+                                                    <i class="fa fa-spinner fa-pulse"></i> Cargando...
+                                                </div>
+                                                <div *ngIf="!isQuestionLoading(i, 3)">
+                                                    <!-- Custom symptom list with checkboxes -->
+                                                    <div *ngIf="getQuestionResponse(i, 3) === 'custom-symptom-list'">
+                                                        <div *ngFor="let symptom of getSymptoms(i, 3); let j = index" class="custom-control custom-checkbox mb-2">
+                                                            <input type="checkbox" 
+                                                                   class="custom-control-input" 
+                                                                   [id]="'symptom-' + i + '-' + j"
+                                                                   [(ngModel)]="symptom.checked">
+                                                            <label class="custom-control-label" [for]="'symptom-' + i + '-' + j">
+                                                                {{ symptom.name }}
+                                                            </label>
+                                                        </div>
+                                                        <button class="btn btn-danger btn-sm mt-3" (click)="reRunDiagnosis(i, 3)">
+                                                            <i class="fa fa-redo mr-1"></i>
+                                                            Reanalizar con síntomas seleccionados
+                                                        </button>
+                                                    </div>
+                                                    <!-- Normal HTML content -->
+                                                    <div *ngIf="getQuestionResponse(i, 3) !== 'custom-symptom-list'" 
+                                                         [innerHTML]="getQuestionResponse(i, 3)">
+                                                    </div>
+                                                </div>
                                             </div>
                                         </div>
                                         
@@ -983,7 +1016,10 @@
                                                 <p class="diagnosis-question mb-0">¿Qué coincidencias hay entre los síntomas del paciente y la enfermedad? (requiere descripción médica)</p>
                                             </div>
                                             <div class="diagnosis-answer" *ngIf="isQuestionExpanded(i, 4)" [@slideDown]>
-                                                <p class="mb-0">Hello world</p>
+                                                <div *ngIf="isQuestionLoading(i, 4)" class="text-center">
+                                                    <i class="fa fa-spinner fa-pulse"></i> Cargando...
+                                                </div>
+                                                <div *ngIf="!isQuestionLoading(i, 4)" [innerHTML]="getQuestionResponse(i, 4)"></div>
                                             </div>
                                         </div>
                                     </div>

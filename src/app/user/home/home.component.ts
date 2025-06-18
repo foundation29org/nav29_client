@@ -219,6 +219,9 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
   expandedDiagnosisCards: Set<number> = new Set();
   expandedQuestions: Map<number, number> = new Map(); // cardIndex -> questionIndex
   visitedQuestions: Map<number, Set<number>> = new Map(); // cardIndex -> Set of visited questionIndexes
+  loadingQuestions: Map<string, boolean> = new Map(); // `${cardIndex}-${questionIndex}` -> loading state
+  questionResponses: Map<string, string> = new Map(); // `${cardIndex}-${questionIndex}` -> response content
+  private questionSymptoms = new Map<string, any[]>();
   loadingDoc: boolean = false;
   summaryDate: Date = null;
   generatingPDF: boolean = false;
@@ -4605,6 +4608,13 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
       this.expandedQuestions.delete(cardIndex); // Cierra si ya está abierta
     } else {
       this.expandedQuestions.set(cardIndex, questionIndex); // Abre la nueva
+      
+      // Verificar si ya tenemos la respuesta cacheada
+      const cacheKey = `${cardIndex}-${questionIndex}`;
+      if (!this.questionResponses.has(cacheKey)) {
+        // Si no tenemos la respuesta, hacer la llamada a la API
+        this.fetchDiseaseInfo(cardIndex, questionIndex);
+      }
     }
   }
 
@@ -4615,6 +4625,157 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
   isQuestionVisited(cardIndex: number, questionIndex: number): boolean {
     return this.visitedQuestions.has(cardIndex) && 
            this.visitedQuestions.get(cardIndex).has(questionIndex);
+  }
+
+  isQuestionLoading(cardIndex: number, questionIndex: number): boolean {
+    return this.loadingQuestions.get(`${cardIndex}-${questionIndex}`) || false;
+  }
+
+  getQuestionResponse(cardIndex: number, questionIndex: number): string {
+    return this.questionResponses.get(`${cardIndex}-${questionIndex}`) || '';
+  }
+
+  private async fetchDiseaseInfo(cardIndex: number, questionIndex: number): Promise<void> {
+    const cacheKey = `${cardIndex}-${questionIndex}`;
+    
+    // Verificar que tenemos los datos necesarios
+    if (!this.dxGptResults || !this.dxGptResults.analysis || !this.dxGptResults.analysis.data[cardIndex]) {
+      console.error('No diagnosis data available for index:', cardIndex);
+      return;
+    }
+    
+    const diagnosis = this.dxGptResults.analysis.data[cardIndex];
+    const disease = diagnosis.diagnosis;
+    
+    // Set loading state
+    this.loadingQuestions.set(cacheKey, true);
+    
+    try {
+      // Get current patient context if needed for questions 3 and 4
+      let medicalDescription = undefined;
+      if (questionIndex === 3 || questionIndex === 4) {
+        // Try to get medical description from the original patient summary
+        if (this.dxGptResults.analysis.anonymization && this.dxGptResults.analysis.anonymization.anonymizedText) {
+          medicalDescription = this.dxGptResults.analysis.anonymization.anonymizedText;
+        }
+      }
+      
+      // Call the API
+      const response = await this.apiDx29ServerService.getDiseaseInfo(
+        this.actualPatient.sub,
+        questionIndex,
+        disease,
+        this.translate.currentLang,
+        medicalDescription
+      ).toPromise();
+
+      console.log('response', response);
+      
+      // Process response based on question type and store formatted HTML content
+      if (response && response.result === 'success' && response.data) {
+        if (questionIndex === 3 && response.data.symptoms) {
+          // Store symptoms as structured data and mark as special type
+          this.questionSymptoms.set(cacheKey, response.data.symptoms);
+          this.questionResponses.set(cacheKey, 'custom-symptom-list');
+        } else if (response.data.content) {
+          // Remove redundant title from HTML content since most probably will redundate the question in the UI
+          let content = response.data.content;
+          this.questionResponses.set(cacheKey, content);
+        } else {
+          this.questionResponses.set(cacheKey, '<p>No se pudo obtener la información solicitada.</p>');
+        }
+      }
+      
+      
+    } catch (error) {
+      console.error('Error fetching disease info:', error);
+      this.questionResponses.set(cacheKey, '<p>Error al cargar la información. Por favor, intente nuevamente.</p>');
+    } finally {
+      // Remove loading state
+      this.loadingQuestions.set(cacheKey, false);
+    }
+  }
+
+  getSymptoms(cardIndex: number, questionIndex: number): any[] {
+    const cacheKey = `${cardIndex}-${questionIndex}`;
+    return this.questionSymptoms.get(cacheKey) || [];
+  }
+
+  reRunDiagnosis(cardIndex: number, questionIndex: number): void {
+    const cacheKey = `${cardIndex}-${questionIndex}`;
+    const allSymptoms = this.questionSymptoms.get(cacheKey);
+    if (!allSymptoms) return;
+
+    const selected = allSymptoms.filter(s => s.checked).map(s => s.name);
+    if (selected.length === 0) {
+      Swal.fire('Selecciona al menos un síntoma', '', 'info');
+      return;
+    }
+
+    // Combine the original anonymized text with selected symptoms
+    const combinedDescription = this.dxGptResults.analysis.anonymization.anonymizedText
+      + '\n\nSíntomas adicionales a considerar: ' + selected.join(', ');
+
+    // Close all expanded cards and questions
+    this.expandedDiagnosisCards.clear();
+    this.expandedQuestions.clear();
+    
+    // Clear cached responses as we'll get new results
+    this.questionResponses.clear();
+    this.questionSymptoms.clear();
+
+    // Set loading state for DxGPT
+    this.isDxGptLoading = true;
+
+    // Store the combined description temporarily
+    sessionStorage.setItem('customMedicalDescription', combinedDescription);
+
+    // Call the DxGPT API with the updated description
+    this.apiDx29ServerService.getDifferentialDiagnosis(
+      this.actualPatient.sub,
+      this.translate.currentLang,
+      true // useSummary
+    ).subscribe({
+      next: (res) => {
+        console.log('DxGPT rerun response:', res);
+        if (res && res.success) {
+          this.dxGptResults = res;
+          // Show success message
+          Swal.fire({
+            icon: 'success',
+            title: 'Análisis actualizado',
+            text: 'Se ha realizado un nuevo análisis con los síntomas seleccionados.',
+            timer: 2000,
+            showConfirmButton: false
+          });
+        } else {
+          console.error('DxGPT rerun failed:', res);
+          Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: 'No se pudo realizar el nuevo análisis. Por favor, intente nuevamente.'
+          });
+        }
+        this.isDxGptLoading = false;
+      },
+      error: (err) => {
+        console.error('Error in DxGPT rerun:', err);
+        this.isDxGptLoading = false;
+        Swal.fire({
+          icon: 'error',
+          title: 'Error',
+          text: 'Error al realizar el nuevo análisis. Por favor, intente nuevamente.'
+        });
+      }
+    });
+  }
+
+  private generateUUID(): string {
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+      const r = Math.random() * 16 | 0;
+      const v = c == 'x' ? r : (r & 0x3 | 0x8);
+      return v.toString(16);
+    });
   }
 
 }
