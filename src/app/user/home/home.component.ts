@@ -4721,7 +4721,7 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
 
     // Combine the original anonymized text with selected symptoms
     const combinedDescription = this.dxGptResults.analysis.anonymization.anonymizedText
-      + '\n\nSíntomas adicionales a considerar: ' + selected.join(', ');
+      + '\n\n; ' + selected.join(', '); // antes de "; " ponia "Síntomas adicionales a considerar: "
 
     // Close all expanded cards and questions
     this.expandedDiagnosisCards.clear();
