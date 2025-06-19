@@ -1627,3 +1627,12 @@ input[type="text"],
   }
 }
 
+
+
+// Optimización para la carga del logo DxGPT
+.dxgpt-content {
+  img[alt="DxGPT Logo"] {
+    will-change: transform;
+    contain: layout style paint;
+  }
+}

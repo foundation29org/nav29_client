@@ -682,6 +682,9 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
   async ngOnInit() {
     this.showCameraButton = this.isMobileDevice();
 
+    // Precargar imagen DxGPT
+    const dxGptLogo = new Image();
+    dxGptLogo.src = 'assets/img/logo-dxgpt.png';
 
     this.subscription.add(this.authService.currentPatient$.subscribe(patient => {
       console.log('patient', patient);

@@ -7,9 +7,6 @@ export const ROUTES: RouteInfo[] = [
     path: '/home', title: 'menu.Dashboard', icon: 'ft-home', class: '', badge: '', badgeClass: '', isExternalLink: false, submenu: []
   },
   {
-    path: '/my-condition', title: 'menu.myCondition', icon: 'fas fa-notes-medical', class: '', badge: '', badgeClass: '', isExternalLink: false, submenu: []
-  },
-  {
     path: '', title: 'epa', icon: 'fas fa-microscope', class: 'has-sub', badge: '', badgeClass: '', isExternalLink: false,
     submenu: [
       { path: '/calendar', title: 'menu.Calendar', icon: 'ft-arrow-right submenu-icon', class: '', badge: '', badgeClass: '', isExternalLink: false, submenu: [] },

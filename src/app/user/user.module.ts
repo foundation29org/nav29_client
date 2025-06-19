@@ -25,7 +25,6 @@ import { NewPatientComponent } from './new-patient/new-patient.component';
 import { PatientsComponent } from './patients/patients.component';
 import { FeedbackSummaryPageComponent } from './feedback-summary/feedback-summary-page.component';
 import { DiaryComponent } from './diary/diary.component';
-import { MyConditionComponent } from './my-condition/my-condition.component';
 
 import { NgxChartsModule } from '@swimlane/ngx-charts';
 import {MatCheckboxModule} from '@angular/material/checkbox';
@@ -86,7 +85,6 @@ import { QRCodeModule } from 'angularx-qrcode';
         FeedbackSummaryPageComponent,
         DiaryComponent,
         NewPatientComponent,
-        MyConditionComponent
     ]
 })
 export class UserModule { }
