@@ -98,7 +98,7 @@
             </div>
         </div>
 
-        <div *ngIf="currentView === 'chat' && role != 'Caregiver'" class="sidebar border-right"
+        <div *ngIf="currentView != 'diary' && currentView != 'notes' && currentView != 'dxgpt' && role != 'Caregiver'" class="sidebar border-right"
             [ngClass]="{'open': sidebarOpen || !isSmallScreen()}">
             <div class="sidebar-content" id="sidebar-content">
                 <!-- Header -->
