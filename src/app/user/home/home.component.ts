@@ -325,6 +325,8 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
   additionalNeeds: string[] = [];
   rarescopeNeeds: string[] = [''];
   deletingStates: { [key: number]: boolean } = {};
+  isLoadingRarescope: boolean = false;
+  rarescopeError: string = null;
   previousView: string;
   private isInitialLoad = true;
   currentPatientId: string | null = null;
@@ -776,6 +778,10 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
       this.sidebarOpen = false;
       this.notesSidebarOpen = false;
       this.loadRarescopeData();
+      // Fetch from AI if no saved data
+      if (this.rarescopeNeeds[0] === '' && this.additionalNeeds.length === 0) {
+        this.fetchRarescopeAnalysis();
+      }
     }else{
       this.sidebarOpen = false;
       this.notesSidebarOpen = false;
@@ -891,6 +897,120 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
       // Forzar detección de cambios
       this.cdr.detectChanges();
     }, 300); // Duración de la animación
+  }
+
+  async fetchRarescopeAnalysis() {
+    if (this.isLoadingRarescope) return;
+    
+    this.isLoadingRarescope = true;
+    this.rarescopeError = null;
+    
+    // Clear existing data when fetching new analysis
+    this.rarescopeNeeds = [''];
+    this.additionalNeeds = [];
+    this.cdr.detectChanges();
+    
+    try {
+      const response = await this.apiDx29ServerService.getRarescopeAnalysis(this.actualPatient.sub).toPromise();
+      
+      if (response.success && response.analysis) {
+        // Parse the analysis to extract unmet needs
+        const unmetNeeds = this.parseRarescopeAnalysis(response.analysis);
+        
+        if (unmetNeeds.length > 0) {
+          // Set the first need
+          this.rarescopeNeeds[0] = unmetNeeds[0];
+          
+          // Add the rest as additional needs
+          if (unmetNeeds.length > 1) {
+            this.additionalNeeds = unmetNeeds.slice(1);
+          }
+          
+          // Save the data
+          this.saveRarescopeData();
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching Rarescope analysis:', error);
+      this.rarescopeError = 'Error al obtener el análisis. Por favor, intente nuevamente.';
+    } finally {
+      this.isLoadingRarescope = false;
+      this.cdr.detectChanges();
+    }
+  }
+
+  parseRarescopeAnalysis(analysis: string): string[] {
+    const unmetNeeds: string[] = [];
+    
+    // Look for sections that might contain unmet needs
+    const lines = analysis.split('\n');
+    let inNeedsSection = false;
+    let inRecommendationsSection = false;
+    
+    for (const line of lines) {
+      const trimmedLine = line.trim();
+      
+      // Check if we're entering a relevant section
+      if (trimmedLine.match(/#{1,3}\s*(necesidades|needs|carencias|gaps)/i) ||
+          trimmedLine.toLowerCase().includes('necesidades no cubiertas') ||
+          trimmedLine.toLowerCase().includes('unmet needs')) {
+        inNeedsSection = true;
+        inRecommendationsSection = false;
+        continue;
+      }
+      
+      if (trimmedLine.match(/#{1,3}\s*recomendaciones/i)) {
+        inRecommendationsSection = true;
+        inNeedsSection = false;
+        continue;
+      }
+      
+      // Check if we're leaving the current section
+      if ((inNeedsSection || inRecommendationsSection) && 
+          trimmedLine.match(/^#{1,3}\s+/) && 
+          !trimmedLine.toLowerCase().includes('necesidades') &&
+          !trimmedLine.toLowerCase().includes('recomendaciones')) {
+        inNeedsSection = false;
+        inRecommendationsSection = false;
+      }
+      
+      // Extract items from the current section
+      if ((inNeedsSection || inRecommendationsSection) && 
+          (trimmedLine.startsWith('-') || 
+           trimmedLine.startsWith('•') || 
+           trimmedLine.startsWith('*') ||
+           trimmedLine.match(/^\d+[.)]\s*/))) {
+        
+        // Clean the line
+        let need = trimmedLine
+          .replace(/^[-•*]\s*/, '')
+          .replace(/^\d+[.)]\s*/, '')
+          .trim();
+        
+        // Only add if it's substantial and relevant
+        if (need.length > 20 && !need.toLowerCase().includes('consultar con')) {
+          // Limit length to avoid very long items
+          if (need.length > 200) {
+            need = need.substring(0, 197) + '...';
+          }
+          unmetNeeds.push(need);
+        }
+      }
+    }
+    
+    // If no needs found, provide default suggestions based on common rare disease needs
+    if (unmetNeeds.length === 0) {
+      unmetNeeds.push(
+        'Acceso a especialistas en enfermedades raras',
+        'Coordinación entre diferentes especialistas médicos',
+        'Información actualizada sobre tratamientos experimentales',
+        'Apoyo psicológico especializado para pacientes y familias',
+        'Conexión con otros pacientes con la misma condición'
+      );
+    }
+    
+    // Limit to reasonable number of items
+    return unmetNeeds.slice(0, 10);
   }
 
 

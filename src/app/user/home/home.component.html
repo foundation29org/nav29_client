@@ -1109,11 +1109,38 @@
             <div class="rarescope-content p-4">
                 <div class="rarescope-intro mb-3 text-center">
                     <p>Basándonos en tu perfil hemos detectado las siguientes necesidades probablemente no cubiertas de tu enfermedad</p>
+                    <button *ngIf="!isLoadingRarescope && !rarescopeError && (rarescopeNeeds[0] !== '' || additionalNeeds.length > 0)" 
+                            class="btn btn-sm btn-outline-secondary mt-2" 
+                            (click)="fetchRarescopeAnalysis()"
+                            title="Actualizar análisis con la información más reciente">
+                        <i class="fa fa-refresh mr-1"></i> Actualizar análisis
+                    </button>
                 </div>
-                <div class="rarescope-needs-container" cdkDropList (cdkDropListDropped)="onDropNeed($event)">
+                
+                <!-- Loading state -->
+                <div *ngIf="isLoadingRarescope" class="text-center p-5">
+                    <em class="fa fa-spinner fa-spin fa-3x fa-fw text-muted"></em>
+                    <p class="mt-3 text-muted">Analizando tu información médica...</p>
+                </div>
+                
+                <!-- Error state -->
+                <div *ngIf="rarescopeError && !isLoadingRarescope" class="alert alert-danger mx-auto" style="max-width: 600px;">
+                    <i class="fa fa-exclamation-triangle mr-2"></i>
+                    {{ rarescopeError }}
+                    <button class="btn btn-sm btn-danger ml-3" (click)="fetchRarescopeAnalysis()">
+                        <i class="fa fa-refresh mr-1"></i> Reintentar
+                    </button>
+                </div>
+                
+                <div *ngIf="!isLoadingRarescope && !rarescopeError" class="rarescope-needs-container" cdkDropList (cdkDropListDropped)="onDropNeed($event)">
                     <div class="need-section-wrapper mb-2" cdkDrag [cdkDragDisabled]="false"
                          [@slideOut]="deletingStates[0] ? 'out' : 'in'">
                         <div class="need-section">
+                            <div class="controls-container-left">
+                                <div class="drag-handle" cdkDragHandle title="Arrastrar para reordenar">
+                                    <i class="fa fa-grip-vertical"></i>
+                                </div>
+                            </div>
                             <div class="need-content"
                                  contenteditable="true" 
                                  [attr.data-placeholder]="'Escribe qué echas en falta que se atienda'"
@@ -1121,13 +1148,10 @@
                                  [innerText]="rarescopeNeeds[0]"
                                  (blur)="onNeedBlur($event, 0)">
                             </div>
-                            <div class="controls-container">
+                            <div class="controls-container-right">
                                 <button class="delete-handle" (click)="deleteNeed(0)" title="Eliminar">
                                     <i class="fa fa-trash"></i>
                                 </button>
-                                <div class="drag-handle" cdkDragHandle title="Arrastrar para reordenar">
-                                    <i class="fa fa-grip-vertical"></i>
-                                </div>
                             </div>
                         </div>
                     </div>
@@ -1136,6 +1160,11 @@
                          class="need-section-wrapper mb-2" cdkDrag [cdkDragDisabled]="false"
                          [@slideOut]="deletingStates[i + 1] ? 'out' : 'in'">
                         <div class="need-section">
+                            <div class="controls-container-left">
+                                <div class="drag-handle" cdkDragHandle title="Arrastrar para reordenar">
+                                    <i class="fa fa-grip-vertical"></i>
+                                </div>
+                            </div>
                             <div class="need-content"
                                  contenteditable="true"
                                  [attr.data-placeholder]="'Escribe qué echas en falta que se atienda'"
@@ -1143,13 +1172,10 @@
                                  [innerText]="additionalNeeds[i]"
                                  (blur)="onNeedBlur($event, i + 1)">
                             </div>
-                            <div class="controls-container">
+                            <div class="controls-container-right">
                                 <button class="delete-handle" (click)="deleteNeed(i + 1)" title="Eliminar">
                                     <i class="fa fa-trash"></i>
                                 </button>
-                                <div class="drag-handle" cdkDragHandle title="Arrastrar para reordenar">
-                                    <i class="fa fa-grip-vertical"></i>
-                                </div>
                             </div>
                         </div>
                     </div>

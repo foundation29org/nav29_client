@@ -1537,7 +1537,8 @@ input[type="text"],
       display: flex;
       align-items: center;
       position: relative;
-      padding-right: 80px; // Espacio reservado para ambos iconos
+      padding-left: 40px; // Espacio para drag handle a la izquierda
+      padding-right: 40px; // Espacio para delete button a la derecha
     }
     
     .need-content {
@@ -1564,15 +1565,26 @@ input[type="text"],
       }
     }
     
-    .controls-container {
+    .controls-container-left {
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .controls-container-right {
       position: absolute;
       right: 0;
       top: 0;
       bottom: 0;
-      width: 80px;
+      width: 40px;
       display: flex;
       align-items: center;
-      justify-content: flex-end;
+      justify-content: center;
     }
     
     .delete-handle {
