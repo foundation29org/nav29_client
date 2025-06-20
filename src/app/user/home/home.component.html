@@ -1110,17 +1110,36 @@
                 <div class="rarescope-intro mb-3 text-center">
                     <p>Basándonos en tu perfil hemos detectado las siguientes necesidades probablemente no cubiertas de tu enfermedad</p>
                 </div>
-                <div class="rarescope-needs-container">
-                    <div class="need-section mb-2" contenteditable="true" 
-                         [attr.data-placeholder]="'Escribe qué echas en falta que se atienda'"
-                         (blur)="onNeedBlur($event, 0)">
+                <div class="rarescope-needs-container" cdkDropList (cdkDropListDropped)="onDropNeed($event)">
+                    <div class="need-section-wrapper mb-2" cdkDrag [cdkDragDisabled]="false">
+                        <div class="need-section">
+                            <div class="need-content"
+                                 contenteditable="true" 
+                                 [attr.data-placeholder]="'Escribe qué echas en falta que se atienda'"
+                                 spellcheck="false"
+                                 [innerText]="rarescopeNeeds[0]"
+                                 (blur)="onNeedBlur($event, 0)">
+                            </div>
+                        </div>
+                        <div class="drag-handle" cdkDragHandle title="Arrastrar para reordenar">
+                            <i class="fa fa-grip-vertical"></i>
+                        </div>
                     </div>
                     
-                    <div *ngFor="let need of additionalNeeds; let i = index" 
-                         class="need-section mb-2" 
-                         contenteditable="true"
-                         [attr.data-placeholder]="'Escribe qué echas en falta que se atienda'"
-                         (blur)="onNeedBlur($event, i + 1)">
+                    <div *ngFor="let need of additionalNeeds; let i = index; trackBy: trackByIndex" 
+                         class="need-section-wrapper mb-2" cdkDrag [cdkDragDisabled]="false">
+                        <div class="need-section">
+                            <div class="need-content"
+                                 contenteditable="true"
+                                 [attr.data-placeholder]="'Escribe qué echas en falta que se atienda'"
+                                 spellcheck="false"
+                                 [innerText]="additionalNeeds[i]"
+                                 (blur)="onNeedBlur($event, i + 1)">
+                            </div>
+                        </div>
+                        <div class="drag-handle" cdkDragHandle title="Arrastrar para reordenar">
+                            <i class="fa fa-grip-vertical"></i>
+                        </div>
                     </div>
                     
                     <div class="add-section-btn" (click)="addNewNeed()">

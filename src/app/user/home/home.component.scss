@@ -1490,29 +1490,65 @@ input[type="text"],
     padding: 1.5rem;
     min-height: 300px;
     
+    .need-section-wrapper {
+      position: relative;
+      
+      // Placeholder visible during drag
+      &.cdk-drag-placeholder {
+        opacity: 0.4;
+        background-color: transparent;
+        
+        .need-section {
+          border: 2px dashed #dee2e6;
+          background-color: #f8f9fa;
+        }
+      }
+      
+      // Desactiva la animación posterior al drop
+      &.cdk-drag-animating {
+        transition: none !important;
+      }
+    }
+    
+    // Evita la animación de soltado globalmente
+    .cdk-drag-animating {
+      transition: none !important;
+    }
+    
     .need-section {
       background-color: #fff;
       border: 1px solid #e0e0e0;
       border-radius: 6px;
-      padding: 0.5rem 1.25rem;
       min-height: 40px;
       transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      position: relative;
+      padding-right: 40px; // Espacio reservado para el drag handle
+      
+      &:hover {
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        border-color: #5cb85c;
+      }
+    }
+    
+    .need-content {
+      flex-grow: 1;
+      padding: 0.5rem 1.25rem;
       cursor: text;
       font-size: 0.95rem;
       line-height: 1.5;
       color: #333;
+      font-weight: 400; // Explícitamente normal
+      min-height: 40px;
       display: flex;
       align-items: center;
-      
-      &:hover {
-        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        border-color: #ccc;
-      }
+      white-space: pre-wrap;
+      border: none;
+      background: transparent;
       
       &:focus {
         outline: none;
-        border-color: #28a745;
-        box-shadow: 0 0 0 0.2rem rgba(40, 167, 69, 0.25);
       }
       
       // Placeholder estilo
@@ -1522,9 +1558,28 @@ input[type="text"],
         font-style: italic;
         pointer-events: none;
       }
+    }
+    
+    .drag-handle {
+      position: absolute;
+      right: 0;
+      top: 0;
+      bottom: 0;
+      width: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: move;
+      color: #adb5bd;
+      font-size: 1rem;
+      transition: all 0.2s ease;
       
-      &:last-child {
-        margin-bottom: 0 !important;
+      &:hover {
+        color: #6c757d;
+      }
+      
+      i {
+        pointer-events: none;
       }
     }
     
@@ -1552,6 +1607,57 @@ input[type="text"],
         color: #495057;
       }
     }
+  }
+}
+
+// Estilos globales para el clon visual del drag (cdk-drag-preview)
+::ng-deep .cdk-drag-preview {
+  background-color: white !important;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.25) !important;
+  border: 1px solid #ddd !important;
+  border-radius: 6px !important;
+  opacity: 0.95 !important;
+  transform: scale(1.02) !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  
+  // Ocultar TODOS los drag handles en el clon
+  .drag-handle {
+    display: none !important;
+  }
+  
+  // Estilos específicos para el contenido editable en el clon
+  .need-content {
+    font-weight: 400 !important;
+    color: #333 !important;
+    font-size: 0.95rem !important;
+    background: transparent !important;
+    border: none !important;
+    pointer-events: none !important;
+  }
+  
+  // Estilos para la sección en el clon
+  .need-section {
+    border: none !important;
+    box-shadow: none !important;
+    background: transparent !important;
+    margin-right: 0 !important;
+  }
+  
+  // Ocultar elementos que no queremos en el clon
+  .add-section-btn {
+    display: none !important;
+  }
+}
+
+// Estilos para el placeholder (espacio donde se va a soltar)
+::ng-deep .cdk-drag-placeholder {
+  opacity: 0.4 !important;
+  background-color: transparent !important;
+  
+  .need-section {
+    border: 2px dashed #dee2e6 !important;
+    background-color: #f8f9fa !important;
   }
 }
 
@@ -1722,4 +1828,32 @@ input[type="text"],
     will-change: transform;
     contain: layout style paint;
   }
+}
+
+// Animación durante arrastre (los elementos se apartan en vivo)
+.cdk-drop-list-dragging .need-section-wrapper:not(.cdk-drag-placeholder) {
+  transition: transform 250ms cubic-bezier(0, 0, 0.2, 1);
+}
+
+// Desactivar hover verde durante el arrastre
+.cdk-drop-list-dragging {
+  .need-section {
+    &:hover {
+      border-color: #e0e0e0; // Mantener el borde gris original
+      box-shadow: none; // Sin sombra en hover durante arrastre
+    }
+  }
+  
+  .drag-handle {
+    &:hover {
+      color: #adb5bd; // Mantener color gris original
+      background-color: transparent; // Sin fondo durante arrastre
+      border-left-color: transparent; // Sin borde verde
+    }
+  }
+}
+
+// Placeholder smooth movement
+.cdk-drop-list-dragging .cdk-drag-placeholder {
+  transition: transform 250ms cubic-bezier(0, 0, 0.2, 1);
 }

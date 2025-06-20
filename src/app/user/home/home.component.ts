@@ -304,7 +304,7 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
   tempFileName: string = '';
   showCameraButton: boolean = false;
   langs: any[] = [];
-  editingTitle: boolean = false; 
+  editingTitle: boolean = false;
   @ViewChild('titleInput', { static: false }) titleInput: ElementRef;
   currentView: string = 'chat';
   
@@ -761,6 +761,7 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     }else if(view === 'rarescope'){
       this.sidebarOpen = false;
       this.notesSidebarOpen = false;
+      this.loadRarescopeData();
     }else{
       this.sidebarOpen = false;
       this.notesSidebarOpen = false;
@@ -780,8 +781,16 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
   // RareScope methods
   addNewNeed() {
     this.additionalNeeds.push('');
+    // Guardar el nuevo estado
+    this.saveRarescopeData();
   }
 
+  // Función para optimizar el trackBy en *ngFor
+  trackByIndex(index: number, item: any): number {
+    return index;
+  }
+
+  // Función para guardar cuando se pierde el foco
   onNeedBlur(event: any, index: number) {
     const content = event.target.innerText.trim();
     if (index === 0) {
@@ -789,7 +798,56 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     } else {
       this.additionalNeeds[index - 1] = content;
     }
-    // Aquí podrías guardar los datos en el servidor si es necesario
+    // Guardar los cambios
+    this.saveRarescopeData();
+  }
+
+  onDropNeed(event: any) {
+    // Importar CdkDragDrop del CDK
+    if (event.previousIndex !== event.currentIndex) {
+      // Crear un array temporal con todos los needs
+      const allNeeds = [this.rarescopeNeeds[0] || '', ...this.additionalNeeds];
+      
+      // Mover el elemento usando la función moveItemInArray de CDK si está disponible
+      // Si no, usar el método manual
+      const movedItem = allNeeds.splice(event.previousIndex, 1)[0];
+      allNeeds.splice(event.currentIndex, 0, movedItem);
+      
+      // Actualizar los arrays - Con [(ngModel)] esto se sincroniza automáticamente
+      this.rarescopeNeeds[0] = allNeeds[0];
+      this.additionalNeeds = allNeeds.slice(1);
+      
+      // Forzar detección de cambios para asegurar que la UI se actualice
+      this.cdr.detectChanges();
+      
+      // Guardar los cambios
+      this.saveRarescopeData();
+    }
+  }
+  
+  saveRarescopeData() {
+    const rarescopeData = {
+      mainNeed: this.rarescopeNeeds[0],
+      additionalNeeds: this.additionalNeeds
+    };
+    const key = `rarescope_${this.currentPatient || 'default'}`;
+    localStorage.setItem(key, JSON.stringify(rarescopeData));
+  }
+  
+  loadRarescopeData() {
+    const key = `rarescope_${this.currentPatient || 'default'}`;
+    const savedData = localStorage.getItem(key);
+    if (savedData) {
+      try {
+        const data = JSON.parse(savedData);
+        this.rarescopeNeeds[0] = data.mainNeed || '';
+        this.additionalNeeds = data.additionalNeeds || [];
+        // Forzar detección de cambios
+        this.cdr.detectChanges();
+      } catch (e) {
+        console.error('Error loading rarescope data:', e);
+      }
+    }
   }
 
 
