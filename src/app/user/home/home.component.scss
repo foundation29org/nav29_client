@@ -1493,6 +1493,19 @@ input[type="text"],
     .need-section-wrapper {
       position: relative;
       
+      // Hover effect activado tanto en .need-section como en .drag-handle
+      &:hover:not(.cdk-drag-placeholder) {
+        .need-section {
+          box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+          border-color: #5cb85c;
+        }
+        
+        .drag-handle {
+          color: #6c757d;
+          background-color: rgba(92, 184, 92, 0.1);
+        }
+      }
+      
       // Placeholder visible during drag
       &.cdk-drag-placeholder {
         opacity: 0.4;
@@ -1525,11 +1538,6 @@ input[type="text"],
       align-items: center;
       position: relative;
       padding-right: 40px; // Espacio reservado para el drag handle
-      
-      &:hover {
-        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        border-color: #5cb85c;
-      }
     }
     
     .need-content {
@@ -1573,10 +1581,6 @@ input[type="text"],
       color: #adb5bd;
       font-size: 1rem;
       transition: all 0.2s ease;
-      
-      &:hover {
-        color: #6c757d;
-      }
       
       i {
         pointer-events: none;
