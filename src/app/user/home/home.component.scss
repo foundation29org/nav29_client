@@ -1537,11 +1537,12 @@ input[type="text"],
       display: flex;
       align-items: center;
       position: relative;
-      padding-right: 40px; // Espacio reservado para el drag handle
+      padding-right: 80px; // Espacio reservado para ambos iconos
     }
     
     .need-content {
-      flex-grow: 1;
+      /* Permite crecimiento y ajuste en el eje principal */
+      flex: 1 1 auto;
       padding: 0.5rem 1.25rem;
       cursor: text;
       font-size: 0.95rem;
@@ -1549,31 +1550,58 @@ input[type="text"],
       color: #333;
       font-weight: 400; // Explícitamente normal
       min-height: 40px;
-      display: flex;
-      align-items: center;
+      /* Mostramos el texto como bloque estándar para permitir el wrap */
+      display: block;
+      /* Aseguramos que las palabras largas se dividan y no desborden */
       white-space: pre-wrap;
+      word-break: break-word;
+      overflow-wrap: break-word;
       border: none;
       background: transparent;
-      
+       
       &:focus {
         outline: none;
       }
+    }
+    
+    .controls-container {
+      position: absolute;
+      right: 0;
+      top: 0;
+      bottom: 0;
+      width: 80px;
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+    }
+    
+    .delete-handle {
+      width: 40px;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      color: #adb5bd;
+      font-size: 0.9rem;
+      transition: all 0.2s ease;
+      background: none;
+      border: none;
+      opacity: 0;
       
-      // Placeholder estilo
-      &[contenteditable="true"]:empty:before {
-        content: attr(data-placeholder);
-        color: #ccc;
-        font-style: italic;
+      &:hover {
+        color: #dc3545;
+        background-color: rgba(220, 53, 69, 0.05);
+      }
+      
+      i {
         pointer-events: none;
       }
     }
     
     .drag-handle {
-      position: absolute;
-      right: 0;
-      top: 0;
-      bottom: 0;
       width: 40px;
+      height: 100%;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -1585,6 +1613,11 @@ input[type="text"],
       i {
         pointer-events: none;
       }
+    }
+    
+    // Mostrar el botón de eliminar en hover
+    .need-section-wrapper:hover .delete-handle {
+      opacity: 1;
     }
     
     .add-section-btn {
@@ -1860,4 +1893,22 @@ input[type="text"],
 // Placeholder smooth movement
 .cdk-drop-list-dragging .cdk-drag-placeholder {
   transition: transform 250ms cubic-bezier(0, 0, 0.2, 1);
+}
+
+// Animación para borrar elementos
+@keyframes slideOutRight {
+  from {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+}
+
+.need-section-wrapper {
+  &.deleting {
+    animation: slideOutRight 0.3s ease-out forwards;
+  }
 }

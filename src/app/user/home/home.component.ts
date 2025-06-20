@@ -95,6 +95,19 @@ interface DxGptResponse {
         )
       ])
     ]),
+    trigger('slideOut', [
+      state('in', style({ 
+        transform: 'translateX(0)', 
+        opacity: 1 
+      })),
+      state('out', style({ 
+        transform: 'translateX(100%)', 
+        opacity: 0 
+      })),
+      transition('in => out', [
+        animate('300ms ease-out')
+      ])
+    ]),
     trigger('slideDown', [
       transition(':enter', [
         style({
@@ -311,6 +324,7 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
   // RareScope variables
   additionalNeeds: string[] = [];
   rarescopeNeeds: string[] = [''];
+  deletingStates: { [key: number]: boolean } = {};
   previousView: string;
   private isInitialLoad = true;
   currentPatientId: string | null = null;
@@ -848,6 +862,35 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
         console.error('Error loading rarescope data:', e);
       }
     }
+  }
+  
+  deleteNeed(index: number) {
+    // Marcar como eliminándose
+    this.deletingStates[index] = true;
+    
+    // Esperar a que termine la animación antes de eliminar
+    setTimeout(() => {
+      if (index === 0) {
+        // Si es el primer elemento, mover el primero de additionalNeeds a rarescopeNeeds
+        if (this.additionalNeeds.length > 0) {
+          this.rarescopeNeeds[0] = this.additionalNeeds.shift();
+        } else {
+          this.rarescopeNeeds[0] = '';
+        }
+      } else {
+        // Eliminar del array additionalNeeds
+        this.additionalNeeds.splice(index - 1, 1);
+      }
+      
+      // Limpiar el estado de eliminación
+      delete this.deletingStates[index];
+      
+      // Guardar cambios
+      this.saveRarescopeData();
+      
+      // Forzar detección de cambios
+      this.cdr.detectChanges();
+    }, 300); // Duración de la animación
   }
 
 

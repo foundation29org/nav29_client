@@ -1111,7 +1111,8 @@
                     <p>Basándonos en tu perfil hemos detectado las siguientes necesidades probablemente no cubiertas de tu enfermedad</p>
                 </div>
                 <div class="rarescope-needs-container" cdkDropList (cdkDropListDropped)="onDropNeed($event)">
-                    <div class="need-section-wrapper mb-2" cdkDrag [cdkDragDisabled]="false">
+                    <div class="need-section-wrapper mb-2" cdkDrag [cdkDragDisabled]="false"
+                         [@slideOut]="deletingStates[0] ? 'out' : 'in'">
                         <div class="need-section">
                             <div class="need-content"
                                  contenteditable="true" 
@@ -1120,14 +1121,20 @@
                                  [innerText]="rarescopeNeeds[0]"
                                  (blur)="onNeedBlur($event, 0)">
                             </div>
-                        </div>
-                        <div class="drag-handle" cdkDragHandle title="Arrastrar para reordenar">
-                            <i class="fa fa-grip-vertical"></i>
+                            <div class="controls-container">
+                                <button class="delete-handle" (click)="deleteNeed(0)" title="Eliminar">
+                                    <i class="fa fa-trash"></i>
+                                </button>
+                                <div class="drag-handle" cdkDragHandle title="Arrastrar para reordenar">
+                                    <i class="fa fa-grip-vertical"></i>
+                                </div>
+                            </div>
                         </div>
                     </div>
                     
                     <div *ngFor="let need of additionalNeeds; let i = index; trackBy: trackByIndex" 
-                         class="need-section-wrapper mb-2" cdkDrag [cdkDragDisabled]="false">
+                         class="need-section-wrapper mb-2" cdkDrag [cdkDragDisabled]="false"
+                         [@slideOut]="deletingStates[i + 1] ? 'out' : 'in'">
                         <div class="need-section">
                             <div class="need-content"
                                  contenteditable="true"
@@ -1136,9 +1143,14 @@
                                  [innerText]="additionalNeeds[i]"
                                  (blur)="onNeedBlur($event, i + 1)">
                             </div>
-                        </div>
-                        <div class="drag-handle" cdkDragHandle title="Arrastrar para reordenar">
-                            <i class="fa fa-grip-vertical"></i>
+                            <div class="controls-container">
+                                <button class="delete-handle" (click)="deleteNeed(i + 1)" title="Eliminar">
+                                    <i class="fa fa-trash"></i>
+                                </button>
+                                <div class="drag-handle" cdkDragHandle title="Arrastrar para reordenar">
+                                    <i class="fa fa-grip-vertical"></i>
+                                </div>
+                            </div>
                         </div>
                     </div>
                     
