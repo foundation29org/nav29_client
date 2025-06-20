@@ -39,6 +39,12 @@
             <i class="fa fa-stethoscope"></i>
             <span class="ml-2" *ngIf="!isXSScreen()">{{'dxgpt.button' | translate}}</span>
         </button>
+        <button class="btn btn-dark flex-grow-1" id="rarescope-title"
+            [ngClass]="{'active-view': currentView === 'rarescope'}"
+            (click)="setView('rarescope')" title="{{'rarescope.button' | translate}}">
+            <i class="fa fa-microscope"></i>
+            <span class="ml-2" *ngIf="!isXSScreen()">{{'rarescope.button' | translate}}</span>
+        </button>
     </div>
 </div>
     <div class="main-container-user pb-4">
@@ -85,6 +91,13 @@
                     (click)="setView('dxgpt')">
                     <i class="fa fa-stethoscope"></i>
                     <span id="dxgpt-title" class="ml-2">{{'dxgpt.button' | translate}}</span>
+                </button>
+                <!-- Rarescope Button -->
+                <button class="btn btn-dark mx-2" 
+                    [ngClass]="{'active-view': currentView === 'rarescope'}"
+                    (click)="setView('rarescope')">
+                    <i class="fa fa-microscope"></i>
+                    <span id="rarescope-title" class="ml-2">{{'rarescope.button' | translate}}</span>
                 </button>                
             </div>
 
@@ -98,7 +111,7 @@
             </div>
         </div>
 
-        <div *ngIf="currentView != 'diary' && currentView != 'notes' && currentView != 'dxgpt' && role != 'Caregiver'" class="sidebar border-right"
+        <div *ngIf="currentView != 'diary' && currentView != 'notes' && currentView != 'dxgpt' && currentView != 'rarescope' && role != 'Caregiver'" class="sidebar border-right"
             [ngClass]="{'open': sidebarOpen || !isSmallScreen()}">
             <div class="sidebar-content" id="sidebar-content">
                 <!-- Header -->
@@ -1086,6 +1099,32 @@
                             <i class="fa fa-redo mr-1"></i>
                             {{ 'dxgpt.tryAgain' | translate }}
                         </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Rarescope View -->
+        <div *ngIf="currentView === 'rarescope'" class="col-md-12" [ngClass]="{'pt-custom2': !isSmallScreen()}">
+            <div class="rarescope-content p-4">
+                <div class="rarescope-intro mb-3 text-center">
+                    <p>Basándonos en tu perfil hemos detectado las siguientes necesidades probablemente no cubiertas de tu enfermedad</p>
+                </div>
+                <div class="rarescope-needs-container">
+                    <div class="need-section mb-2" contenteditable="true" 
+                         [attr.data-placeholder]="'Escribe qué echas en falta que se atienda'"
+                         (blur)="onNeedBlur($event, 0)">
+                    </div>
+                    
+                    <div *ngFor="let need of additionalNeeds; let i = index" 
+                         class="need-section mb-2" 
+                         contenteditable="true"
+                         [attr.data-placeholder]="'Escribe qué echas en falta que se atienda'"
+                         (blur)="onNeedBlur($event, i + 1)">
+                    </div>
+                    
+                    <div class="add-section-btn" (click)="addNewNeed()">
+                        <i class="fa fa-plus"></i>
                     </div>
                 </div>
             </div>
@@ -2125,6 +2164,7 @@
 
             </div>
         </div>
+
     </div>
 </ng-template>
 <ng-template #PanelChangeDate let-c="close" let-d="dismiss" appendTo="body">

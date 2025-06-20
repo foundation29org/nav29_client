@@ -1468,6 +1468,93 @@ input[type="text"],
   }
 }
 
+// Estilos para RareScope
+.rarescope-content {
+  max-width: 800px;
+  margin: 0 auto;
+  
+  .rarescope-intro {
+    p {
+      color: #666;
+      font-weight: 400;
+      line-height: 1.5;
+      font-size: 0.95rem;
+      margin-bottom: 0;
+    }
+  }
+  
+  .rarescope-needs-container {
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 1.5rem;
+    min-height: 300px;
+    
+    .need-section {
+      background-color: #fff;
+      border: 1px solid #e0e0e0;
+      border-radius: 6px;
+      padding: 0.5rem 1.25rem;
+      min-height: 40px;
+      transition: all 0.3s ease;
+      cursor: text;
+      font-size: 0.95rem;
+      line-height: 1.5;
+      color: #333;
+      display: flex;
+      align-items: center;
+      
+      &:hover {
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        border-color: #ccc;
+      }
+      
+      &:focus {
+        outline: none;
+        border-color: #28a745;
+        box-shadow: 0 0 0 0.2rem rgba(40, 167, 69, 0.25);
+      }
+      
+      // Placeholder estilo
+      &[contenteditable="true"]:empty:before {
+        content: attr(data-placeholder);
+        color: #ccc;
+        font-style: italic;
+        pointer-events: none;
+      }
+      
+      &:last-child {
+        margin-bottom: 0 !important;
+      }
+    }
+    
+    .add-section-btn {
+      background-color: #fff;
+      border: 2px dashed #dee2e6;
+      border-radius: 6px;
+      padding: 0.5rem;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      color: #6c757d;
+      min-height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      
+      i {
+        font-size: 1rem;
+      }
+      
+      &:hover {
+        border-color: #adb5bd;
+        background-color: #f8f9fa;
+        color: #495057;
+      }
+    }
+  }
+}
+
 // Estilos para las filas de preguntas en las cards expandibles
 .diagnosis-question-section {
   border-bottom: 1px solid #e9ecef;

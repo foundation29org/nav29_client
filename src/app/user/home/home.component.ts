@@ -307,6 +307,10 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
   editingTitle: boolean = false; 
   @ViewChild('titleInput', { static: false }) titleInput: ElementRef;
   currentView: string = 'chat';
+  
+  // RareScope variables
+  additionalNeeds: string[] = [];
+  rarescopeNeeds: string[] = [''];
   previousView: string;
   private isInitialLoad = true;
   currentPatientId: string | null = null;
@@ -754,6 +758,9 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
       // Opcional: podrías llamar a fetchDxGptResults() aquí si quieres que se auto-cargue
       // al cambiar a la vista, o dejar que el usuario pulse el botón.
       // Por ahora, lo dejamos para el botón.
+    }else if(view === 'rarescope'){
+      this.sidebarOpen = false;
+      this.notesSidebarOpen = false;
     }else{
       this.sidebarOpen = false;
       this.notesSidebarOpen = false;
@@ -768,6 +775,21 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
 
   scrollToTop() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  // RareScope methods
+  addNewNeed() {
+    this.additionalNeeds.push('');
+  }
+
+  onNeedBlur(event: any, index: number) {
+    const content = event.target.innerText.trim();
+    if (index === 0) {
+      this.rarescopeNeeds[0] = content;
+    } else {
+      this.additionalNeeds[index - 1] = content;
+    }
+    // Aquí podrías guardar los datos en el servidor si es necesario
   }
 
 
