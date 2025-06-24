@@ -1109,7 +1109,7 @@
             <div class="rarescope-content p-4">
                 <div class="rarescope-intro mb-3 text-center">
                     <p>Basándonos en tu perfil hemos detectado las siguientes necesidades probablemente no cubiertas de tu enfermedad</p>
-                    <button *ngIf="!isLoadingRarescope && !rarescopeError && (rarescopeNeeds[0] !== '' || additionalNeeds.length > 0)" 
+                    <button *ngIf="!isLoadingRarescope && !rarescopeError" 
                             class="btn btn-sm btn-outline-secondary mt-2" 
                             (click)="fetchRarescopeAnalysis()"
                             title="Actualizar análisis con la información más reciente">
@@ -1133,14 +1133,16 @@
                 </div>
                 
                 <div *ngIf="!isLoadingRarescope && !rarescopeError" class="rarescope-needs-container" cdkDropList (cdkDropListDropped)="onDropNeed($event)">
-                    <div class="need-section-wrapper mb-2" cdkDrag [cdkDragDisabled]="false"
-                         [@slideOut]="deletingStates[0] ? 'out' : 'in'">
-                        <div class="need-section">
-                            <div class="controls-container-left">
-                                <div class="drag-handle" cdkDragHandle title="Arrastrar para reordenar">
-                                    <i class="fa fa-grip-vertical"></i>
+                    <div class="need-wrapper">
+                        <div class="need-number-external">1</div>
+                        <div class="need-section-wrapper mb-2" cdkDrag [cdkDragDisabled]="false"
+                             [@slideOut]="deletingStates[0] ? 'out' : 'in'">
+                            <div class="need-section">
+                                <div class="controls-container-left">
+                                    <div class="drag-handle" cdkDragHandle title="Arrastrar para reordenar">
+                                        <i class="fa fa-grip-vertical"></i>
+                                    </div>
                                 </div>
-                            </div>
                             <div class="need-content"
                                  contenteditable="true" 
                                  [attr.data-placeholder]="'Escribe qué echas en falta que se atienda'"
@@ -1155,16 +1157,18 @@
                             </div>
                         </div>
                     </div>
+                    </div>
                     
-                    <div *ngFor="let need of additionalNeeds; let i = index; trackBy: trackByIndex" 
-                         class="need-section-wrapper mb-2" cdkDrag [cdkDragDisabled]="false"
-                         [@slideOut]="deletingStates[i + 1] ? 'out' : 'in'">
-                        <div class="need-section">
-                            <div class="controls-container-left">
-                                <div class="drag-handle" cdkDragHandle title="Arrastrar para reordenar">
-                                    <i class="fa fa-grip-vertical"></i>
+                    <div *ngFor="let need of additionalNeeds; let i = index; trackBy: trackByIndex" class="need-wrapper">
+                        <div class="need-number-external">{{ i + 2 }}</div>
+                        <div class="need-section-wrapper mb-2" cdkDrag [cdkDragDisabled]="false"
+                             [@slideOut]="deletingStates[i + 1] ? 'out' : 'in'">
+                            <div class="need-section">
+                                <div class="controls-container-left">
+                                    <div class="drag-handle" cdkDragHandle title="Arrastrar para reordenar">
+                                        <i class="fa fa-grip-vertical"></i>
+                                    </div>
                                 </div>
-                            </div>
                             <div class="need-content"
                                  contenteditable="true"
                                  [attr.data-placeholder]="'Escribe qué echas en falta que se atienda'"
@@ -1178,6 +1182,7 @@
                                 </button>
                             </div>
                         </div>
+                    </div>
                     </div>
                     
                     <div class="add-section-btn" (click)="addNewNeed()">

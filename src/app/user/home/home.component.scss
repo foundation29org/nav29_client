@@ -1483,6 +1483,29 @@ input[type="text"],
     }
   }
   
+  .need-wrapper {
+    display: flex;
+    align-items: flex-start;
+    margin-bottom: 0.5rem;
+  }
+  
+  .need-number-external {
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #6c757d;
+    background-color: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 50%;
+    margin-right: 10px;
+    margin-top: 8px;
+    flex-shrink: 0;
+  }
+  
   .rarescope-needs-container {
     background-color: #f8f9fa;
     border: 1px solid #dee2e6;
