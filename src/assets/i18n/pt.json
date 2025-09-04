@@ -189,7 +189,17 @@
     "noMatchingSymptoms": "Nenhum sintoma correspondente",
     "noAdditionalSymptoms": "Nenhum sintoma adicional",
     "findMoreDiagnoses": "Encontrar mais diagnósticos",
-    "searchingMoreDiagnoses": "Procurando diagnósticos adicionais..."
+    "searchingMoreDiagnoses": "Procurando diagnósticos adicionais...",
+    "selectAtLeastOneSymptom": "Por favor, selecione pelo menos um sintoma",
+      "analysisUpdated": "Análise atualizada",
+      "newAnalysisWithSymptoms": "Uma nova análise foi realizada com os sintomas selecionados.",
+      "newAnalysisWithDescription": "Uma nova análise foi realizada com a descrição editada.",
+      "analysisFailed": "Não foi possível realizar a nova análise. Por favor, tente novamente.",
+      "analysisFailedWithDescription": "Não foi possível realizar a nova análise. A descrição foi salva mas os diagnósticos não foram atualizados.",
+      "analysisError": "Erro ao realizar a nova análise. Por favor, tente novamente.",
+      "analysisErrorWithDescription": "Erro ao realizar a nova análise. A descrição foi salva mas os diagnósticos não foram atualizados.",
+      "couldNotGetInfo": "Não foi possível obter as informações solicitadas.",
+      "errorLoadingInfo": "Erro ao carregar as informações. Por favor, tente novamente."
   },
    "categoriesPatients":{
      "title": "Patients",
@@ -1498,17 +1508,5 @@
       "tryAgain": "Tentar novamente",
       "placeholderNeed": "Escreva o que você sente que está faltando e que deveria ser abordado",
       "dragToReorder": "Arrastar para reordenar"
-    },
-    "dxgpt":{
-      "selectAtLeastOneSymptom": "Por favor, selecione pelo menos um sintoma",
-      "analysisUpdated": "Análise atualizada",
-      "newAnalysisWithSymptoms": "Uma nova análise foi realizada com os sintomas selecionados.",
-      "newAnalysisWithDescription": "Uma nova análise foi realizada com a descrição editada.",
-      "analysisFailed": "Não foi possível realizar a nova análise. Por favor, tente novamente.",
-      "analysisFailedWithDescription": "Não foi possível realizar a nova análise. A descrição foi salva mas os diagnósticos não foram atualizados.",
-      "analysisError": "Erro ao realizar a nova análise. Por favor, tente novamente.",
-      "analysisErrorWithDescription": "Erro ao realizar a nova análise. A descrição foi salva mas os diagnósticos não foram atualizados.",
-      "couldNotGetInfo": "Não foi possível obter as informações solicitadas.",
-      "errorLoadingInfo": "Erro ao carregar as informações. Por favor, tente novamente."
     }
  }
