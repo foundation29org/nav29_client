@@ -170,6 +170,27 @@
       "description": "Obtenha um resumo formal do seu histórico médico, com os dados necessários para procedimentos de seguro ou tarefas administrativas de saúde."
     }
   },
+  "dxgpt": {
+    "description": "Analisa automaticamente as informações clínicas que você insere, incluindo relatórios, notas e eventos registrados, e gera uma lista estruturada de possíveis diagnósticos com base em padrões de sintomas extraídos.",
+    "analyze": "Analisar",
+    "button": "Diagnósticos",
+    "analyzing": "Analisando",
+    "patientInfo": "Informações do paciente",
+    "possibleDiagnoses": "Possíveis diagnósticos",
+    "moreInfo": "Saber mais",
+    "matchingSymptoms": "Sintomas correspondentes",
+    "additionalSymptoms": "Sintomas não correspondentes",
+    "commonSymptoms": "❓ Quais são os sintomas comuns?",
+    "detailedInformation": "❓ Quais são as informações detalhadas sobre a doença?",
+    "diagnosticTests": "❓ Quais testes diagnósticos são recomendados?",
+    "differentialSymptoms": "❓ Quais são os sintomas diferenciais neste caso?",
+    "symptomMatches": "❓ Quais correspondências existem entre os sintomas do paciente e a doença?",
+    "reanalyzeWithSymptoms": "Reanalisar com sintomas selecionados",
+    "noMatchingSymptoms": "Nenhum sintoma correspondente",
+    "noAdditionalSymptoms": "Nenhum sintoma adicional",
+    "findMoreDiagnoses": "Encontrar mais diagnósticos",
+    "searchingMoreDiagnoses": "Procurando diagnósticos adicionais..."
+  },
    "categoriesPatients":{
      "title": "Patients",
      "list": {
@@ -883,6 +904,7 @@
       "Uploaded on": "Carregado em",
       "Go top": "Vá para o topo",
       "Me": "Eu",
+      "Loading": "Carregando",
       "The patient does not have any information yet":"O paciente ainda não possui informações",
       "Save all": "Salvar tudo",
       "Delete all": "Excluir tudo",
@@ -1029,6 +1051,7 @@
        "Unknown":"Desconhecido",
        "Saving":"Salvando",
        "Write a message": "Escreva uma mensagem",
+       "Please write a message": "Por favor, escreva uma mensagem",
        "Not provided": "Não fornecido",
        "actualEvent": "Se você o tiver atualmente, não selecione a data final.",
        "Select a category": "Selecione uma categoria",
@@ -1466,5 +1489,26 @@
       "fieldRequired": "Este campo é obrigatório",
       "selectRole": "Por favor, selecione seu papel",
       "selectKnowledgeLevel": "Por favor, selecione seu nível de conhecimento"
+    },
+    "rarescope":{
+      "My Needs": "Meus necessários",
+      "rarescopeAnalysis": "Baseado em seu perfil, identificamos as seguintes necessidades que podem não ser cobertas pela sua doença",
+      "updateAnalysis": "Atualizar análise",
+      "analyzingInformation": "Analisando suas informações",
+      "tryAgain": "Tentar novamente",
+      "placeholderNeed": "Escreva o que você sente que está faltando e que deveria ser abordado",
+      "dragToReorder": "Arrastar para reordenar"
+    },
+    "dxgpt":{
+      "selectAtLeastOneSymptom": "Por favor, selecione pelo menos um sintoma",
+      "analysisUpdated": "Análise atualizada",
+      "newAnalysisWithSymptoms": "Uma nova análise foi realizada com os sintomas selecionados.",
+      "newAnalysisWithDescription": "Uma nova análise foi realizada com a descrição editada.",
+      "analysisFailed": "Não foi possível realizar a nova análise. Por favor, tente novamente.",
+      "analysisFailedWithDescription": "Não foi possível realizar a nova análise. A descrição foi salva mas os diagnósticos não foram atualizados.",
+      "analysisError": "Erro ao realizar a nova análise. Por favor, tente novamente.",
+      "analysisErrorWithDescription": "Erro ao realizar a nova análise. A descrição foi salva mas os diagnósticos não foram atualizados.",
+      "couldNotGetInfo": "Não foi possível obter as informações solicitadas.",
+      "errorLoadingInfo": "Erro ao carregar as informações. Por favor, tente novamente."
     }
  }

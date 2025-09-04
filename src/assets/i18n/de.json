@@ -170,6 +170,37 @@
       "description": "Erhalten Sie eine formelle Zusammenfassung Ihrer Krankengeschichte mit den notwendigen Daten für Versicherungsverfahren oder gesundheitliche Verwaltungsaufgaben."
     }
   },
+  "dxgpt": {
+    "description": "Analysiert automatisch die von Ihnen eingegebenen klinischen Informationen, einschließlich Berichte, Notizen und erfasste Ereignisse, und erstellt eine strukturierte Liste möglicher Diagnosen basierend auf extrahierten Symptommustern.",
+    "analyze": "Analysieren",
+    "button": "Diagnosen",
+    "analyzing": "Analysiere",
+    "patientInfo": "Patienteninformationen",
+    "possibleDiagnoses": "Mögliche Diagnosen",
+    "moreInfo": "Mehr erfahren",
+    "matchingSymptoms": "Übereinstimmende Symptome",
+    "additionalSymptoms": "Nicht übereinstimmende Symptome",
+    "commonSymptoms": "❓ Was sind die häufigsten Symptome?",
+    "detailedInformation": "❓ Was sind die detaillierten Informationen über die Krankheit?",
+    "diagnosticTests": "❓ Welche diagnostischen Tests werden empfohlen?",
+    "differentialSymptoms": "❓ Was sind die differenziellen Symptome in diesem Fall?",
+    "symptomMatches": "❓ Welche Übereinstimmungen gibt es zwischen den Symptomen des Patienten und der Krankheit?",
+    "reanalyzeWithSymptoms": "Mit ausgewählten Symptomen erneut analysieren",
+    "noMatchingSymptoms": "Keine übereinstimmenden Symptome",
+    "noAdditionalSymptoms": "Keine zusätzlichen Symptome",
+    "findMoreDiagnoses": "Weitere Diagnosen finden",
+    "searchingMoreDiagnoses": "Suche nach zusätzlichen Diagnosen...",
+    "selectAtLeastOneSymptom": "Bitte wählen Sie mindestens ein Symptom aus",
+      "analysisUpdated": "Analyse aktualisiert",
+      "newAnalysisWithSymptoms": "Eine neue Analyse wurde mit den ausgewählten Symptomen durchgeführt.",
+      "newAnalysisWithDescription": "Eine neue Analyse wurde mit der bearbeiteten Beschreibung durchgeführt.",
+      "analysisFailed": "Die neue Analyse konnte nicht durchgeführt werden. Bitte versuchen Sie es erneut.",
+      "analysisFailedWithDescription": "Die neue Analyse konnte nicht durchgeführt werden. Die Beschreibung wurde gespeichert, aber die Diagnosen wurden nicht aktualisiert.",
+      "analysisError": "Fehler bei der Durchführung der neuen Analyse. Bitte versuchen Sie es erneut.",
+      "analysisErrorWithDescription": "Fehler bei der Durchführung der neuen Analyse. Die Beschreibung wurde gespeichert, aber die Diagnosen wurden nicht aktualisiert.",
+      "couldNotGetInfo": "Die angeforderte Information konnte nicht abgerufen werden.",
+      "errorLoadingInfo": "Fehler beim Laden der Informationen. Bitte versuchen Sie es erneut."
+  },
    "categoriesPatients":{
      "title": "Patients",
      "list": {
@@ -883,6 +914,7 @@
       "Uploaded on": "Hochgeladen am",
       "Go top": "Zum Seitenanfang",
       "Me": "Ich",
+      "Loading": "Wird geladen",
       "The patient does not have any information yet":"Der Patient hat noch keine Informationen",
       "Save all":"Alles speichern",
       "Delete all": "Alles löschen",
@@ -1029,6 +1061,7 @@
        "Unknown":"Unbekannt",
        "Saving":"Speichern",
        "Write a message": "Schreiben Sie eine Nachricht",
+       "Please write a message": "Bitte schreiben Sie eine Nachricht",
        "Not provided": "Nicht angegeben",
        "actualEvent": "Wenn Sie es derzeit haben, wählen Sie nicht das Enddatum aus.",
        "Select a category": "Wählen Sie eine Kategorie aus",
@@ -1466,6 +1499,15 @@
       "fieldRequired": "Dieses Feld ist erforderlich",
       "selectRole": "Bitte wählen Sie Ihre Rolle",
       "selectKnowledgeLevel": "Bitte wählen Sie Ihr Wissensniveau"
+    },
+    "rarescope":{
+      "My Needs": "Meine Bedürfnisse",
+      "rarescopeAnalysis": "Basierend auf Ihrem Profil haben wir die folgenden möglichen Bedürfnisse erkannt, die möglicherweise nicht durch Ihre Krankheit abgedeckt werden",
+      "updateAnalysis": "Analyse aktualisieren",
+      "analyzingInformation": "Analysieren Sie Ihre Informationen",
+      "tryAgain": "Erneut versuchen",
+      "placeholderNeed": "Schreiben Sie, was Sie vermissen, was behandelt werden sollte",
+      "dragToReorder": "Ziehen zum Neuordnen"
     }
  }
 

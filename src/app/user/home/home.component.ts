@@ -36,6 +36,33 @@ import { interval } from 'rxjs';
 import { filter, take } from 'rxjs/operators';
 import { ActivityService } from 'app/shared/services/activity.service';
 
+// Interfaces para tipar los datos (como dataclasses en Python)
+interface DxGptDiagnosis {
+  diagnosis: string;
+  description: string;
+  symptoms_in_common: string[];
+  symptoms_not_in_common: string[];
+}
+
+interface DxGptAnonymization {
+  hasPersonalInfo: boolean;
+  anonymizedText: string;
+  anonymizedTextHtml: string;
+}
+
+interface DxGptAnalysis {
+  result: string;
+  data: DxGptDiagnosis[];
+  anonymization: DxGptAnonymization;
+  detectedLang: string;
+}
+
+interface DxGptResponse {
+  success: boolean;
+  analysis?: DxGptAnalysis; // El ? significa que es opcional (puede ser undefined)
+  error?: string;
+}
+
 @Component({
   selector: 'app-home',
   templateUrl: './home.component.html',
@@ -54,6 +81,57 @@ import { ActivityService } from 'app/shared/services/activity.service';
       transition('voidRight => enterFromRight', [animate('0.5s ease-out')]),
       transition('voidLeft => enterFromLeft', [animate('0.5s ease-out')]),
     ]),
+    trigger('messageAnimation', [
+      transition(':enter', [
+        style({ 
+          opacity: 0, 
+          transform: 'translateX(-20px)'
+        }),
+        animate('0.6s ease-out', 
+          style({ 
+            opacity: 1, 
+            transform: 'translateX(0)'
+          })
+        )
+      ])
+    ]),
+    trigger('slideOut', [
+      state('in', style({ 
+        transform: 'translateX(0)', 
+        opacity: 1 
+      })),
+      state('out', style({ 
+        transform: 'translateX(100%)', 
+        opacity: 0 
+      })),
+      transition('in => out', [
+        animate('300ms ease-out')
+      ])
+    ]),
+    trigger('slideDown', [
+      transition(':enter', [
+        style({
+          height: 0,
+          overflow: 'hidden'
+        }),
+        animate('0.3s ease-out', 
+          style({
+            height: '*'
+          })
+        )
+      ]),
+      transition(':leave', [
+        style({
+          height: '*',
+          overflow: 'hidden'
+        }),
+        animate('0.3s ease-out', 
+          style({
+            height: 0
+          })
+        )
+      ])
+    ])
   ]
 })
 
@@ -148,7 +226,18 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
   usedNewSuggestions: string[] = [];
   isDonating: boolean = false;
   changingDonation: boolean = true;
+  dxGptResults: any;
+  isDxGptLoading: boolean = false;
   hasChangesEvents: boolean = false;
+  expandedDiagnosisCards: Set<number> = new Set();
+  expandedQuestions: Map<number, number> = new Map(); // cardIndex -> questionIndex
+  visitedQuestions: Map<number, Set<number>> = new Map(); // cardIndex -> Set of visited questionIndexes
+  loadingQuestions: Map<string, boolean> = new Map(); // `${cardIndex}-${questionIndex}` -> loading state
+  questionResponses: Map<string, string> = new Map(); // `${cardIndex}-${questionIndex}` -> response content
+  private questionSymptoms = new Map<string, any[]>();
+  isEditingPatientInfo: boolean = false;
+  editedPatientInfo: string = '';
+  isLoadingMoreDiagnoses: boolean = false;
   loadingDoc: boolean = false;
   summaryDate: Date = null;
   generatingPDF: boolean = false;
@@ -228,11 +317,19 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
   tempFileName: string = '';
   showCameraButton: boolean = false;
   langs: any[] = [];
-  editingTitle: boolean = false; 
+  editingTitle: boolean = false;
   @ViewChild('titleInput', { static: false }) titleInput: ElementRef;
   currentView: string = 'chat';
+  
+  // RareScope variables
+  additionalNeeds: string[] = [];
+  rarescopeNeeds: string[] = [''];
+  deletingStates: { [key: number]: boolean } = {};
+  isLoadingRarescope: boolean = false;
+  rarescopeError: string = null;
   previousView: string;
   private isInitialLoad = true;
+  currentPatientId: string | null = null;
 
   constructor(private http: HttpClient, private authService: AuthService, public translate: TranslateService, private formBuilder: FormBuilder, private authGuard: AuthGuard, public toastr: ToastrService, private patientService: PatientService, private sortService: SortService, private modalService: NgbModal, private apiDx29ServerService: ApiDx29ServerService, private dateService: DateService, private eventsService: EventsService, private webPubSubService: WebPubSubService, private searchService: SearchService, public jsPDFService: jsPDFService, private clipboard: Clipboard, public trackEventsService: TrackEventsService, private route: ActivatedRoute, public insightsService: InsightsService, private cdr: ChangeDetectorRef, private router: Router, private langService: LangService, private highlightService: HighlightService, private activityService: ActivityService) {
     this.screenWidth = window.innerWidth;
@@ -484,9 +581,9 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
       await this.saveMessages(this.currentPatient);
     }
 
-    if (this.subscription) {
-      this.subscription.unsubscribe();
-    }
+    // Unsubscribe de todas las subscripciones
+    this.subscription.unsubscribe();
+    
     if (this.messageSubscription) {
       this.messageSubscription.unsubscribe();
     }
@@ -598,23 +695,50 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     return date === null;
   }
 
+  /**
+   * Maneja los cambios en el paciente actual de forma centralizada
+   * @param patient - El paciente actual o null
+   */
+  private handlePatientChange(patient: any): void {
+    console.log('patient', patient);
+    
+    if (patient) {
+      // Paciente válido
+      this.isInitialLoad = false;
+      this.currentPatientId = patient.sub;
+      this.initEnvironment();
+      
+      // Limpiar resultados de DxGPT si cambias de paciente
+      if (this.currentView === 'dxgpt') {
+        this.dxGptResults = null;
+      }
+    } else {
+      // No hay paciente
+      this.currentPatientId = null;
+      this.dxGptResults = null;
+      
+      // Redirigir solo si no es la carga inicial
+      if (!this.isInitialLoad) {
+        console.log('patient is null, redirecting to patients');
+        this.router.navigate(['/patients']);
+      }
+      this.isInitialLoad = false;
+    }
+  }
+
   async ngOnInit() {
     this.showCameraButton = this.isMobileDevice();
 
+    // Precargar imagen DxGPT
+    const dxGptLogo = new Image();
+    dxGptLogo.src = 'assets/img/logo-dxgpt.png';
 
-    this.subscription.add(this.authService.currentPatient$.subscribe(patient => {
-      console.log('patient', patient);
-      if (patient) {
-        this.isInitialLoad = false;
-        this.initEnvironment();
-      }else{
-        if (!this.isInitialLoad) {
-          console.log('patient is null, redirecting to patients');
-          this.router.navigate(['/patients']);
-        }
-        this.isInitialLoad = false;
-      }
-    }));
+    // Una sola suscripción que maneja toda la lógica del paciente
+    this.subscription.add(
+      this.authService.currentPatient$.subscribe(patient => {
+        this.handlePatientChange(patient);
+      })
+    );
     let currentLang = this.translate.currentLang;
     await this.updateSuggestions(currentLang);
     this.getTranslations();
@@ -651,6 +775,16 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     }else if(view === 'notes'){
       this.sidebarOpen = false;
       this.notesSidebarOpen = true;
+    }else if(view === 'dxgpt'){
+      this.sidebarOpen = false;
+      this.notesSidebarOpen = false;
+      // Opcional: podrías llamar a fetchDxGptResults() aquí si quieres que se auto-cargue
+      // al cambiar a la vista, o dejar que el usuario pulse el botón.
+      // Por ahora, lo dejamos para el botón.
+    }else if(view === 'rarescope'){
+      this.sidebarOpen = false;
+      this.notesSidebarOpen = false;
+      this.loadRarescopeData();
     }else{
       this.sidebarOpen = false;
       this.notesSidebarOpen = false;
@@ -663,12 +797,187 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
   }
 
 
-  scrollToTop() {
+  async scrollToTop() {
+    await this.delay(200);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
+  // RareScope methods
+  addNewNeed() {
+    this.additionalNeeds.push('');
+    // Guardar el nuevo estado
+    this.saveRarescopeData();
+  }
 
+  // Función para optimizar el trackBy en *ngFor
+  trackByIndex(index: number, item: any): number {
+    return index;
+  }
 
+  // Función para guardar cuando se pierde el foco
+  onNeedBlur(event: any, index: number) {
+    const content = event.target.innerText.trim();
+    if (index === 0) {
+      this.rarescopeNeeds[0] = content;
+    } else {
+      this.additionalNeeds[index - 1] = content;
+    }
+    // Guardar los cambios
+    this.saveRarescopeData();
+  }
+
+  onDropNeed(event: any) {
+    // Importar CdkDragDrop del CDK
+    if (event.previousIndex !== event.currentIndex) {
+      // Crear un array temporal con todos los needs
+      const allNeeds = [this.rarescopeNeeds[0] || '', ...this.additionalNeeds];
+      
+      // Mover el elemento usando la función moveItemInArray de CDK si está disponible
+      // Si no, usar el método manual
+      const movedItem = allNeeds.splice(event.previousIndex, 1)[0];
+      allNeeds.splice(event.currentIndex, 0, movedItem);
+      
+      // Actualizar los arrays - Con [(ngModel)] esto se sincroniza automáticamente
+      this.rarescopeNeeds[0] = allNeeds[0];
+      this.additionalNeeds = allNeeds.slice(1);
+      
+      // Forzar detección de cambios para asegurar que la UI se actualice
+      this.cdr.detectChanges();
+      
+      // Guardar los cambios
+      this.saveRarescopeData();
+    }
+  }
+  
+  saveRarescopeData() {
+    if (!this.currentPatient?.sub) {
+      console.warn('No hay paciente seleccionado para guardar datos de Rarescope');
+      return;
+    }
+
+    const rarescopeData = {
+      mainNeed: this.rarescopeNeeds[0],
+      additionalNeeds: this.additionalNeeds,
+      updatedAt: new Date().toISOString()
+    };
+
+    // Guardar en la base de datos
+    this.http.post(environment.api + '/api/rarescope/save/'+this.authService.getCurrentPatient().sub, rarescopeData)
+      .subscribe({
+        next: (response: any) => {
+          if (response.success) {
+            console.log('Datos de Rarescope guardados exitosamente');
+          } else {
+            console.error('Error al guardar datos de Rarescope:', response.error);
+          }
+        },
+        error: (error) => {
+          console.error('Error al guardar datos de Rarescope:', error);
+        }
+      });
+  }
+  
+  loadRarescopeData() {
+    if (!this.currentPatient?.sub) {
+      console.warn('No hay paciente seleccionado para cargar datos de Rarescope');
+      return;
+    }
+
+    // Cargar desde la base de datos
+    this.http.get(environment.api + '/api/rarescope/load/'+this.authService.getCurrentPatient().sub)
+      .subscribe({
+        next: (response: any) => {
+          if (response.success && response.data) {
+            const data = response.data;
+            this.rarescopeNeeds[0] = data.mainNeed || '';
+            this.additionalNeeds = data.additionalNeeds || [];
+            // Forzar detección de cambios
+            this.cdr.detectChanges();
+          } else {
+            // Si no hay datos guardados, hacer el análisis inicial
+            if (this.rarescopeNeeds[0] === '' && this.additionalNeeds.length === 0) {
+              this.fetchRarescopeAnalysis();
+            }
+          }
+        },
+        error: (error) => {
+          console.error('Error al cargar datos de Rarescope:', error);
+          // En caso de error, intentar hacer el análisis inicial
+          if (this.rarescopeNeeds[0] === '' && this.additionalNeeds.length === 0) {
+            this.fetchRarescopeAnalysis();
+          }
+        }
+      });
+  }
+  
+  deleteNeed(index: number) {
+    // Marcar como eliminándose
+    this.deletingStates[index] = true;
+    
+    // Esperar a que termine la animación antes de eliminar
+    setTimeout(() => {
+      if (index === 0) {
+        // Si es el primer elemento, mover el primero de additionalNeeds a rarescopeNeeds
+        if (this.additionalNeeds.length > 0) {
+          this.rarescopeNeeds[0] = this.additionalNeeds.shift();
+        } else {
+          this.rarescopeNeeds[0] = '';
+        }
+      } else {
+        // Eliminar del array additionalNeeds
+        this.additionalNeeds.splice(index - 1, 1);
+      }
+      
+      // Limpiar el estado de eliminación
+      delete this.deletingStates[index];
+      
+      // Guardar cambios
+      this.saveRarescopeData();
+      
+      // Forzar detección de cambios
+      this.cdr.detectChanges();
+    }, 300); // Duración de la animación
+  }
+
+  async fetchRarescopeAnalysis() {
+    if (this.isLoadingRarescope) return;
+    
+    this.isLoadingRarescope = true;
+    this.rarescopeError = null;
+    
+    // Clear existing data when fetching new analysis
+    this.rarescopeNeeds = [''];
+    this.additionalNeeds = [];
+    this.cdr.detectChanges();
+    
+    try {
+      const response = await this.apiDx29ServerService.getRarescopeAnalysis(this.actualPatient.sub).toPromise();
+      
+      if (response.success && response.analysis) {
+        // Parse the analysis to extract unmet needs
+        const unmetNeeds = response.analysis;
+        
+        if (unmetNeeds.length > 0) {
+          // Set the first need
+          this.rarescopeNeeds[0] = unmetNeeds[0];
+          
+          // Add the rest as additional needs
+          if (unmetNeeds.length > 1) {
+            this.additionalNeeds = unmetNeeds.slice(1);
+          }
+          
+          // Save the data
+          this.saveRarescopeData();
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching Rarescope analysis:', error);
+      this.rarescopeError = 'Error al obtener el análisis. Por favor, intente nuevamente.';
+    } finally {
+      this.isLoadingRarescope = false;
+      this.cdr.detectChanges();
+    }
+  }
 
 
   handlePatientChanged(patient: any) {
@@ -800,7 +1109,19 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
       message.text = message.text.replace(/<h2>/g, '<h6>').replace(/<\/h2>/g, '</h6>');
       message.text = message.text.replace(/<h3>/g, '<h6>').replace(/<\/h3>/g, '</h6>');
     }
+    // Add timestamp to track new messages
+    message.timestamp = Date.now();
+    message.isNew = true;
     this.messages.push(message);
+    
+    // Remove the isNew flag after animation completes
+    setTimeout(() => {
+      const lastMessage = this.messages[this.messages.length - 1];
+      if (lastMessage && lastMessage.timestamp === message.timestamp) {
+        lastMessage.isNew = false;
+      }
+    }, 500);
+    
     this.scrollToBottom();
   }
 
@@ -931,7 +1252,10 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
 
   private handleNavigator(parsedData: any) {
     if (parsedData.status === 'generando sugerencias') {
-      this.gettingSuggestions = true;
+      // Solo activar gettingSuggestions si no estamos procesando una respuesta
+      if (this.callingOpenai) {
+        this.gettingSuggestions = true;
+      }
     } else if (parsedData.status === 'respuesta generada') {
       this.processNavigatorAnswer(parsedData);
     } else if (parsedData.status === 'sugerencias generadas') {
@@ -946,6 +1270,11 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
   }
 
   private async processNavigatorAnswer(parsedData: any) {
+    // Limpiar el estado inmediatamente al recibir la respuesta
+    this.callingOpenai = false;
+    this.gettingSuggestions = false;
+    this.actualStatus = '';
+    
     this.context.push({ role: 'user', content: this.message });
     this.context.push({ role: 'assistant', content: parsedData.answer });
     let tempMessage = this.message;
@@ -1129,16 +1458,17 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     const words = this.messagesExpect.split(' ');
     let index = 0;
 
+    // 100ms is the speed at which characters appear in the typing animation
     this.intervalId = setInterval(() => {
-      if (index < words.length && (this.callingOpenai || this.gettingSuggestions)) {
-        const word = words[index];
-        this.messagesExpectOutPut += (index > 0 ? ' ' : '') + word;
+      if (index < this.messagesExpect.length && (this.callingOpenai || this.gettingSuggestions)) {
+        const char = this.messagesExpect[index];
+        this.messagesExpectOutPut += char;
         index++;
       } else {
         clearInterval(this.intervalId);
         this.intervalId = null;
       }
-    }, 20);
+    }, 7);
   }
 
   private showRandomMsg() {
@@ -4344,6 +4674,70 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     this.selectAllDocuments = this.filteredDocs.length > 0 && this.filteredDocs.every(doc => doc.selected);
   }
 
+  fetchDxGptResults() {
+    console.log('=== FRONTEND DXGPT DEBUG START ===');
+    console.log('1. Current patient ID:', this.currentPatientId);
+    
+    if (!this.currentPatientId) {
+      // Mostrar algún error o deshabilitar el botón si no hay paciente
+      // Esto es improbable si la UI se muestra correctamente, pero por si acaso.
+      console.error("No patient selected to fetch DxGPT results.");
+      // Podrías usar Swal para notificar al usuario.
+      this.dxGptResults = { success: false, analysis: this.translate.instant('patients.No patient selected') };
+      return;
+    }
+
+    console.log('2. Setting loading state...');
+    this.isDxGptLoading = true;
+    this.dxGptResults = null; // Limpiar resultados anteriores
+
+    console.log('3. Calling API service...');
+    // Get current language from localStorage
+    const currentLang = localStorage.getItem('lang') || 'en';
+    // Call the DxGPT API to get initial diagnosis
+    this.apiDx29ServerService.getDifferentialDiagnosis(this.currentPatientId, currentLang, null).subscribe({
+      next: (res: any) => {
+        console.log('4. API Response received:', res);
+        console.log('4.1. res.success:', res.success);
+        console.log('4.2. res.analysis exists:', !!res.analysis);
+        
+        if (res && res.analysis) {
+           // El backend siempre manda success: true si llega al controller
+           // Así que sólo necesitamos verificar que 'analysis' tenga contenido.
+          console.log('5. Setting success result');
+          this.dxGptResults = res; // res ya debería tener { success: true, analysis: "..." }
+          console.log('5.1. this.dxGptResults assigned:', this.dxGptResults);
+          console.log('5.2. this.isDxGptLoading:', this.isDxGptLoading);
+          
+          // Forzar la detección de cambios
+          this.cdr.detectChanges();
+        } else {
+          // Si analysis está vacío o no vino como se esperada.
+          // El backend actual SIEMPRE devuelve 'analysis', incluso para errores o mocks.
+          // Este caso es por si el backend cambia o hay un error inesperado
+          // que no fue un error HTTP.
+          console.log('6. Analysis is empty, setting error result');
+          this.dxGptResults = {
+            success: false, // Marcar como no exitoso para la UI si es necesario
+            analysis: this.translate.instant('dxgpt.errorMessage') // Mensaje genérico
+          };
+        }
+        this.isDxGptLoading = false;
+        console.log('=== FRONTEND DXGPT DEBUG END SUCCESS ===');
+      },
+      error: (error) => {
+        // Error de red o HTTP 500, etc. (no un error "controlado" por aiFeaturesController)
+        console.log('=== FRONTEND DXGPT DEBUG ERROR ===');
+        console.error('Error fetching DxGPT results:', error);
+        this.dxGptResults = {
+          success: false, // Importante para la condición de error en el HTML
+          analysis: this.translate.instant('dxgpt.errorMessage') // O un error más específico si 'error' lo proporciona
+        };
+        this.isDxGptLoading = false;
+      }
+    });
+  }
+
   openTimelineModal(timelineModal) {
     console.log(this.timeline);
     this.modalService.open(timelineModal, {
@@ -4397,6 +4791,355 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     }).catch(() => {
       // Modal dismissed
       console.log('Modal dismissed');
+    });
+  }
+
+  toggleDiagnosisCard(index: number): void {
+    if (this.expandedDiagnosisCards.has(index)) {
+      this.expandedDiagnosisCards.delete(index);
+      this.expandedQuestions.delete(index); // Limpia la pregunta expandida al cerrar
+    } else {
+      this.expandedDiagnosisCards.clear(); // Cierra todas las tarjetas
+      this.expandedQuestions.clear(); // Limpia todas las preguntas expandidas
+      this.expandedDiagnosisCards.add(index); // Abre solo la seleccionada
+    }
+  }
+
+  isDiagnosisCardExpanded(index: number): boolean {
+    return this.expandedDiagnosisCards.has(index);
+  }
+
+  toggleQuestion(cardIndex: number, questionIndex: number): void {
+    // Marca la pregunta como visitada
+    if (!this.visitedQuestions.has(cardIndex)) {
+      this.visitedQuestions.set(cardIndex, new Set());
+    }
+    this.visitedQuestions.get(cardIndex).add(questionIndex);
+
+    // Toggle la pregunta expandida
+    const currentExpanded = this.expandedQuestions.get(cardIndex);
+    if (currentExpanded === questionIndex) {
+      this.expandedQuestions.delete(cardIndex); // Cierra si ya está abierta
+    } else {
+      this.expandedQuestions.set(cardIndex, questionIndex); // Abre la nueva
+      
+      // Verificar si ya tenemos la respuesta cacheada
+      const cacheKey = `${cardIndex}-${questionIndex}`;
+      if (!this.questionResponses.has(cacheKey)) {
+        // Si no tenemos la respuesta, hacer la llamada a la API
+        this.fetchDiseaseInfo(cardIndex, questionIndex);
+      }
+    }
+  }
+
+  isQuestionExpanded(cardIndex: number, questionIndex: number): boolean {
+    return this.expandedQuestions.get(cardIndex) === questionIndex;
+  }
+
+  isQuestionVisited(cardIndex: number, questionIndex: number): boolean {
+    return this.visitedQuestions.has(cardIndex) && 
+           this.visitedQuestions.get(cardIndex).has(questionIndex);
+  }
+
+  isQuestionLoading(cardIndex: number, questionIndex: number): boolean {
+    return this.loadingQuestions.get(`${cardIndex}-${questionIndex}`) || false;
+  }
+
+  getQuestionResponse(cardIndex: number, questionIndex: number): string {
+    return this.questionResponses.get(`${cardIndex}-${questionIndex}`) || '';
+  }
+
+  private async fetchDiseaseInfo(cardIndex: number, questionIndex: number): Promise<void> {
+    const cacheKey = `${cardIndex}-${questionIndex}`;
+    
+    // Verificar que tenemos los datos necesarios
+    if (!this.dxGptResults || !this.dxGptResults.analysis || !this.dxGptResults.analysis.data[cardIndex]) {
+      console.error('No diagnosis data available for index:', cardIndex);
+      return;
+    }
+    
+    const diagnosis = this.dxGptResults.analysis.data[cardIndex];
+    const disease = diagnosis.diagnosis;
+    
+    // Set loading state
+    this.loadingQuestions.set(cacheKey, true);
+    
+    try {
+      // Get current patient context if needed for questions 3 and 4
+      let medicalDescription = undefined;
+      if (questionIndex === 3 || questionIndex === 4) {
+        // Use the current anonymized text from the component state
+        if (this.dxGptResults.analysis.anonymization && this.dxGptResults.analysis.anonymization.anonymizedText) {
+          medicalDescription = this.dxGptResults.analysis.anonymization.anonymizedText;
+        }
+      }
+      
+      // Call the API
+      const response = await this.apiDx29ServerService.getDiseaseInfo(
+        this.actualPatient.sub,
+        questionIndex,
+        disease,
+        this.translate.currentLang,
+        medicalDescription
+      ).toPromise();
+
+      console.log('response', response);
+      
+      // Process response based on question type and store formatted HTML content
+      if (response && response.result === 'success' && response.data) {
+        if (questionIndex === 3 && response.data.symptoms) {
+          // Store symptoms as structured data and mark as special type
+          this.questionSymptoms.set(cacheKey, response.data.symptoms);
+          this.questionResponses.set(cacheKey, 'custom-symptom-list');
+        } else if (response.data.content) {
+          // Remove redundant title from HTML content since most probably will redundate the question in the UI
+          let content = response.data.content;
+          this.questionResponses.set(cacheKey, content);
+        } else {
+          this.questionResponses.set(cacheKey, '<p>' + this.translate.instant('dxgpt.couldNotGetInfo') + '</p>');
+        }
+      }
+      
+      
+    } catch (error) {
+      console.error('Error fetching disease info:', error);
+      this.questionResponses.set(cacheKey, '<p>' + this.translate.instant('dxgpt.errorLoadingInfo') + '</p>');
+    } finally {
+      // Remove loading state
+      this.loadingQuestions.set(cacheKey, false);
+    }
+  }
+
+  getSymptoms(cardIndex: number, questionIndex: number): any[] {
+    const cacheKey = `${cardIndex}-${questionIndex}`;
+    return this.questionSymptoms.get(cacheKey) || [];
+  }
+
+  reRunDiagnosis(cardIndex: number, questionIndex: number): void {
+    const cacheKey = `${cardIndex}-${questionIndex}`;
+    const allSymptoms = this.questionSymptoms.get(cacheKey);
+    if (!allSymptoms) return;
+
+    const selected = allSymptoms.filter(s => s.checked).map(s => s.name);
+    if (selected.length === 0) {
+      Swal.fire(this.translate.instant('dxgpt.selectAtLeastOneSymptom'), '', 'info');
+      return;
+    }
+
+    // Combine the original anonymized text with selected symptoms
+    const combinedDescription = this.dxGptResults.analysis.anonymization.anonymizedText
+      + '\n\n; ' + selected.join(', '); // antes de "; " ponia "Síntomas adicionales a considerar: "
+
+    // Close all expanded cards and questions
+    this.expandedDiagnosisCards.clear();
+    this.expandedQuestions.clear();
+    
+    // Clear cached responses as we'll get new results
+    this.questionResponses.clear();
+    this.questionSymptoms.clear();
+
+    // Set loading state for DxGPT
+    this.isDxGptLoading = true;
+
+    // Call the DxGPT API with the updated description directly
+    this.apiDx29ServerService.getDifferentialDiagnosis(
+      this.actualPatient.sub,
+      this.translate.currentLang,
+      null, // no diseases to exclude
+      combinedDescription // pass the combined description directly
+    ).subscribe({
+      next: (res) => {
+        console.log('DxGPT rerun response:', res);
+        if (res && res.success) {
+          this.dxGptResults = res;
+          // Show success message
+          Swal.fire({
+            icon: 'success',
+            title: this.translate.instant('dxgpt.analysisUpdated'),
+            text: this.translate.instant('dxgpt.newAnalysisWithSymptoms'),
+            timer: 2000,
+            showConfirmButton: false
+          });
+        } else {
+          console.error('DxGPT rerun failed:', res);
+          Swal.fire({
+            icon: 'error',
+            title: this.translate.instant('generics.Error'),
+            text: this.translate.instant('dxgpt.analysisFailed')
+          });
+        }
+        this.isDxGptLoading = false;
+      },
+      error: (err) => {
+        console.error('Error in DxGPT rerun:', err);
+        this.isDxGptLoading = false;
+        Swal.fire({
+          icon: 'error',
+          title: this.translate.instant('generics.Error'),
+          text: this.translate.instant('dxgpt.analysisError')
+        });
+      }
+    });
+  }
+
+  findMoreDiagnoses(): void {
+    // Get current disease names to exclude
+    const currentDiseases = this.dxGptResults.analysis.data.map(d => d.diagnosis);
+    
+    // Set loading state
+    this.isLoadingMoreDiagnoses = true;
+
+    // Call API with diseases_list to exclude current ones
+    this.apiDx29ServerService.getDifferentialDiagnosis(
+      this.actualPatient.sub,
+      this.translate.currentLang,
+      currentDiseases // diseases to exclude
+    ).subscribe({
+      next: (res) => {
+        console.log('More diagnoses response:', res);
+        if (res && res.success && res.analysis && res.analysis.data) {
+          // Append new diagnoses to existing ones
+          const newDiagnoses = res.analysis.data;
+          
+          if (newDiagnoses.length > 0) {
+            // Add new diagnoses to the existing list
+            this.dxGptResults.analysis.data = [
+              ...this.dxGptResults.analysis.data,
+              ...newDiagnoses
+            ];
+            
+            // Show success message
+            Swal.fire({
+              icon: 'success',
+              title: 'Nuevos diagnósticos encontrados',
+              text: `Se encontraron ${newDiagnoses.length} diagnósticos adicionales.`,
+              timer: 2000,
+              showConfirmButton: false
+            });
+          } else {
+            // No new diagnoses found
+            Swal.fire({
+              icon: 'info',
+              title: 'Sin diagnósticos adicionales',
+              text: 'No se encontraron más diagnósticos posibles para este caso.',
+              timer: 3000,
+              showConfirmButton: false
+            });
+          }
+        } else {
+          console.error('Failed to get more diagnoses:', res);
+          Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: 'No se pudieron obtener diagnósticos adicionales.'
+          });
+        }
+        this.isLoadingMoreDiagnoses = false;
+      },
+      error: (err) => {
+        console.error('Error getting more diagnoses:', err);
+        this.isLoadingMoreDiagnoses = false;
+        Swal.fire({
+          icon: 'error',
+          title: 'Error',
+          text: 'Error al buscar diagnósticos adicionales.'
+        });
+      }
+    });
+  }
+
+  startEditingPatientInfo(): void {
+    this.isEditingPatientInfo = true;
+    this.editedPatientInfo = this.dxGptResults.analysis.anonymization.anonymizedText;
+  }
+
+  cancelEditingPatientInfo(): void {
+    this.isEditingPatientInfo = false;
+    this.editedPatientInfo = '';
+  }
+
+  saveEditedPatientInfo(): void {
+    if (!this.editedPatientInfo.trim()) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'Campo vacío',
+        text: 'Por favor, ingrese una descripción del paciente.'
+      });
+      return;
+    }
+
+    // Check if the text has actually changed
+    const originalText = this.dxGptResults.analysis.anonymization.anonymizedText;
+    if (this.editedPatientInfo.trim() === originalText.trim()) {
+      // No changes made, just close the edit mode
+      this.isEditingPatientInfo = false;
+      this.editedPatientInfo = '';
+      return;
+    }
+
+    // Close edit mode
+    this.isEditingPatientInfo = false;
+
+    // Clear all cached responses and expanded cards
+    this.questionResponses.clear();
+    this.questionSymptoms.clear();
+    this.expandedQuestions.clear();
+    this.expandedDiagnosisCards.clear();
+
+    // Set loading state
+    this.isDxGptLoading = true;
+
+    // Re-run the differential diagnosis with the edited description directly
+    this.apiDx29ServerService.getDifferentialDiagnosis(
+      this.actualPatient.sub,
+      this.translate.currentLang,
+      null, // no diseases to exclude
+      this.editedPatientInfo // pass the edited description directly
+    ).subscribe({
+      next: (res) => {
+        console.log('DxGPT response after edit:', res);
+        if (res && res.success) {
+          this.dxGptResults = res;
+          
+          // Show success message
+          Swal.fire({
+            icon: 'success',
+            title: this.translate.instant('dxgpt.analysisUpdated'),
+            text: this.translate.instant('dxgpt.newAnalysisWithDescription'),
+            timer: 2000,
+            showConfirmButton: false
+          });
+        } else {
+          console.error('DxGPT analysis failed:', res);
+          
+          // Restore the previous description on error
+          if (this.dxGptResults && this.dxGptResults.analysis && this.dxGptResults.analysis.anonymization) {
+            this.dxGptResults.analysis.anonymization.anonymizedText = this.editedPatientInfo;
+          }
+          
+          Swal.fire({
+            icon: 'error',
+            title: this.translate.instant('generics.Error'),
+            text: this.translate.instant('dxgpt.analysisFailedWithDescription')
+          });
+        }
+        this.isDxGptLoading = false;
+      },
+      error: (err) => {
+        console.error('Error in DxGPT analysis:', err);
+        this.isDxGptLoading = false;
+        
+        // Save the description locally even if the analysis fails
+        if (this.dxGptResults && this.dxGptResults.analysis && this.dxGptResults.analysis.anonymization) {
+          this.dxGptResults.analysis.anonymization.anonymizedText = this.editedPatientInfo;
+        }
+        
+        Swal.fire({
+          icon: 'error',
+          title: this.translate.instant('generics.Error'),
+          text: this.translate.instant('dxgpt.analysisErrorWithDescription')
+        });
+      }
     });
   }
 

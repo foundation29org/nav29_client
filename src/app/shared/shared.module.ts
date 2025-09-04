@@ -65,6 +65,7 @@ import { AutoFocusDirective } from './directives/auto-focus.directive';
         TopMenuDirective,
         NgbModule,
         TranslateModule,
+        PipeModule,
         SafePipe,
         FirstCharacterDotPipe,
         FirstCharacterHyphenPipe,

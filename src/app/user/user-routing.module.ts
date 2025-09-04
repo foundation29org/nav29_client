@@ -66,7 +66,7 @@ const routes: Routes = [
       expectedRole: ['User', 'Clinical', 'Caregiver', 'Unknown']
     },
     canActivate: [AuthGuard, RoleGuard]
-  }
+  },
 ];
 
 @NgModule({

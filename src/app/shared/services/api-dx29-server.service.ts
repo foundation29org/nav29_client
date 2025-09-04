@@ -1,7 +1,8 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from "@angular/common/http";
 import { environment } from 'environments/environment';
-import { catchError, map} from 'rxjs/operators'
+import { catchError, map } from 'rxjs/operators';
+import { throwError } from 'rxjs';
 import { InsightsService } from 'app/shared/services/azureInsights.service';
 
 @Injectable({
@@ -10,17 +11,24 @@ import { InsightsService } from 'app/shared/services/azureInsights.service';
 export class ApiDx29ServerService {
     constructor(private http: HttpClient, public insightsService: InsightsService) {}
 
+    /**
+     * Manejo centralizado de errores HTTP.
+     *  - Traza el error en consola y en App Insights.
+     *  - Devuelve un Observable de error para que RxJS continúe el flujo correctamente.
+     */
+    private handleError = (err: any) => {
+      console.error('[ApiDx29ServerService] HTTP error:', err);
+      this.insightsService.trackException(err);
+      return throwError(() => err);
+    };
+
     getDetectLanguage(text) {
       var jsonText = [{ "text": text }];
       return this.http.post(environment.api + '/api/getDetectLanguage', jsonText).pipe(
         map((res: any) => {
           return res;
         }),
-        catchError((err) => {
-          console.log(err);
-          this.insightsService.trackException(err);
-          return err;
-        })
+        catchError(this.handleError)
       );
     }
 
@@ -30,11 +38,7 @@ export class ApiDx29ServerService {
         map((res: any) => {
           return res;
         }),
-        catchError((err) => {
-          console.log(err);
-          this.insightsService.trackException(err);
-          return err;
-        })
+        catchError(this.handleError)
       );
     }
 
@@ -44,11 +48,7 @@ export class ApiDx29ServerService {
         map((res: any) => {
           return res;
         }),
-        catchError((err) => {
-          console.log(err);
-          this.insightsService.trackException(err);
-          return err;
-        })
+        catchError(this.handleError)
       );
     }
 
@@ -58,11 +58,7 @@ export class ApiDx29ServerService {
         map((res: any) => {
           return res;
         }),
-        catchError((err) => {
-          console.log(err);
-          this.insightsService.trackException(err);
-          return err;
-        })
+        catchError(this.handleError)
       );
     }
 
@@ -72,11 +68,7 @@ export class ApiDx29ServerService {
         map((res: any) => {
           return res;
         }),
-        catchError((err) => {
-          console.log(err);
-          this.insightsService.trackException(err);
-          return err;
-        })
+        catchError(this.handleError)
       );
     }
 
@@ -86,11 +78,7 @@ export class ApiDx29ServerService {
           map((res: any) => {
             return res;
           }),
-          catchError((err) => {
-            console.log(err);
-            this.insightsService.trackException(err);
-            return err;
-          })
+          catchError(this.handleError)
         );
       }
 
@@ -99,11 +87,7 @@ export class ApiDx29ServerService {
         map((res: any) => {
           return res.containerSAS;
         }),
-        catchError((err) => {
-          console.log(err);
-          this.insightsService.trackException(err);
-          return err;
-        })
+        catchError(this.handleError)
       );
     }
 
@@ -112,11 +96,7 @@ export class ApiDx29ServerService {
         map((res: any) => {
           return res;
         }),
-        catchError((err) => {
-          console.log(err);
-          this.insightsService.trackException(err);
-          return err;
-        })
+        catchError(this.handleError)
       );
     }
 
@@ -126,11 +106,54 @@ export class ApiDx29ServerService {
         map((res: any) => {
           return res;
         }),
-        catchError((err) => {
-          console.log(err);
-          this.insightsService.trackException(err);
-          return err;
-        })
+        catchError(this.handleError)
+      );
+    }
+
+    getRarescopeAnalysis(patientId: string) {
+      return this.http.post(environment.api + '/api/ai/rarescope/' + patientId, {}).pipe(
+        map((res: any) => {
+          return res;
+        }),
+        catchError(this.handleError)
+      );
+    }
+
+    getDifferentialDiagnosis(patientId: string, lang: string = 'en', excludeDiseases?: string[], customMedicalDescription?: string) {
+      const body: any = { lang: lang };
+      
+      // Add custom medical description if provided
+      if (customMedicalDescription) {
+        body.customMedicalDescription = customMedicalDescription;
+      }
+      
+      // Add diseases_list if provided
+      if (excludeDiseases && excludeDiseases.length > 0) {
+        body.diseases_list = excludeDiseases.join(',');
+      }
+      
+      return this.http.post(environment.api + '/api/ai/dxgpt/' + patientId, body).pipe(
+        map((res: any) => {
+          return res;
+        }),
+        catchError(this.handleError)
+      );
+    }
+
+    getDiseaseInfo(patientId: string, questionType: number, disease: string, lang: string = 'en', medicalDescription?: string) {
+      const body: any = {
+        questionType: questionType,
+        disease: disease,
+        lang: lang
+      };
+      if (medicalDescription && (questionType === 3 || questionType === 4)) {
+        body.medicalDescription = medicalDescription;
+      }
+      return this.http.post(environment.api + '/api/ai/disease-info/' + patientId, body).pipe(
+        map((res: any) => {
+          return res;
+        }),
+        catchError(this.handleError)
       );
     }
 

@@ -41,6 +41,7 @@ import { MatMenuModule } from '@angular/material/menu';
 import { MatIconModule } from '@angular/material/icon';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { QRCodeModule } from 'angularx-qrcode';
+import { DragDropModule } from '@angular/cdk/drag-drop';
 
 @NgModule({
     exports: [
@@ -75,6 +76,7 @@ import { QRCodeModule } from 'angularx-qrcode';
         MatIconModule,
         MatExpansionModule,
         QRCodeModule,
+        DragDropModule,
         SharedModule
     ],
     declarations: [
@@ -84,7 +86,7 @@ import { QRCodeModule } from 'angularx-qrcode';
         PatientsComponent,
         FeedbackSummaryPageComponent,
         DiaryComponent,
-        NewPatientComponent
+        NewPatientComponent,
     ]
 })
 export class UserModule { }
