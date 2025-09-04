@@ -41,9 +41,9 @@
         </button>
         <button class="btn btn-dark flex-grow-1" id="rarescope-title"
             [ngClass]="{'active-view': currentView === 'rarescope'}"
-            (click)="setView('rarescope')" title="{{'rarescope.button' | translate}}">
+            (click)="setView('rarescope')" title="{{'rarescope.My Needs' | translate}}">
             <i class="fa fa-microscope"></i>
-            <span class="ml-2" *ngIf="!isXSScreen()">{{'rarescope.button' | translate}}</span>
+            <span class="ml-2" *ngIf="!isXSScreen()">{{'rarescope.My Needs' | translate}}</span>
         </button>
     </div>
 </div>
@@ -97,7 +97,7 @@
                     [ngClass]="{'active-view': currentView === 'rarescope'}"
                     (click)="setView('rarescope')">
                     <i class="fa fa-microscope"></i>
-                    <span id="rarescope-title" class="ml-2">{{'rarescope.button' | translate}}</span>
+                    <span id="rarescope-title" class="ml-2">{{'rarescope.My Needs' | translate}}</span>
                 </button>                
             </div>
 
@@ -833,7 +833,7 @@
                     <!-- Loading state -->
                     <div *ngIf="isDxGptLoading" class="my-2">
                         <div class="spinner-border text-primary mt-3" role="status">
-                            <span class="sr-only">Loading...</span>
+                            <span class="sr-only">{{ 'generics.Loading' | translate }}...</span>
                         </div>
                         <p class="mt-3 text-muted">{{ 'dxgpt.analyzing' | translate }}</p>
                     </div>
@@ -1107,20 +1107,20 @@
         <!-- Rarescope View -->
         <div *ngIf="currentView === 'rarescope'" class="col-md-12" [ngClass]="{'pt-custom2': !isSmallScreen()}">
             <div class="rarescope-content p-4">
-                <div class="rarescope-intro mb-3 text-center">
-                    <p>Basándonos en tu perfil hemos detectado las siguientes necesidades probablemente no cubiertas de tu enfermedad</p>
+                <div class="rarescope-intro mb-3 mt-3 text-center">
+                    <p>{{'rarescope.rarescopeAnalysis' | translate}}</p>
                     <button *ngIf="!isLoadingRarescope && !rarescopeError" 
                             class="btn btn-sm btn-outline-secondary mt-2" 
                             (click)="fetchRarescopeAnalysis()"
                             title="Actualizar análisis con la información más reciente">
-                        <i class="fa fa-refresh mr-1"></i> Actualizar análisis
+                        <i class="fa fa-refresh mr-1"></i> {{'rarescope.updateAnalysis' | translate}}
                     </button>
                 </div>
                 
                 <!-- Loading state -->
                 <div *ngIf="isLoadingRarescope" class="text-center p-5">
                     <em class="fa fa-spinner fa-spin fa-3x fa-fw text-muted"></em>
-                    <p class="mt-3 text-muted">Analizando tu información médica...</p>
+                    <p class="mt-3 text-muted">{{'rarescope.analyzingInformation' | translate}}...</p>
                 </div>
                 
                 <!-- Error state -->
@@ -1128,7 +1128,7 @@
                     <i class="fa fa-exclamation-triangle mr-2"></i>
                     {{ rarescopeError }}
                     <button class="btn btn-sm btn-danger ml-3" (click)="fetchRarescopeAnalysis()">
-                        <i class="fa fa-refresh mr-1"></i> Reintentar
+                        <i class="fa fa-refresh mr-1"></i> {{'rarescope.tryAgain' | translate}}
                     </button>
                 </div>
                 
@@ -1139,13 +1139,13 @@
                              [@slideOut]="deletingStates[0] ? 'out' : 'in'">
                             <div class="need-section">
                                 <div class="controls-container-left">
-                                    <div class="drag-handle" cdkDragHandle title="Arrastrar para reordenar">
+                                    <div class="drag-handle" cdkDragHandle [title]="'rarescope.dragToReorder' | translate">
                                         <i class="fa fa-grip-vertical"></i>
                                     </div>
                                 </div>
                             <div class="need-content"
                                  contenteditable="true" 
-                                 [attr.data-placeholder]="'Escribe qué echas en falta que se atienda'"
+                                 [attr.data-placeholder]="'rarescope.placeholderNeed' | translate"
                                  spellcheck="false"
                                  [innerText]="rarescopeNeeds[0]"
                                  (blur)="onNeedBlur($event, 0)">
@@ -1154,6 +1154,13 @@
                                 <button class="delete-handle" (click)="deleteNeed(0)" title="Eliminar">
                                     <i class="fa fa-trash"></i>
                                 </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Preview personalizado para el drag -->
+                        <div *cdkDragPreview class="custom-drag-preview">
+                            <div class="need-section">
+                                <div class="need-content">{{ rarescopeNeeds[0] }}</div>
                             </div>
                         </div>
                     </div>
@@ -1165,13 +1172,13 @@
                              [@slideOut]="deletingStates[i + 1] ? 'out' : 'in'">
                             <div class="need-section">
                                 <div class="controls-container-left">
-                                    <div class="drag-handle" cdkDragHandle title="Arrastrar para reordenar">
+                                    <div class="drag-handle" cdkDragHandle [title]="'rarescope.dragToReorder' | translate">
                                         <i class="fa fa-grip-vertical"></i>
                                     </div>
                                 </div>
                             <div class="need-content"
                                  contenteditable="true"
-                                 [attr.data-placeholder]="'Escribe qué echas en falta que se atienda'"
+                                 [attr.data-placeholder]="'rarescope.placeholderNeed' | translate"
                                  spellcheck="false"
                                  [innerText]="additionalNeeds[i]"
                                  (blur)="onNeedBlur($event, i + 1)">
@@ -1180,6 +1187,13 @@
                                 <button class="delete-handle" (click)="deleteNeed(i + 1)" title="Eliminar">
                                     <i class="fa fa-trash"></i>
                                 </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Preview personalizado para el drag -->
+                        <div *cdkDragPreview class="custom-drag-preview">
+                            <div class="need-section">
+                                <div class="need-content">{{ need }}</div>
                             </div>
                         </div>
                     </div>

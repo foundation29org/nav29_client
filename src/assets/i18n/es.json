@@ -1477,5 +1477,14 @@
     "fieldRequired": "Este campo es requerido",
     "selectRole": "Por favor, selecciona tu rol",
     "selectKnowledgeLevel": "Por favor, selecciona tu nivel de conocimientos"
+  },
+  "rarescope":{
+    "My Needs": "Mis necesidades",
+    "rarescopeAnalysis": "Basándonos en tu perfil hemos detectado las siguientes necesidades probablemente no cubiertas de tu enfermedad",
+    "updateAnalysis": "Actualizar análisis",
+    "analyzingInformation": "Analizando tu información",
+    "tryAgain": "Reintentar",
+    "placeholderNeed": "Escribe qué echas en falta que se atienda",
+    "dragToReorder": "Arrastrar para reordenar"
   }
 }

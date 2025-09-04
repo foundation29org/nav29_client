@@ -790,7 +790,8 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
   }
 
 
-  scrollToTop() {
+  async scrollToTop() {
+    await this.delay(200);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
@@ -842,28 +843,64 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
   }
   
   saveRarescopeData() {
+    if (!this.currentPatient?.sub) {
+      console.warn('No hay paciente seleccionado para guardar datos de Rarescope');
+      return;
+    }
+
     const rarescopeData = {
       mainNeed: this.rarescopeNeeds[0],
-      additionalNeeds: this.additionalNeeds
+      additionalNeeds: this.additionalNeeds,
+      updatedAt: new Date().toISOString()
     };
-    const key = `rarescope_${this.currentPatient || 'default'}`;
-    localStorage.setItem(key, JSON.stringify(rarescopeData));
+
+    // Guardar en la base de datos
+    this.http.post(environment.api + '/api/rarescope/save/'+this.authService.getCurrentPatient().sub, rarescopeData)
+      .subscribe({
+        next: (response: any) => {
+          if (response.success) {
+            console.log('Datos de Rarescope guardados exitosamente');
+          } else {
+            console.error('Error al guardar datos de Rarescope:', response.error);
+          }
+        },
+        error: (error) => {
+          console.error('Error al guardar datos de Rarescope:', error);
+        }
+      });
   }
   
   loadRarescopeData() {
-    const key = `rarescope_${this.currentPatient || 'default'}`;
-    const savedData = localStorage.getItem(key);
-    if (savedData) {
-      try {
-        const data = JSON.parse(savedData);
-        this.rarescopeNeeds[0] = data.mainNeed || '';
-        this.additionalNeeds = data.additionalNeeds || [];
-        // Forzar detección de cambios
-        this.cdr.detectChanges();
-      } catch (e) {
-        console.error('Error loading rarescope data:', e);
-      }
+    if (!this.currentPatient?.sub) {
+      console.warn('No hay paciente seleccionado para cargar datos de Rarescope');
+      return;
     }
+
+    // Cargar desde la base de datos
+    this.http.get(environment.api + '/api/rarescope/load/'+this.authService.getCurrentPatient().sub)
+      .subscribe({
+        next: (response: any) => {
+          if (response.success && response.data) {
+            const data = response.data;
+            this.rarescopeNeeds[0] = data.mainNeed || '';
+            this.additionalNeeds = data.additionalNeeds || [];
+            // Forzar detección de cambios
+            this.cdr.detectChanges();
+          } else {
+            // Si no hay datos guardados, hacer el análisis inicial
+            if (this.rarescopeNeeds[0] === '' && this.additionalNeeds.length === 0) {
+              this.fetchRarescopeAnalysis();
+            }
+          }
+        },
+        error: (error) => {
+          console.error('Error al cargar datos de Rarescope:', error);
+          // En caso de error, intentar hacer el análisis inicial
+          if (this.rarescopeNeeds[0] === '' && this.additionalNeeds.length === 0) {
+            this.fetchRarescopeAnalysis();
+          }
+        }
+      });
   }
   
   deleteNeed(index: number) {

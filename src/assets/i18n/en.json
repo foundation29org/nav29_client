@@ -1490,5 +1490,14 @@
     "fieldRequired": "This field is required",
     "selectRole": "Please select your role",
     "selectKnowledgeLevel": "Please select your knowledge level"
+  },
+  "rarescope":{
+    "My Needs": "My Needs",
+    "rarescopeAnalysis": "Based on your profile, we have detected the following probable needs that may not be covered by your disease",
+    "updateAnalysis": "Update analysis",
+    "analyzingInformation": "Analyzing your information",
+    "tryAgain": "Try again",
+    "placeholderNeed": "Write what you feel is missing that should be addressed",
+    "dragToReorder": "Drag to reorder"
   }
 }

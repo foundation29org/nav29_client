@@ -993,6 +993,34 @@ input[type="text"],
   }
 }
 
+// Estilos para el preview personalizado del drag
+.custom-drag-preview {
+background: white;
+border: 1px solid #ddd;
+border-radius: 8px;
+box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+padding: 12px;
+max-width: 300px;
+opacity: 0.9;
+pointer-events: none;
+
+.need-section {
+margin: 0;
+
+.need-content {
+  color: #333;
+  font-size: 0.9rem;
+  line-height: 1.4;
+  margin: 0;
+}
+}
+}
+
+// Ocultar el preview por defecto del CDK
+.cdk-drag-preview {
+display: none !important;
+}
+
 @media ( max-width: 768px ){
   .card-custom {
     min-height: auto !important;
