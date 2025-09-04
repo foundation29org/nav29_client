@@ -119,18 +119,12 @@ export class ApiDx29ServerService {
       );
     }
 
-    getDifferentialDiagnosis(patientId: string, lang: string = 'en', useSummary?: boolean, excludeDiseases?: string[]) {
+    getDifferentialDiagnosis(patientId: string, lang: string = 'en', excludeDiseases?: string[], customMedicalDescription?: string) {
       const body: any = { lang: lang };
-      if (useSummary) {
-        body.useSummary = useSummary;
-      }
       
-      // Check if there's a custom medical description to use
-      const customDescription = sessionStorage.getItem('customMedicalDescription');
-      if (customDescription) {
-        body.customMedicalDescription = customDescription;
-        // Clear it after use
-        sessionStorage.removeItem('customMedicalDescription');
+      // Add custom medical description if provided
+      if (customMedicalDescription) {
+        body.customMedicalDescription = customMedicalDescription;
       }
       
       // Add diseases_list if provided

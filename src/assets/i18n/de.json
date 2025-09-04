@@ -189,7 +189,17 @@
     "noMatchingSymptoms": "Keine übereinstimmenden Symptome",
     "noAdditionalSymptoms": "Keine zusätzlichen Symptome",
     "findMoreDiagnoses": "Weitere Diagnosen finden",
-    "searchingMoreDiagnoses": "Suche nach zusätzlichen Diagnosen..."
+    "searchingMoreDiagnoses": "Suche nach zusätzlichen Diagnosen...",
+    "selectAtLeastOneSymptom": "Bitte wählen Sie mindestens ein Symptom aus",
+      "analysisUpdated": "Analyse aktualisiert",
+      "newAnalysisWithSymptoms": "Eine neue Analyse wurde mit den ausgewählten Symptomen durchgeführt.",
+      "newAnalysisWithDescription": "Eine neue Analyse wurde mit der bearbeiteten Beschreibung durchgeführt.",
+      "analysisFailed": "Die neue Analyse konnte nicht durchgeführt werden. Bitte versuchen Sie es erneut.",
+      "analysisFailedWithDescription": "Die neue Analyse konnte nicht durchgeführt werden. Die Beschreibung wurde gespeichert, aber die Diagnosen wurden nicht aktualisiert.",
+      "analysisError": "Fehler bei der Durchführung der neuen Analyse. Bitte versuchen Sie es erneut.",
+      "analysisErrorWithDescription": "Fehler bei der Durchführung der neuen Analyse. Die Beschreibung wurde gespeichert, aber die Diagnosen wurden nicht aktualisiert.",
+      "couldNotGetInfo": "Die angeforderte Information konnte nicht abgerufen werden.",
+      "errorLoadingInfo": "Fehler beim Laden der Informationen. Bitte versuchen Sie es erneut."
   },
    "categoriesPatients":{
      "title": "Patients",

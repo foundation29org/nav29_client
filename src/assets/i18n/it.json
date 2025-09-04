@@ -1496,5 +1496,17 @@
       "tryAgain": "Riprova",
       "placeholderNeed": "Scrivi quello che senti mancare e che dovrebbe essere affrontato",
       "dragToReorder": "Trascina per riordinare"
+    },
+    "dxgpt":{
+      "selectAtLeastOneSymptom": "Seleziona almeno un sintomo",
+      "analysisUpdated": "Analisi aggiornata",
+      "newAnalysisWithSymptoms": "È stata eseguita una nuova analisi con i sintomi selezionati.",
+      "newAnalysisWithDescription": "È stata eseguita una nuova analisi con la descrizione modificata.",
+      "analysisFailed": "Impossibile eseguire la nuova analisi. Riprova.",
+      "analysisFailedWithDescription": "Impossibile eseguire la nuova analisi. La descrizione è stata salvata ma le diagnosi non sono state aggiornate.",
+      "analysisError": "Errore durante l'esecuzione della nuova analisi. Riprova.",
+      "analysisErrorWithDescription": "Errore durante l'esecuzione della nuova analisi. La descrizione è stata salvata ma le diagnosi non sono state aggiornate.",
+      "couldNotGetInfo": "Impossibile ottenere le informazioni richieste.",
+      "errorLoadingInfo": "Errore nel caricamento delle informazioni. Riprova."
     }
  }

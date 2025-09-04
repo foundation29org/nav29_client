@@ -6,12 +6,11 @@ import { SearchPipe } from './search.pipe';
 import { ShortNamePipe } from './short-name.pipe';
 import { BytesPipe } from './bytes.pipe';
 import { TokensPipe } from './tokens.pipe';
-import { MarkdownPipe } from './markdown.pipe';
 
 @NgModule({
-  declarations:[FilterPipe, SearchPipe, ShortNamePipe, BytesPipe, TokensPipe, MarkdownPipe],
+  declarations:[FilterPipe, SearchPipe, ShortNamePipe, BytesPipe, TokensPipe],
   imports:[CommonModule],
-  exports:[FilterPipe, SearchPipe, ShortNamePipe, BytesPipe, TokensPipe, MarkdownPipe]
+  exports:[FilterPipe, SearchPipe, ShortNamePipe, BytesPipe, TokensPipe]
 })
 
 export class PipeModule{}

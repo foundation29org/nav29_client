@@ -190,7 +190,17 @@
     "noMatchingSymptoms": "No matching symptoms",
     "noAdditionalSymptoms": "No additional symptoms",
     "findMoreDiagnoses": "Find more diagnoses",
-    "searchingMoreDiagnoses": "Searching for additional diagnoses..."
+    "searchingMoreDiagnoses": "Searching for additional diagnoses...",
+    "selectAtLeastOneSymptom": "Please select at least one symptom",
+    "analysisUpdated": "Analysis updated",
+    "newAnalysisWithSymptoms": "A new analysis has been performed with the selected symptoms.",
+    "newAnalysisWithDescription": "A new analysis has been performed with the edited description.",
+    "analysisFailed": "Could not perform the new analysis. Please try again.",
+    "analysisFailedWithDescription": "Could not perform the new analysis. The description has been saved but the diagnoses were not updated.",
+    "analysisError": "Error performing the new analysis. Please try again.",
+    "analysisErrorWithDescription": "Error performing the new analysis. The description has been saved but the diagnoses were not updated.",
+    "couldNotGetInfo": "Could not retrieve the requested information.",
+    "errorLoadingInfo": "Error loading information. Please try again."
   },
   "categoriesPatients":{
     "title": "Patients",

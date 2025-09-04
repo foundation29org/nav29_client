@@ -330,7 +330,6 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
   previousView: string;
   private isInitialLoad = true;
   currentPatientId: string | null = null;
-  private patientSubscription: Subscription;
 
   constructor(private http: HttpClient, private authService: AuthService, public translate: TranslateService, private formBuilder: FormBuilder, private authGuard: AuthGuard, public toastr: ToastrService, private patientService: PatientService, private sortService: SortService, private modalService: NgbModal, private apiDx29ServerService: ApiDx29ServerService, private dateService: DateService, private eventsService: EventsService, private webPubSubService: WebPubSubService, private searchService: SearchService, public jsPDFService: jsPDFService, private clipboard: Clipboard, public trackEventsService: TrackEventsService, private route: ActivatedRoute, public insightsService: InsightsService, private cdr: ChangeDetectorRef, private router: Router, private langService: LangService, private highlightService: HighlightService, private activityService: ActivityService) {
     this.screenWidth = window.innerWidth;
@@ -582,14 +581,11 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
       await this.saveMessages(this.currentPatient);
     }
 
-    if (this.subscription) {
-      this.subscription.unsubscribe();
-    }
+    // Unsubscribe de todas las subscripciones
+    this.subscription.unsubscribe();
+    
     if (this.messageSubscription) {
       this.messageSubscription.unsubscribe();
-    }
-    if (this.patientSubscription) {
-      this.patientSubscription.unsubscribe();
     }
     this.eventsService.destroy();
     hopscotch.endTour(true);
@@ -699,6 +695,37 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     return date === null;
   }
 
+  /**
+   * Maneja los cambios en el paciente actual de forma centralizada
+   * @param patient - El paciente actual o null
+   */
+  private handlePatientChange(patient: any): void {
+    console.log('patient', patient);
+    
+    if (patient) {
+      // Paciente válido
+      this.isInitialLoad = false;
+      this.currentPatientId = patient.sub;
+      this.initEnvironment();
+      
+      // Limpiar resultados de DxGPT si cambias de paciente
+      if (this.currentView === 'dxgpt') {
+        this.dxGptResults = null;
+      }
+    } else {
+      // No hay paciente
+      this.currentPatientId = null;
+      this.dxGptResults = null;
+      
+      // Redirigir solo si no es la carga inicial
+      if (!this.isInitialLoad) {
+        console.log('patient is null, redirecting to patients');
+        this.router.navigate(['/patients']);
+      }
+      this.isInitialLoad = false;
+    }
+  }
+
   async ngOnInit() {
     this.showCameraButton = this.isMobileDevice();
 
@@ -706,32 +733,12 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     const dxGptLogo = new Image();
     dxGptLogo.src = 'assets/img/logo-dxgpt.png';
 
-    this.subscription.add(this.authService.currentPatient$.subscribe(patient => {
-      console.log('patient', patient);
-      if (patient) {
-        this.isInitialLoad = false;
-        this.initEnvironment();
-      }else{
-        if (!this.isInitialLoad) {
-          console.log('patient is null, redirecting to patients');
-          this.router.navigate(['/patients']);
-        }
-        this.isInitialLoad = false;
-      }
-    }));
-    
-    this.patientSubscription = this.authService.currentPatient$.subscribe(patient => {
-      if (patient && patient.sub) {
-        this.currentPatientId = patient.sub;
-        // Si cambias de paciente y estabas en la vista dxgpt, podrías querer limpiar resultados
-        if (this.currentView === 'dxgpt') {
-          this.dxGptResults = null;
-        }
-      } else {
-        this.currentPatientId = null;
-        this.dxGptResults = null; // Limpiar si no hay paciente
-      }
-    });
+    // Una sola suscripción que maneja toda la lógica del paciente
+    this.subscription.add(
+      this.authService.currentPatient$.subscribe(patient => {
+        this.handlePatientChange(patient);
+      })
+    );
     let currentLang = this.translate.currentLang;
     await this.updateSuggestions(currentLang);
     this.getTranslations();
@@ -4687,9 +4694,8 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     console.log('3. Calling API service...');
     // Get current language from localStorage
     const currentLang = localStorage.getItem('lang') || 'en';
-    // Suponiendo que quieres usar el resumen (useSummary: true)
-    // Cambia a false o quita el segundo argumento si no quieres usar el resumen.
-    this.apiDx29ServerService.getDifferentialDiagnosis(this.currentPatientId, currentLang, false, null).subscribe({
+    // Call the DxGPT API to get initial diagnosis
+    this.apiDx29ServerService.getDifferentialDiagnosis(this.currentPatientId, currentLang, null).subscribe({
       next: (res: any) => {
         console.log('4. API Response received:', res);
         console.log('4.1. res.success:', res.success);
@@ -4862,12 +4868,8 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
       // Get current patient context if needed for questions 3 and 4
       let medicalDescription = undefined;
       if (questionIndex === 3 || questionIndex === 4) {
-        // Check if there's a custom description in sessionStorage first
-        const customDescription = sessionStorage.getItem('customMedicalDescription');
-        if (customDescription) {
-          medicalDescription = customDescription;
-        } else if (this.dxGptResults.analysis.anonymization && this.dxGptResults.analysis.anonymization.anonymizedText) {
-          // Try to get medical description from the original patient summary
+        // Use the current anonymized text from the component state
+        if (this.dxGptResults.analysis.anonymization && this.dxGptResults.analysis.anonymization.anonymizedText) {
           medicalDescription = this.dxGptResults.analysis.anonymization.anonymizedText;
         }
       }
@@ -4894,14 +4896,14 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
           let content = response.data.content;
           this.questionResponses.set(cacheKey, content);
         } else {
-          this.questionResponses.set(cacheKey, '<p>No se pudo obtener la información solicitada.</p>');
+          this.questionResponses.set(cacheKey, '<p>' + this.translate.instant('dxgpt.couldNotGetInfo') + '</p>');
         }
       }
       
       
     } catch (error) {
       console.error('Error fetching disease info:', error);
-      this.questionResponses.set(cacheKey, '<p>Error al cargar la información. Por favor, intente nuevamente.</p>');
+      this.questionResponses.set(cacheKey, '<p>' + this.translate.instant('dxgpt.errorLoadingInfo') + '</p>');
     } finally {
       // Remove loading state
       this.loadingQuestions.set(cacheKey, false);
@@ -4920,7 +4922,7 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
 
     const selected = allSymptoms.filter(s => s.checked).map(s => s.name);
     if (selected.length === 0) {
-      Swal.fire('Selecciona al menos un síntoma', '', 'info');
+      Swal.fire(this.translate.instant('dxgpt.selectAtLeastOneSymptom'), '', 'info');
       return;
     }
 
@@ -4939,15 +4941,12 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     // Set loading state for DxGPT
     this.isDxGptLoading = true;
 
-    // Store the combined description temporarily
-    sessionStorage.setItem('customMedicalDescription', combinedDescription);
-
-    // Call the DxGPT API with the updated description
+    // Call the DxGPT API with the updated description directly
     this.apiDx29ServerService.getDifferentialDiagnosis(
       this.actualPatient.sub,
       this.translate.currentLang,
-      true, // useSummary
-      null // no diseases to exclude
+      null, // no diseases to exclude
+      combinedDescription // pass the combined description directly
     ).subscribe({
       next: (res) => {
         console.log('DxGPT rerun response:', res);
@@ -4956,8 +4955,8 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
           // Show success message
           Swal.fire({
             icon: 'success',
-            title: 'Análisis actualizado',
-            text: 'Se ha realizado un nuevo análisis con los síntomas seleccionados.',
+            title: this.translate.instant('dxgpt.analysisUpdated'),
+            text: this.translate.instant('dxgpt.newAnalysisWithSymptoms'),
             timer: 2000,
             showConfirmButton: false
           });
@@ -4965,8 +4964,8 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
           console.error('DxGPT rerun failed:', res);
           Swal.fire({
             icon: 'error',
-            title: 'Error',
-            text: 'No se pudo realizar el nuevo análisis. Por favor, intente nuevamente.'
+            title: this.translate.instant('generics.Error'),
+            text: this.translate.instant('dxgpt.analysisFailed')
           });
         }
         this.isDxGptLoading = false;
@@ -4976,18 +4975,10 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
         this.isDxGptLoading = false;
         Swal.fire({
           icon: 'error',
-          title: 'Error',
-          text: 'Error al realizar el nuevo análisis. Por favor, intente nuevamente.'
+          title: this.translate.instant('generics.Error'),
+          text: this.translate.instant('dxgpt.analysisError')
         });
       }
-    });
-  }
-
-  private generateUUID(): string {
-    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-      const r = Math.random() * 16 | 0;
-      const v = c == 'x' ? r : (r & 0x3 | 0x8);
-      return v.toString(16);
     });
   }
 
@@ -5002,7 +4993,6 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     this.apiDx29ServerService.getDifferentialDiagnosis(
       this.actualPatient.sub,
       this.translate.currentLang,
-      true, // useSummary
       currentDiseases // diseases to exclude
     ).subscribe({
       next: (res) => {
@@ -5087,9 +5077,6 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
       return;
     }
 
-    // Store the edited description for API call
-    sessionStorage.setItem('customMedicalDescription', this.editedPatientInfo);
-    
     // Close edit mode
     this.isEditingPatientInfo = false;
 
@@ -5102,12 +5089,12 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     // Set loading state
     this.isDxGptLoading = true;
 
-    // Re-run the differential diagnosis with the edited description
+    // Re-run the differential diagnosis with the edited description directly
     this.apiDx29ServerService.getDifferentialDiagnosis(
       this.actualPatient.sub,
       this.translate.currentLang,
-      true, // useSummary
-      null // no diseases to exclude
+      null, // no diseases to exclude
+      this.editedPatientInfo // pass the edited description directly
     ).subscribe({
       next: (res) => {
         console.log('DxGPT response after edit:', res);
@@ -5117,8 +5104,8 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
           // Show success message
           Swal.fire({
             icon: 'success',
-            title: 'Análisis actualizado',
-            text: 'Se ha realizado un nuevo análisis con la descripción editada.',
+            title: this.translate.instant('dxgpt.analysisUpdated'),
+            text: this.translate.instant('dxgpt.newAnalysisWithDescription'),
             timer: 2000,
             showConfirmButton: false
           });
@@ -5132,8 +5119,8 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
           
           Swal.fire({
             icon: 'error',
-            title: 'Error',
-            text: 'No se pudo realizar el nuevo análisis. La descripción se ha guardado pero los diagnósticos no se actualizaron.'
+            title: this.translate.instant('generics.Error'),
+            text: this.translate.instant('dxgpt.analysisFailedWithDescription')
           });
         }
         this.isDxGptLoading = false;
@@ -5149,8 +5136,8 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
         
         Swal.fire({
           icon: 'error',
-          title: 'Error',
-          text: 'Error al realizar el nuevo análisis. La descripción se ha guardado pero los diagnósticos no se actualizaron.'
+          title: this.translate.instant('generics.Error'),
+          text: this.translate.instant('dxgpt.analysisErrorWithDescription')
         });
       }
     });

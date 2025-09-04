@@ -1498,5 +1498,17 @@
       "tryAgain": "Réessayer",
       "placeholderNeed": "Écrivez ce que vous pensez manquer et qui devrait être traité",
       "dragToReorder": "Glisser pour réorganiser"
+    },
+    "dxgpt":{
+      "selectAtLeastOneSymptom": "Veuillez sélectionner au moins un symptôme",
+      "analysisUpdated": "Analyse mise à jour",
+      "newAnalysisWithSymptoms": "Une nouvelle analyse a été effectuée avec les symptômes sélectionnés.",
+      "newAnalysisWithDescription": "Une nouvelle analyse a été effectuée avec la description modifiée.",
+      "analysisFailed": "Impossible d'effectuer la nouvelle analyse. Veuillez réessayer.",
+      "analysisFailedWithDescription": "Impossible d'effectuer la nouvelle analyse. La description a été sauvegardée mais les diagnostics n'ont pas été mis à jour.",
+      "analysisError": "Erreur lors de l'exécution de la nouvelle analyse. Veuillez réessayer.",
+      "analysisErrorWithDescription": "Erreur lors de l'exécution de la nouvelle analyse. La description a été sauvegardée mais les diagnostics n'ont pas été mis à jour.",
+      "couldNotGetInfo": "Impossible d'obtenir les informations demandées.",
+      "errorLoadingInfo": "Erreur lors du chargement des informations. Veuillez réessayer."
     }
  }
