@@ -170,6 +170,38 @@
       "description": "Obtén un resumen formal de tu historial médico, con los datos necesarios para trámites de seguros o gestiones administrativas de salud."
     }
   },
+  "dxgpt": {
+    "description": "Analiza automáticamente la información clínica que ingresas, incluyendo informes, notas y eventos registrados, y genera una lista estructurada de posibles diagnósticos basada en patrones de síntomas extraídos.",
+    "analyze": "Analizar",
+    "button": "Diagnósticos",
+    "analyzing": "Analizando",
+    "patientInfo": "Información del paciente",
+    "possibleDiagnoses": "Posibles diagnósticos",
+    "moreInfo": "Más información",
+    "matchingSymptoms": "Síntomas coincidentes",
+    "additionalSymptoms": "Síntomas no coincidentes",
+    "commonSymptoms": "❓ ¿Cuáles son los síntomas comunes?",
+    "detailedInformation": "❓ ¿Cuál es la información detallada sobre la enfermedad?",
+    "diagnosticTests": "❓ ¿Qué pruebas diagnósticas se recomiendan?",
+    "differentialSymptoms": "❓ ¿Cuáles son los síntomas diferenciales en este caso?",
+    "symptomMatches": "❓ ¿Qué coincidencias hay entre los síntomas del paciente y la enfermedad?",
+    "reanalyzeWithSymptoms": "Reanalizar con síntomas seleccionados",
+    "enterPatientDescription": "Ingrese la descripción del paciente...",
+    "noMatchingSymptoms": "No hay síntomas coincidentes",
+    "noAdditionalSymptoms": "No hay síntomas adicionales",
+    "findMoreDiagnoses": "Buscar más diagnósticos",
+    "searchingMoreDiagnoses": "Buscando diagnósticos adicionales...",
+    "selectAtLeastOneSymptom": "Selecciona al menos un síntoma",
+    "analysisUpdated": "Análisis actualizado",
+    "newAnalysisWithSymptoms": "Se ha realizado un nuevo análisis con los síntomas seleccionados.",
+    "newAnalysisWithDescription": "Se ha realizado un nuevo análisis con la descripción editada.",
+    "analysisFailed": "No se pudo realizar el nuevo análisis. Por favor, intente nuevamente.",
+    "analysisFailedWithDescription": "No se pudo realizar el nuevo análisis. La descripción se ha guardado pero los diagnósticos no se actualizaron.",
+    "analysisError": "Error al realizar el nuevo análisis. Por favor, intente nuevamente.",
+    "analysisErrorWithDescription": "Error al realizar el nuevo análisis. La descripción se ha guardado pero los diagnósticos no se actualizaron.",
+    "couldNotGetInfo": "No se pudo obtener la información solicitada.",
+    "errorLoadingInfo": "Error al cargar la información. Por favor, intente nuevamente."
+  },
   "categoriesPatients":{
     "title": "Pacientes",
     "list":{
@@ -869,6 +901,7 @@
     "Uploaded on": "Subido el",
     "Go top": "Ir arriba",
     "Me": "Yo",
+    "Loading": "Cargando",
     "The patient does not have any information yet": "El paciente no tiene ninguna información todavía",
     "Save all": "Guardar todo",
     "Delete all": "Eliminar todo",
@@ -1013,9 +1046,10 @@
     "Save changes": "Guardar cambios",
     "To download the file": "Para descargar el archivo acceda desde su navegador",
     "Unknown": "Desconocido",
-    "Saving": "Guardando",
-    "Write a message": "Escribe un mensaje",
-    "Not provided": "No proporcionado",
+           "Saving": "Guardando",
+       "Write a message": "Escribe un mensaje",
+       "Please write a message": "Por favor, escribe un mensaje",
+       "Not provided": "No proporcionado",
     "actualEvent": "Si actualmente lo tiene, no seleccione la fecha de finalización.",
     "Select a category": "Seleccione una categoría",
     "Back to categories": "Volver a categorías",
@@ -1453,5 +1487,14 @@
     "fieldRequired": "Este campo es requerido",
     "selectRole": "Por favor, selecciona tu rol",
     "selectKnowledgeLevel": "Por favor, selecciona tu nivel de conocimientos"
+  },
+  "rarescope":{
+    "My Needs": "Mis necesidades",
+    "rarescopeAnalysis": "Basándonos en tu perfil hemos detectado las siguientes necesidades probablemente no cubiertas de tu enfermedad",
+    "updateAnalysis": "Actualizar análisis",
+    "analyzingInformation": "Analizando tu información",
+    "tryAgain": "Reintentar",
+    "placeholderNeed": "Escribe qué echas en falta que se atienda",
+    "dragToReorder": "Arrastrar para reordenar"
   }
 }

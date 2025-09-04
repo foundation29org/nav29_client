@@ -170,6 +170,38 @@
       "description": "Get a formal summary of your medical history, with the necessary data for insurance procedures or health administrative tasks."
     }
   },
+  "dxgpt": {
+    "description": "Automatically analyzes the clinical information you enter, including reports, notes and recorded events, and generates a structured list of possible diagnoses based on extracted symptom patterns.",
+    "analyze": "Analyze",
+    "button": "Diagnoses",
+    "analyzing": "Analyzing",
+    "patientInfo": "Patient Information",
+    "possibleDiagnoses": "Possible Diagnoses",
+    "moreInfo": "Learn More",
+    "matchingSymptoms": "Matching Symptoms",
+    "additionalSymptoms": "Non-matching Symptoms",
+    "commonSymptoms": "❓ What are the common symptoms?",
+    "detailedInformation": "❓ What is the detailed information about the disease?",
+    "diagnosticTests": "❓ What diagnostic tests are recommended?",
+    "differentialSymptoms": "❓ What are the differential symptoms in this case?",
+    "symptomMatches": "❓ What matches are there between the patient's symptoms and the disease?",
+    "reanalyzeWithSymptoms": "Reanalyze with selected symptoms",
+    "enterPatientDescription": "Enter patient description...",
+    "noMatchingSymptoms": "No matching symptoms",
+    "noAdditionalSymptoms": "No additional symptoms",
+    "findMoreDiagnoses": "Find more diagnoses",
+    "searchingMoreDiagnoses": "Searching for additional diagnoses...",
+    "selectAtLeastOneSymptom": "Please select at least one symptom",
+    "analysisUpdated": "Analysis updated",
+    "newAnalysisWithSymptoms": "A new analysis has been performed with the selected symptoms.",
+    "newAnalysisWithDescription": "A new analysis has been performed with the edited description.",
+    "analysisFailed": "Could not perform the new analysis. Please try again.",
+    "analysisFailedWithDescription": "Could not perform the new analysis. The description has been saved but the diagnoses were not updated.",
+    "analysisError": "Error performing the new analysis. Please try again.",
+    "analysisErrorWithDescription": "Error performing the new analysis. The description has been saved but the diagnoses were not updated.",
+    "couldNotGetInfo": "Could not retrieve the requested information.",
+    "errorLoadingInfo": "Error loading information. Please try again."
+  },
   "categoriesPatients":{
     "title": "Patients",
     "list": {
@@ -882,6 +914,7 @@
     "Uploaded on": "Uploaded on",
     "Go top": "Go top",
     "Me": "Me",
+    "Loading": "Loading",
     "The patient does not have any information yet": "The patient does not have any information yet",
     "Save all": "Save all",
     "Delete all": "Delete all",
@@ -1026,9 +1059,10 @@
     "Save changes": "Save changes",
     "To download the file": "To download the file, access it from your browser",
     "Unknown": "Unknown",
-    "Saving": "Saving",
-    "Write a message": "Write a message",
-    "Not provided": "Not provided",
+           "Saving": "Saving",
+       "Write a message": "Write a message",
+       "Please write a message": "Please write a message",
+       "Not provided": "Not provided",
     "actualEvent": "If you currently have it, do not select the end date.",
     "Select a category": "Select a category",
     "Back to categories": "Back to categories",
@@ -1466,5 +1500,14 @@
     "fieldRequired": "This field is required",
     "selectRole": "Please select your role",
     "selectKnowledgeLevel": "Please select your knowledge level"
+  },
+  "rarescope":{
+    "My Needs": "My Needs",
+    "rarescopeAnalysis": "Based on your profile, we have detected the following probable needs that may not be covered by your disease",
+    "updateAnalysis": "Update analysis",
+    "analyzingInformation": "Analyzing your information",
+    "tryAgain": "Try again",
+    "placeholderNeed": "Write what you feel is missing that should be addressed",
+    "dragToReorder": "Drag to reorder"
   }
 }

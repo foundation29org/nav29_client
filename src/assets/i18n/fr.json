@@ -170,6 +170,27 @@
       "description": "Obtenez un résumé formel de votre historique médical, avec les données nécessaires pour les procédures d'assurance ou les tâches administratives de santé."
     }
   },
+  "dxgpt": {
+    "description": "Analyse automatiquement les informations cliniques que vous saisissez, y compris les rapports, les notes et les événements enregistrés, et génère une liste structurée de diagnostics possibles basée sur les modèles de symptômes extraits.",
+    "analyze": "Analyser",
+    "button": "Diagnostics",
+    "analyzing": "Analyse en cours",
+    "patientInfo": "Informations du patient",
+    "possibleDiagnoses": "Diagnostics possibles",
+    "moreInfo": "En savoir plus",
+    "matchingSymptoms": "Symptômes correspondants",
+    "additionalSymptoms": "Symptômes non correspondants",
+    "commonSymptoms": "❓ Quels sont les symptômes courants ?",
+    "detailedInformation": "❓ Quelles sont les informations détaillées sur la maladie ?",
+    "diagnosticTests": "❓ Quels tests diagnostiques sont recommandés ?",
+    "differentialSymptoms": "❓ Quels sont les symptômes différentiels dans ce cas ?",
+    "symptomMatches": "❓ Quelles sont les correspondances entre les symptômes du patient et la maladie ?",
+    "reanalyzeWithSymptoms": "Réanalyser avec les symptômes sélectionnés",
+    "noMatchingSymptoms": "Aucun symptôme correspondant",
+    "noAdditionalSymptoms": "Aucun symptôme supplémentaire",
+    "findMoreDiagnoses": "Rechercher plus de diagnostics",
+    "searchingMoreDiagnoses": "Recherche de diagnostics supplémentaires..."
+  },
    "categoriesPatients":{
      "title": "Patients",
      "list": {
@@ -883,6 +904,7 @@
       "Uploaded on": "Téléchargé sur",
       "Go top": "Aller au sommet",
       "Me": "Moi",
+      "Loading": "Chargement",
       "The patient does not have any information yet":"Le patient n'a pas encore d'informations",
       "Save all": "Tout sauvegarder",
       "Delete all": "Supprimer tout",
@@ -1029,6 +1051,7 @@
        "Unknown":"Inconnu",
        "Saving":"Sauvegarde",
        "Write a message": "Écrivez un message",
+       "Please write a message": "Veuillez écrire un message",
        "Not provided": "Non fourni",
        "actualEvent": "Si vous l'avez actuellement, ne sélectionnez pas la date de fin.",
        "Select a category": "Sélectionnez une catégorie",
@@ -1466,5 +1489,26 @@
       "fieldRequired": "Ce champ est requis",
       "selectRole": "Veuillez sélectionner votre rôle",
       "selectKnowledgeLevel": "Veuillez sélectionner votre niveau de connaissances"
+    },
+    "rarescope":{
+      "My Needs": "Mes besoins",
+      "rarescopeAnalysis": "Basé sur votre profil, nous avons détecté les besoins suivants qui pourraient ne pas être couverts par votre maladie",
+      "updateAnalysis": "Mettre à jour l'analyse",
+      "analyzingInformation": "Analyse des informations",
+      "tryAgain": "Réessayer",
+      "placeholderNeed": "Écrivez ce que vous pensez manquer et qui devrait être traité",
+      "dragToReorder": "Glisser pour réorganiser"
+    },
+    "dxgpt":{
+      "selectAtLeastOneSymptom": "Veuillez sélectionner au moins un symptôme",
+      "analysisUpdated": "Analyse mise à jour",
+      "newAnalysisWithSymptoms": "Une nouvelle analyse a été effectuée avec les symptômes sélectionnés.",
+      "newAnalysisWithDescription": "Une nouvelle analyse a été effectuée avec la description modifiée.",
+      "analysisFailed": "Impossible d'effectuer la nouvelle analyse. Veuillez réessayer.",
+      "analysisFailedWithDescription": "Impossible d'effectuer la nouvelle analyse. La description a été sauvegardée mais les diagnostics n'ont pas été mis à jour.",
+      "analysisError": "Erreur lors de l'exécution de la nouvelle analyse. Veuillez réessayer.",
+      "analysisErrorWithDescription": "Erreur lors de l'exécution de la nouvelle analyse. La description a été sauvegardée mais les diagnostics n'ont pas été mis à jour.",
+      "couldNotGetInfo": "Impossible d'obtenir les informations demandées.",
+      "errorLoadingInfo": "Erreur lors du chargement des informations. Veuillez réessayer."
     }
  }
