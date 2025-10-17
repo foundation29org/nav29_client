@@ -511,11 +511,6 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
       }
     ];
 
-    // Filtrar steps según el rol
-      if (this.role === 'Caregiver') {
-        steps = steps.slice(1); // Elimina el primer step
-      }
-
     return {
       id: 'demo-tour',
       showPrevButton: true,
@@ -754,11 +749,12 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     this.eventsService.on('changeView', this.handleChangeView.bind(this));
     
 
-    if (this.authService.getRole() === 'Caregiver') {
+    /*if (this.authService.getRole() === 'Caregiver') {
       this.currentView = 'diary';
     } else {
       this.currentView = 'chat';
-    }
+    }*/
+      this.currentView = 'chat';
   }
 
   setView(view: string) {

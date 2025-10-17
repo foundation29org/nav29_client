@@ -9,7 +9,7 @@
     class="navigation-menu border-bottom d-flex justify-content-center align-items-center py-2 w-100">
     <div class="btn-group w-100 px-2" role="group">
         <!-- view documents-->
-        <button *ngIf="role != 'Caregiver'" class="btn btn-dark flex-grow-1"
+        <button class="btn btn-dark flex-grow-1"
             [ngClass]="{'active-view': currentView === 'documents'}"
             (click)="setView('documents')" title="{{'topnavbar.Reports' | translate}}">
             <i class="fa fa-file-text"></i>
@@ -62,7 +62,7 @@
             </div>
         </div>
         <div *ngIf="!isSmallScreen()"
-            class="fixed-buttons-container border-bottom d-flex justify-content-between align-items-center" [ngClass]="{'left300': currentView === 'chat' && role != 'Caregiver'}" style="background-color: #fff;">
+            class="fixed-buttons-container border-bottom d-flex justify-content-between align-items-center" [ngClass]="{'left300': currentView === 'chat'}" style="background-color: #fff;">
             <div class="flex-grow-1 d-flex justify-content-center remove-background">
                 <!-- Chat Button -->
                 <button class="btn btn-dark mx-2"
@@ -111,7 +111,7 @@
             </div>
         </div>
 
-        <div *ngIf="currentView != 'diary' && currentView != 'notes' && currentView != 'dxgpt' && currentView != 'rarescope' && role != 'Caregiver'" class="sidebar border-right"
+        <div *ngIf="currentView != 'diary' && currentView != 'notes' && currentView != 'dxgpt' && currentView != 'rarescope'" class="sidebar border-right"
             [ngClass]="{'open': sidebarOpen || !isSmallScreen()}">
             <div class="sidebar-content" id="sidebar-content">
                 <!-- Header -->
@@ -244,7 +244,7 @@
                 </div>
             </div>
         </div>
-        <div class="content" *ngIf="currentView === 'chat'" [ngClass]="{'mleft300': role != 'Caregiver', 'mt-1': isSmallScreen() && messages.length == 0}">
+        <div class="content mleft300" *ngIf="currentView === 'chat'" [ngClass]="{'mt-1': isSmallScreen() && messages.length == 0}">
             <ng-container>
                 <div class="mt-2 mx-auto" style="max-width: 60rem !important;">
                     <ng-container *ngIf="messages.length < 1" class="main-chat-container">
@@ -506,6 +506,8 @@
                                                 </label>
                                                 <span class="text-muted small d-block">{{'demo.Max. 5 documents' |
                                                     translate }}</span>
+                                                <span class="text-muted small d-block">{{'demo.You can upload more files later' |
+                                                    translate }}</span>
                                             </div>
                                             <div [ngClass]="{'col-md-4': showCameraButton, 'col-6': !showCameraButton}">
                                                 <div><button style="min-height: 45px;" class="btn btn-sm btn-dark mt-2"
@@ -697,7 +699,7 @@
                             <input type="text" [(ngModel)]="message" [disabled]="callingOpenai"
                                 placeholder="{{'generics.Write a message' | translate }}..."
                                 (keydown.enter)="sendMessage()" class="mt-0 border-0 mr-2 flex-grow-1">
-                            <button *ngIf="role != 'Caregiver'" class="mr-1 btn btn-secondary" title="{{'generics.Upload' | translate }}"
+                            <button class="mr-1 btn btn-secondary" title="{{'generics.Upload' | translate }}"
                                 style="padding: 0.2rem 0.57rem;" [disabled]="callingOpenai"
                                 (click)="openOptionsFiles(contentviewSelectFile)">
                                 <em class="fa fa-paperclip fa-rotate-180 h-4 w-auto" width="1em" height="1em"
@@ -2166,6 +2168,7 @@
                                 for="fileDropRef">{{'generics.Upload' | translate }}
                             </label>
                             <span class="text-muted small d-block">{{'demo.Max. 5 documents' | translate }}</span>
+                            <span class="text-muted small d-block">{{'demo.You can upload more files later' | translate }}</span>
                         </div>
                         <div [ngClass]="{'col-md-4 mb-2': showCameraButton, 'col-6 mb-2': !showCameraButton}">
                             <div class="col-md-12">
