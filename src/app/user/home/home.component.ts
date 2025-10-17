@@ -3285,7 +3285,12 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     this.newPermission.notes = this.translate.instant("open.Notecustom");
     this.generateUrlQr = this.urlOpenNav29 + this.newPermission.token;
     const qrCodeDataURL = await QRCode.toDataURL(this.generateUrlQr);
-    this.jsPDFService.generateResultsPDF(this.summaryJson.data, localStorage.getItem('lang'), null)
+    
+    // Usar método alternativo nativo del navegador
+    this.jsPDFService.generateResultsPDFNative(this.summaryJson.data, localStorage.getItem('lang'), qrCodeDataURL);
+    
+    // Método original jsPDF (comentado para usar como respaldo)
+    // this.jsPDFService.generateResultsPDF(this.summaryJson.data, localStorage.getItem('lang'), null)
 
     /*
     this.jsPDFService.generateResultsPDF(this.summaryJson, localStorage.getItem('lang'), qrCodeDataURL)

@@ -409,12 +409,180 @@ export class jsPDFService {
         doc.save('Nav29_Report_' + date + '.pdf');
     }
 
+    // Método alternativo usando capacidades nativas del navegador
+    generateResultsPDFNative(htmlContent: string, lang: string, qrCodeDataURL: string | null) {
+        this.lang = lang;
+        
+        // Crear un documento HTML completo con estilos
+        const fullHTML = `
+        <!DOCTYPE html>
+        <html lang="${lang}">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Nav29 Medical Report</title>
+            <style>
+                @page {
+                    size: A4;
+                    margin: 20mm;
+                }
+                body {
+                    font-family: Arial, sans-serif;
+                    line-height: 1.6;
+                    color: #333;
+                    margin: 0;
+                    padding: 0;
+                }
+                .header {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: flex-start;
+                    margin-bottom: 20px;
+                    border-bottom: 2px solid #005a9c;
+                    padding-bottom: 10px;
+                }
+                .logo {
+                    height: 40px;
+                }
+                .date {
+                    font-size: 12px;
+                    color: #666;
+                }
+                .qr-section {
+                    text-align: center;
+                }
+                .qr-code {
+                    width: 60px;
+                    height: 60px;
+                    margin-bottom: 5px;
+                }
+                .qr-text {
+                    font-size: 8px;
+                    color: #666;
+                }
+                h4 {
+                    color: #005a9c;
+                    font-size: 18px;
+                    margin: 20px 0 10px 0;
+                }
+                h5 {
+                    color: #005a9c;
+                    font-size: 14px;
+                    margin: 15px 0 8px 0;
+                }
+                h6 {
+                    color: #333;
+                    font-size: 12px;
+                    margin: 10px 0 5px 0;
+                }
+                p {
+                    margin: 8px 0;
+                    text-align: justify;
+                }
+                ul {
+                    margin: 8px 0;
+                    padding-left: 20px;
+                }
+                li {
+                    margin: 4px 0;
+                }
+                table {
+                    width: 100%;
+                    border-collapse: collapse;
+                    margin: 10px 0;
+                }
+                td {
+                    padding: 4px;
+                    border: none;
+                }
+                b, strong {
+                    font-weight: bold;
+                }
+                i, em {
+                    font-style: italic;
+                }
+                .footer {
+                    position: fixed;
+                    bottom: 0;
+                    left: 0;
+                    right: 0;
+                    height: 30px;
+                    background: #f8f9fa;
+                    border-top: 1px solid #ddd;
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    padding: 0 20px;
+                    font-size: 10px;
+                    color: #666;
+                }
+                .page-break {
+                    page-break-before: always;
+                }
+                @media print {
+                    .no-print {
+                        display: none;
+                    }
+                }
+            </style>
+        </head>
+        <body>
+            <div class="header">
+                <div>
+                    <img src="assets/img/logo-lg-white.png" alt="Nav29" class="logo">
+                </div>
+                <div class="date">${this.getFormatDate(new Date())}</div>
+                <div class="qr-section">
+                    ${qrCodeDataURL ? 
+                        `<img src="${qrCodeDataURL}" alt="QR Code" class="qr-code">
+                         <div class="qr-text">${this.translate.instant("pdf.Scan to view the patient data")}</div>` :
+                        `<img src="assets/img/elements/qr.png" alt="QR Code" class="qr-code">
+                         <div class="qr-text">https://nav29.org</div>`
+                    }
+                </div>
+            </div>
+            
+            <div class="content">
+                ${htmlContent}
+            </div>
+            
+            <div class="footer">
+                <div>foundation twenty-nine</div>
+                <div id="page-info">Página 1/1</div>
+                <div>https://nav29.org</div>
+            </div>
+        </body>
+        </html>
+        `;
+        
+        // Crear una ventana nueva para imprimir
+        const printWindow = window.open('', '_blank');
+        if (printWindow) {
+            printWindow.document.write(fullHTML);
+            printWindow.document.close();
+            
+            // Esperar a que se carguen las imágenes
+            printWindow.onload = () => {
+                // Actualizar información de páginas
+                const pageInfo = printWindow.document.getElementById('page-info');
+                if (pageInfo) {
+                    pageInfo.textContent = this.translate.instant("pdf.page") + ' 1/1';
+                }
+                
+                // Configurar para imprimir como PDF
+                setTimeout(() => {
+                    printWindow.print();
+                }, 1000);
+            };
+        }
+    }
+
     generateResultsPDF(htmlContent: string, lang: string, qrCodeDataURL: string | null) {
         this.lang = lang;
         const doc = new jsPDF();
         let lineText = 0;
         const maxCharsPerLine = 200;
-    
+    console.log(htmlContent);
         // Header
         var img_logo = new Image();
         img_logo.src = "assets/img/logo-lg-white.png"
