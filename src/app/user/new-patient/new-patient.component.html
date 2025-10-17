@@ -67,6 +67,7 @@
                             accept=".pdf, .docx, .jpg, .png, .jpeg, .bmp, .tiff, .heif, .pptx, .txt" />
                             <label for="fileDropRef" class="btn btn-dark btn-sm text-bold-700 mt-2" style="z-index:2;position: relative;" (change)="onFileChangePDF($event);">{{'generics.Upload' | translate }}</label>
                             <span class="text-muted small d-block">{{'demo.Max. 5 documents' | translate }}</span>
+                            <span class="text-muted small d-block">{{'demo.You can upload more files later' | translate }}</span>
                         </div>
                     </div>
                     <div [ngClass]="{'col-md-4': showCameraButton, 'col-6': !showCameraButton}">
