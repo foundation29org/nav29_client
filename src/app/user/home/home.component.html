@@ -871,7 +871,12 @@
                                     <i class="fa fa-pencil"></i>
                                 </button>
                             </div>
-                            <p class="patient-info-text" *ngIf="!isEditingPatientInfo">{{ dxGptResults.analysis.anonymization.anonymizedText }}</p>
+                            <div class="patient-info-text" *ngIf="!isEditingPatientInfo">
+                              <div *ngIf="dxGptResults.analysis.anonymization.anonymizedTextHtml" 
+                                   [innerHTML]="dxGptResults.analysis.anonymization.anonymizedTextHtml"></div>
+                              <div *ngIf="!dxGptResults.analysis.anonymization.anonymizedTextHtml" 
+                                   [style.white-space]="'pre-line'">{{ dxGptResults.analysis.anonymization.anonymizedText }}</div>
+                            </div>
                             
                             <!-- Edit mode -->
                             <div *ngIf="isEditingPatientInfo" class="patient-info-edit">
