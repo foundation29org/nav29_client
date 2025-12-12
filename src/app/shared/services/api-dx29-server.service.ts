@@ -91,6 +91,22 @@ export class ApiDx29ServerService {
       );
     }
 
+    /**
+     * Obtiene SAS token y containerName correcto para un paciente
+     * @param patientId - El patientId encriptado (ej: currentPatient.sub)
+     */
+    getAzureBlobSasTokenForPatient(patientId: string){
+      return this.http.get(environment.api+'/api/getAzureBlobSasTokenForPatient/'+patientId).pipe(
+        map((res: any) => {
+          return {
+            containerSAS: res.containerSAS,
+            containerName: res.containerName
+          };
+        }),
+        catchError(this.handleError)
+      );
+    }
+
     vote(info) {
       return this.http.post(environment.api + '/api/vote', info).pipe(
         map((res: any) => {
