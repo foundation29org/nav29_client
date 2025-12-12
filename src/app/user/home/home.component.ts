@@ -1543,7 +1543,7 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
   initEnvironment() {
     this.actualPatient = this.authService.getCurrentPatient();
     this.currentPatient = this.authService.getCurrentPatient().sub;
-    this.containerName = this.currentPatient.substr(1);
+    // containerName se obtiene del servidor en getAzureBlobSasToken()
     this.getDocs();
     this.getAzureBlobSasToken();
     this.getMessages();
@@ -1597,12 +1597,13 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
   }
 
   getAzureBlobSasToken() {
-    this.accessToken.containerName = this.containerName;
     this.accessToken.patientId = this.currentPatient;
 
-    this.subscription.add(this.apiDx29ServerService.getAzureBlobSasToken(this.accessToken.containerName)
+    this.subscription.add(this.apiDx29ServerService.getAzureBlobSasTokenForPatient(this.currentPatient)
       .subscribe((res: any) => {
-        this.accessToken.sasToken = '?' + res;
+        this.accessToken.sasToken = '?' + res.containerSAS;
+        this.accessToken.containerName = res.containerName;
+        this.containerName = res.containerName;
       }, (err) => {
         console.log(err);
         this.insightsService.trackException(err);

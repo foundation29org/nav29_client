@@ -147,7 +147,8 @@ export class NewPatientComponent implements OnInit, OnDestroy {
     if (res.patientInfo) {
       this.actualPatient = res.patientInfo;
       this.currentPatient = res.patientInfo.sub;
-      this.containerName = this.currentPatient.substr(1);
+      // containerName ya no se calcula en cliente, el servidor lo determina
+      this.containerName = '';
       this.ShowFormInitialEvents();
       this.authService.setCurrentPatient(this.actualPatient);
     }else{
