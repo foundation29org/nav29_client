@@ -71,7 +71,8 @@ export class LoginCompPageComponent implements OnDestroy, OnInit{
   listEvidences: any[] = [];
 
     constructor(private router: Router, public authService: AuthService, public translate: TranslateService, public toastr: ToastrService, public authServiceFirebase: AuthServiceFirebase, private modalService: NgbModal, private ngZone: NgZone, private goCertiusService: GoCertiusService, private http: HttpClient, private patientService: PatientService, private apiDx29ServerService: ApiDx29ServerService, private route: ActivatedRoute) {
-      if(this.authService.getEnvironment()){
+      // Solo redirigir si hay una sesión válida confirmada (no mientras se verifica)
+      if(this.authService.getEnvironment() && this.authService.isAuthenticated() && this.authService.getIdUser()){
 
         var param = this.router.parseUrl(this.router.url).queryParams;
         if (param.key && param.token) {

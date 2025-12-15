@@ -164,7 +164,6 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
   message = '';
   callingOpenai: boolean = false;
 
-  valueProm: any = {};
   tempInput: string = '';
   detectedLang: string = 'en';
   preferredResponseLanguage: string = 'en';
@@ -2276,65 +2275,22 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
   }
 
   detectIntent() {
+    // Protección adicional: evitar múltiples llamadas simultáneas
+    if (this.callingOpenai) {
+      console.warn('detectIntent: Ya hay una llamada en curso, ignorando esta solicitud');
+      return;
+    }
+    
     this.proposedEvents = [];
     this.proposedAppointments = [];
     this.callingOpenai = true;
     this.actualStatus = 'procesando intent';
     this.statusChange();
-    var promIntent = this.translate.instant("promts.0", {
-      value: this.message,
-    });
-    this.valueProm = { value: promIntent };
+
+    // La detección de idioma y traducción ahora se hace en el backend
+    // Simplemente llamar directamente a continueSendIntent con el mensaje original
     this.tempInput = this.message;
-    var testLangText = this.message
-    if (testLangText.length > 0) {
-      this.subscription.add(this.apiDx29ServerService.getDetectLanguage(testLangText)
-        .subscribe((res: any) => {
-          if (res[0].language != 'en') {
-            const detectedLanguage = res[0].language;
-            const confidenceScore = res[0].score;
-            const confidenceThreshold = 0.7;
-            if (confidenceScore < confidenceThreshold) {
-              console.warn('Confianza baja en la detección del idioma, usando el idioma preferido del usuario.');
-              this.detectedLang = this.preferredResponseLanguage || 'en'; // Fallback a ingles si no hay preferencia
-            } else {
-              this.detectedLang = detectedLanguage; // Usa el idioma detectado
-
-            }
-
-            var info = [{ "Text": this.message }]
-            this.subscription.add(this.apiDx29ServerService.getTranslationDictionary(this.detectedLang, info)
-              .subscribe((res2: any) => {
-                var textToTA = this.message;
-                if (res2[0] != undefined) {
-                  if (res2[0].translations[0] != undefined) {
-                    textToTA = res2[0].translations[0].text;
-                    this.tempInput = res2[0].translations[0].text;
-                  }
-                }
-                promIntent = this.translate.instant("promts.0", {
-                  value: textToTA,
-                });
-                this.valueProm = { value: promIntent };
-                this.continueSendIntent(textToTA);
-              }, (err) => {
-                console.log(err);
-                this.insightsService.trackException(err);
-                this.continueSendIntent(this.message);
-              }));
-          } else {
-            this.detectedLang = 'en';
-            this.continueSendIntent(this.message);
-          }
-
-        }, (err) => {
-          console.log(err);
-          this.insightsService.trackException(err);
-          this.toastr.error('', this.translate.instant("generics.error try again"));
-        }));
-    } else {
-      this.continueSendIntent(this.message);
-    }
+    this.continueSendIntent(this.message);
   }
 
   private initializeContext() {

@@ -128,10 +128,6 @@
      "p7": "Veuillez saisir votre adresse e-mail pour demander une réinitialisation du mot de passe.",
      "p8": "Veuillez vérifier votre e-mail et cliquez sur le lien pour vérifier votre adresse e-mail."
     },
-   "promts":{
-      "0": "Behave like an expert in detecting sentence intentions. A patient writes the following sentence: '{{value}}'. \nChoose only one of the following intentions the patient wants to make: \n1.$Data (When providing information about the patient) \n2.$Question (When asks something or send something with the question mark) \n3.$Share (He must to tell you the word 'share') \n4.$Take Quiz (When he want to make a questionnaire) \nIf it is none of this 4 intentions, returns: \n2.$Question",
-     "1": "Behave like a doctor. You have to give specific information and not general. Use only sources of medical information."
-   },
    "summaryoptions": {
       "title": "Résumés",
     "timeline": {
