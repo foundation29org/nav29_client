@@ -693,12 +693,15 @@
                         </div>
                     </div>
                     <a id="chatContainer"></a>
-                    <div class="chat-input-container mb-5">
+                    <div class="chat-input-container">
                         <!--<div class="d-flex align-items-center input-container" *ngIf="!callingOpenai && proposedEvents.length == 0 && proposedAppointments.length == 0">-->
-                        <div class="d-flex align-items-center input-container" id="chat-container">
-                            <input type="text" [(ngModel)]="message" [disabled]="callingOpenai"
+                        <div class="d-flex align-items-end input-container" id="chat-container">
+                            <textarea [(ngModel)]="message" [disabled]="callingOpenai"
                                 placeholder="{{'generics.Write a message' | translate }}..."
-                                (keydown.enter)="sendMessage()" class="mt-0 border-0 mr-2 flex-grow-1">
+                                (keydown.enter)="onChatInputKeydown($event)" 
+                                autoResize
+                                class="mt-0 border-0 mr-2 flex-grow-1 chat-textarea"
+                                rows="1"></textarea>
                             <button class="mr-1 btn btn-secondary" title="{{'generics.Upload' | translate }}"
                                 style="padding: 0.2rem 0.57rem;" [disabled]="callingOpenai"
                                 (click)="openOptionsFiles(contentviewSelectFile)">

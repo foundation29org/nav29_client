@@ -47,6 +47,17 @@ export class AuthService implements OnInit, OnDestroy {
   private isCheckingSession: boolean = false; // Bandera para evitar múltiples llamadas simultáneas
   private sessionChecked: boolean = false; // Bandera para saber si ya se verificó la sesión
   private isRefreshingToken: boolean = false; // Bandera para evitar múltiples refreshes simultáneos
+  private refreshTokenPromise: Promise<boolean> | null = null; // Promise compartida para las peticiones que esperan
+  
+  // Método público para verificar si hay un refresh en curso
+  get isRefreshingTokenStatus(): boolean {
+    return this.isRefreshingToken;
+  }
+  
+  // Método público para obtener la Promise del refresh en curso (si existe)
+  getRefreshTokenPromise(): Promise<boolean> | null {
+    return this.refreshTokenPromise;
+  }
   
   // Método público para que el guard pueda verificar si se está verificando la sesión
   isCheckingSessionStatus(): boolean {
@@ -496,22 +507,27 @@ export class AuthService implements OnInit, OnDestroy {
 
   // Método para refrescar el access token usando refresh token
   async refreshAccessToken(): Promise<boolean> {
-    // Evitar múltiples refreshes simultáneos
-    if (this.isRefreshingToken) {
-      // Esperar a que termine el refresh en curso
-      let attempts = 0;
-      while (this.isRefreshingToken && attempts < 20) { // Máximo 2 segundos de espera
-        await this.delay(100);
-        attempts++;
-      }
-      // Si terminó exitosamente, retornar true
-      if (this.isloggedIn) {
-        return true;
-      }
-      return false;
+    // Si ya hay un refresh en curso, retornar la misma Promise
+    if (this.isRefreshingToken && this.refreshTokenPromise) {
+      return this.refreshTokenPromise;
     }
     
     this.isRefreshingToken = true;
+    
+    // Crear la Promise compartida
+    this.refreshTokenPromise = this._doRefreshToken();
+    
+    try {
+      const result = await this.refreshTokenPromise;
+      return result;
+    } finally {
+      // Limpiar la Promise cuando termine
+      this.refreshTokenPromise = null;
+    }
+  }
+  
+  // Método privado que realiza el refresh real
+  private async _doRefreshToken(): Promise<boolean> {
     try {
       const response: any = await this.http.post(environment.api+'/api/refresh', {}, { withCredentials: true }).toPromise();
       

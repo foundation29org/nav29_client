@@ -90,9 +90,47 @@ export class AuthInterceptor implements HttpInterceptor {
         this.insightsService.trackException(error);
       }
       
+      // No hacer retry en errores CORS (status 0) - estos son errores de red, no de autenticación
+      if (error.status === 0 || error.status === null) {
+        console.warn('auth.interceptor: Error CORS/red detectado, no intentando refresh. URL:', req.url);
+        return throwError(error);
+      }
+      
       if (error.status === 401 || error.status === 403) {
-        // Intentar refrescar token si es 401 y no es logout/session/refresh
-        if (!isLogoutRequest && !isSessionCheck && !isRefreshRequest && error.status === 401) {
+        // Intentar refrescar token si es 401/403 y no es logout/session/refresh
+        if (!isLogoutRequest && !isSessionCheck && !isRefreshRequest) {
+          // Si ya hay un refresh en curso, esperar a que termine antes de reintentar
+          const refreshPromise = authService.getRefreshTokenPromise();
+          if (refreshPromise) {
+            // Esperar a que termine el refresh en curso y luego reintentar
+            return from(refreshPromise).pipe(
+              switchMap((refreshed) => {
+                if (refreshed) {
+                  // Reintentar la petición original con un nuevo timestamp
+                  let urlWithTimestamp = req.url;
+                  const timestamp = Date.now();
+                  if (req.url.includes('?')) {
+                    urlWithTimestamp += `&t=${timestamp}`;
+                  } else {
+                    urlWithTimestamp += `?t=${timestamp}`;
+                  }
+                  
+                  const retryReq = req.clone({
+                    url: urlWithTimestamp,
+                    headers: req.headers.set('x-api-key', environment.Server_Key),
+                    withCredentials: true
+                  });
+                  
+                  return next.handle(retryReq);
+                } else {
+                  // Si el refresh falló, hacer logout
+                  authService.logout();
+                  return throwError(error);
+                }
+              })
+            );
+          }
+          
           // Intentar refrescar el access token usando refresh token
           return from(authService.refreshAccessToken()).pipe(
             switchMap(refreshed => {
@@ -116,19 +154,22 @@ export class AuthInterceptor implements HttpInterceptor {
                 return next.handle(retryReq);
               } else {
                 // Si no se pudo refrescar, hacer logout y redirigir
-                authService.logout();
+                // Solo hacer logout si no hay otro refresh en curso (evita múltiples logouts)
+                if (!authService.isRefreshingTokenStatus) {
+                  authService.logout();
+                }
                 return throwError(error);
               }
             }),
             catchError((refreshError) => {
-              // Si falla el refresh, hacer logout
-              authService.logout();
+              // Si falla el refresh, hacer logout solo si no hay otro refresh en curso
+              // Esto evita múltiples logouts simultáneos
+              if (!authService.isRefreshingTokenStatus) {
+                authService.logout();
+              }
               return throwError(error);
             })
           );
-        } else if (!isLogoutRequest && !isSessionCheck && !isRefreshRequest) {
-          // Para 403 u otros errores, hacer logout directamente
-          authService.logout();
         }
         return throwError(error);
       }

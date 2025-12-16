@@ -22,26 +22,6 @@ export class ApiDx29ServerService {
       return throwError(() => err);
     };
 
-    getDetectLanguage(text) {
-      var jsonText = [{ "text": text }];
-      return this.http.post(environment.api + '/api/getDetectLanguage', jsonText).pipe(
-        map((res: any) => {
-          return res;
-        }),
-        catchError(this.handleError)
-      );
-    }
-
-    getTranslationDictionary(lang, info) {
-      var body = { lang: lang, info: info }
-      return this.http.post(environment.api + '/api/translation', body).pipe(
-        map((res: any) => {
-          return res;
-        }),
-        catchError(this.handleError)
-      );
-    }
-
     getTranslationInvert(lang, info) {
       var body = { lang: lang, info: info }
       return this.http.post(environment.api + '/api/translationinvert', body).pipe(
@@ -71,16 +51,6 @@ export class ApiDx29ServerService {
         catchError(this.handleError)
       );
     }
-
-    getTranslationSegmentsInvert(lang,segments){
-      var body = {lang:lang, segments: segments}
-        return this.http.post(environment.api+'/api/translation/segments', body).pipe(
-          map((res: any) => {
-            return res;
-          }),
-          catchError(this.handleError)
-        );
-      }
 
     getAzureBlobSasToken(containerName){
       return this.http.get(environment.api+'/api/getAzureBlobSasTokenWithContainer/'+containerName).pipe(

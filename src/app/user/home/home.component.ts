@@ -163,6 +163,7 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
   messages = [];
   message = '';
   callingOpenai: boolean = false;
+  lastProcessedAnswerId: string = ''; // Para evitar procesar respuestas duplicadas
 
   tempInput: string = '';
   detectedLang: string = 'en';
@@ -686,7 +687,19 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
   }
 
   isDateMissing(date: any): boolean {
-    return date === null;
+    if (date === null || date === undefined) {
+      return true;
+    }
+    // También verificar si es una fecha inválida (como 1 de enero de 1970 que puede ser un valor por defecto)
+    const dateObj = new Date(date);
+    if (isNaN(dateObj.getTime())) {
+      return true;
+    }
+    // Si la fecha es 1 de enero de 1970 (epoch 0), considerarla como fecha faltante
+    if (dateObj.getTime() === 0) {
+      return true;
+    }
+    return false;
   }
 
   /**
@@ -982,6 +995,32 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
 
   private async handleMessage(message: any) {
     console.log('Message received in component:', message);
+    
+    // Verificar si el usuario está autenticado antes de procesar mensajes
+    if (!this.authService.isAuthenticated()) {
+      console.warn('⚠️ Mensaje WebPubSub recibido pero usuario no autenticado, ignorando:', message);
+      return;
+    }
+    
+    // Validar que el mensaje no sea demasiado antiguo (más de 5 minutos)
+    try {
+      const parsedData = JSON.parse(message.data);
+      if (parsedData.time) {
+        const messageTime = new Date(parsedData.time).getTime();
+        const currentTime = Date.now();
+        const messageAge = currentTime - messageTime;
+        const maxAge = 5 * 60 * 1000; // 5 minutos en milisegundos
+        
+        if (messageAge > maxAge) {
+          console.warn(`⚠️ Mensaje WebPubSub demasiado antiguo (${Math.round(messageAge / 1000 / 60)} minutos), ignorando:`, parsedData);
+          return;
+        }
+      }
+    } catch (error) {
+      console.error('Error parsing message data:', error);
+      // Continuar con el procesamiento normal si hay error al parsear
+    }
+    
     this.actualStatus = '';
 
     const parsedData = JSON.parse(message.data);
@@ -1059,20 +1098,69 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
       const doc = { ...this.docs[docIndex] };
 
       if (parsedData.status === 'categoriria done') {
+        const oldOriginalDate = doc.originaldate;
         doc.badge = this.getBadgeClass(parsedData.value);
         doc.categoryTag = this.getTranslatedCategoryTag(parsedData.value);
         doc.originaldate = this.isValidDate(parsedData.date) ? new Date(parsedData.date) : null;
+        this.docs[docIndex] = doc;
+        
+        // Si cambió el originaldate (de null a fecha o viceversa), reordenar
+        const hadOriginalDate = !this.isDateMissing(oldOriginalDate);
+        const hasOriginalDate = !this.isDateMissing(doc.originaldate);
+        if (hadOriginalDate !== hasOriginalDate) {
+          this.reorderDocumentsByStatus();
+        }
       }
 
       if (!this.isDocStatusFinal(doc.status)) {
+        const oldStatus = doc.status;
         doc.status = this.getNewDocStatus(parsedData.status);
         this.docs[docIndex] = doc;
+        
+        // Si el estado cambió de 'inProcess' a otro, reordenar los documentos
+        if (oldStatus === 'inProcess' && doc.status !== 'inProcess') {
+          this.reorderDocumentsByStatus();
+        }
       }
     }
   }
 
-  private isValidDate(date: string): boolean {
-    return !isNaN(new Date(date).getTime());
+  // Ordena un array de documentos: procesando -> sin fecha original -> con fecha original
+  private sortDocumentsByStatus(documents: any[]): any[] {
+    // Separar en 3 grupos: procesando, sin fecha original, con fecha original
+    const processingDocs = documents.filter(doc => doc.status === 'inProcess');
+    const docsWithoutOriginalDate = documents.filter(doc => doc.status !== 'inProcess' && this.isDateMissing(doc.originaldate));
+    const docsWithOriginalDate = documents.filter(doc => doc.status !== 'inProcess' && !this.isDateMissing(doc.originaldate));
+    
+    // Ordenar documentos en procesamiento por fecha de subida (más recientes primero)
+    processingDocs.sort(this.sortService.DateSortInver("date"));
+    
+    // Ordenar documentos sin fecha original por fecha de subida (más recientes primero)
+    docsWithoutOriginalDate.sort(this.sortService.DateSortInver("date"));
+    
+    // Ordenar documentos con fecha original por originaldate (más recientes primero)
+    docsWithOriginalDate.sort((a, b) => {
+      const dateA = a.originaldate ? new Date(a.originaldate).getTime() : 0;
+      const dateB = b.originaldate ? new Date(b.originaldate).getTime() : 0;
+      return dateB - dateA; // Más recientes primero
+    });
+    
+    // Combinar: procesando -> sin fecha original -> con fecha original
+    return [...processingDocs, ...docsWithoutOriginalDate, ...docsWithOriginalDate];
+  }
+
+  // Reordena los documentos: procesando -> sin fecha original -> con fecha original
+  reorderDocumentsByStatus() {
+    this.docs = this.sortDocumentsByStatus(this.docs);
+    this.updateDocumentSelection();
+  }
+
+  private isValidDate(date: string | null | undefined): boolean {
+    if (date === null || date === undefined || date === '') {
+      return false;
+    }
+    const dateObj = new Date(date);
+    return !isNaN(dateObj.getTime());
   }
 
   private isDocStatusFinal(status: string): boolean {
@@ -1265,6 +1353,14 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
   }
 
   private async processNavigatorAnswer(parsedData: any) {
+    // Protección contra respuestas duplicadas: usar timestamp + answer como ID único
+    const answerId = `${parsedData.time || Date.now()}_${parsedData.answer?.substring(0, 50) || ''}`;
+    if (this.lastProcessedAnswerId === answerId) {
+      console.warn('⚠️ Respuesta duplicada detectada, ignorando:', answerId);
+      return;
+    }
+    this.lastProcessedAnswerId = answerId;
+    
     // Limpiar el estado inmediatamente al recibir la respuesta
     this.callingOpenai = false;
     this.gettingSuggestions = false;
@@ -1626,8 +1722,9 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
       .subscribe((resDocs: any) => {
         console.log(resDocs)
         if (resDocs.length > 0) {
-          resDocs.sort(this.sortService.DateSortInver("date"));
-          this.docs = resDocs;
+          // Ordenar documentos: procesando -> sin fecha original -> con fecha original
+          this.docs = this.sortDocumentsByStatus(resDocs);
+          
           for (var i = 0; i < this.docs.length; i++) {
             const fileName = this.docs[i].url.split("/").pop();
             this.docs[i].title = fileName;
@@ -1642,6 +1739,11 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
         }
         this.loadedDocs = true;
         this.assignFeedbackToDocs(this.docs);
+        
+        // Hacer scroll después de que se carguen los documentos
+        setTimeout(() => {
+          this.scrollToBottom();
+        }, 300);
       }, (err) => {
         console.log(err);
         this.insightsService.trackException(err);
@@ -2212,8 +2314,20 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     this.notallergy = value;
   }
 
+  onChatInputKeydown(event: KeyboardEvent) {
+    // Si se presiona Enter sin Shift, enviar el mensaje
+    if (event.key === 'Enter' && !event.shiftKey) {
+      event.preventDefault(); // Prevenir el salto de línea
+      this.sendMessage();
+    }
+    // Si se presiona Shift+Enter, permitir el salto de línea (comportamiento por defecto)
+  }
+
   sendMessage() {
-    if (!this.message) {
+    // Limpiar espacios en blanco y saltos de línea al inicio y final
+    const trimmedMessage = this.message ? this.message.trim() : '';
+    
+    if (!trimmedMessage) {
       Swal.fire(this.translate.instant("generics.Please write a message"), '', "warning");
       return;
     }
@@ -2222,12 +2336,19 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
       return;
     }
 
+    // Guardar el mensaje antes de limpiarlo
+    const messageToSend = trimmedMessage;
+    
     this.addMessage({
-      text: this.message,
+      text: messageToSend,
       isUser: true
     });
     this.suggestions = [];
-    this.detectIntent();
+    this.message = ''; // Limpiar el textarea después de enviar
+    
+    // Pasar el mensaje guardado a detectIntent
+    this.tempInput = messageToSend;
+    this.detectIntent(messageToSend);
   }
 
   selectCustomSuggestion(suggestion) {
@@ -2274,23 +2395,31 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     }
   }
 
-  detectIntent() {
+  detectIntent(msg?: string) {
     // Protección adicional: evitar múltiples llamadas simultáneas
     if (this.callingOpenai) {
       console.warn('detectIntent: Ya hay una llamada en curso, ignorando esta solicitud');
       return;
     }
     
+    // Usar el mensaje pasado como parámetro, o this.message como fallback
+    const messageToProcess = msg || this.message || this.tempInput;
+    
+    if (!messageToProcess || messageToProcess.trim() === '') {
+      console.error('detectIntent: No hay mensaje para procesar!');
+      return;
+    }
+    
     this.proposedEvents = [];
     this.proposedAppointments = [];
-    this.callingOpenai = true;
     this.actualStatus = 'procesando intent';
     this.statusChange();
 
     // La detección de idioma y traducción ahora se hace en el backend
     // Simplemente llamar directamente a continueSendIntent con el mensaje original
-    this.tempInput = this.message;
-    this.continueSendIntent(this.message);
+    // continueSendIntent establecerá callingOpenai = true
+    this.tempInput = messageToProcess;
+    this.continueSendIntent(messageToProcess);
   }
 
   private initializeContext() {
@@ -2303,6 +2432,31 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
   }
 
   continueSendIntent(msg) {
+    // Protección adicional: evitar múltiples llamadas simultáneas a callnavigator
+    // Usar verificación síncrona inmediata para evitar condiciones de carrera
+    if (this.callingOpenai) {
+      console.warn('continueSendIntent: Ya hay una llamada en curso, ignorando esta solicitud. Mensaje:', msg?.substring(0, 50));
+      return;
+    }
+    
+    // Verificar si ya hay una llamada pendiente con el mismo mensaje (protección contra duplicados)
+    const msgHash = msg ? msg.substring(0, 50).replace(/\s+/g, '') : '';
+    const lastCallKey = `lastCall_${msgHash}`;
+    const lastCallTime = (this as any)[lastCallKey];
+    const now = Date.now();
+    
+    if (lastCallTime && (now - lastCallTime) < 5000) { // 5 segundos de protección
+      console.warn(`continueSendIntent: Llamada duplicada detectada (última llamada hace ${Math.round((now - lastCallTime) / 1000)}s), ignorando. Mensaje:`, msg?.substring(0, 50));
+      return;
+    }
+    
+    // Guardar el tiempo de esta llamada
+    (this as any)[lastCallKey] = now;
+    
+    // Marcar que estamos haciendo una llamada INMEDIATAMENTE para evitar condiciones de carrera
+    this.callingOpenai = true;
+    console.log('continueSendIntent: Iniciando llamada a callnavigator. Mensaje:', msg?.substring(0, 50));
+    
     console.log('Context before call:', this.context);
     // Ensure context is not empty
     if (!this.context || this.context.length === 0) {
@@ -2312,13 +2466,25 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
 
     let docsSelected = this.docs.filter(doc => doc.selected && (doc.status == 'finished' || doc.status == 'done' || doc.status == 'resumen ready')).map(doc => doc.url);
     console.log(docsSelected)
+    
+    // Generar un ID único para esta llamada para rastrear llamadas duplicadas
+    const callId = `${Date.now()}_${Math.random().toString(36).substring(7)}`;
+    console.log(`[${callId}] continueSendIntent: Preparando llamada HTTP a callnavigator`);
+    
     var query = { "question": msg, "context": this.context, "containerName": this.containerName, "index": this.currentPatient, "userId": this.authService.getIdUser(), "docs": docsSelected };
     this.subscription.add(this.http.post(environment.api + '/api/callnavigator/'+this.authService.getCurrentPatient().sub, query)
       .subscribe(async (res: any) => {
+        console.log(`[${callId}] continueSendIntent: Respuesta HTTP recibida:`, res.action);
         if (res.action == 'Data') {
 
         } else if (res.action == 'Question') {
-
+          // Respuesta HTTP antigua - ignorar, la respuesta real viene por WebPubSub
+          // No hacer nada aquí para evitar respuestas duplicadas
+          console.warn(`[${callId}] continueSendIntent: Recibida respuesta HTTP antigua (Question), ignorando. La respuesta real viene por WebPubSub`);
+        } else if (res.action == 'Processing') {
+          // Respuesta HTTP indicando que se procesará por WebPubSub
+          // No hacer nada, esperar la respuesta por WebPubSub
+          console.log(`[${callId}] continueSendIntent: Respuesta HTTP Processing recibida, esperando respuesta por WebPubSub`);
         } else if (res.action == 'Share') {
           this.message = '';
           this.addMessage({
@@ -2358,8 +2524,16 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
 
       }, (err) => {
         this.callingOpenai = false;
-        console.log(err);
+        console.error(`[${callId}] Error en continueSendIntent:`, err);
         this.insightsService.trackException(err);
+        
+        // Si es un error CORS o de red, no mostrar mensaje de error al usuario
+        // ya que puede ser una llamada duplicada que se canceló
+        if (err.status === 0 || err.status === null) {
+          console.warn(`[${callId}] Error de red/CORS detectado, probablemente llamada duplicada cancelada. Ignorando.`);
+          return;
+        }
+        
         //this.message = '';
         this.addMessage({
           text: '<strong>' + this.translate.instant("generics.error try again") + '</strong>',
@@ -3179,8 +3353,9 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
         // mostrar toast diciendo que ha refrescado los documentos
         this.toastr.info('', this.translate.instant("generics.Documents have been refreshed"));
         if (resDocs.length > 0) {
-          resDocs.sort(this.sortService.DateSortInver("date"));
-          this.docs = resDocs;
+          // Ordenar documentos: procesando -> sin fecha original -> con fecha original
+          this.docs = this.sortDocumentsByStatus(resDocs);
+          
           for (var i = 0; i < this.docs.length; i++) {
             const fileName = this.docs[i].url.split("/").pop();
             this.docs[i].title = fileName;
