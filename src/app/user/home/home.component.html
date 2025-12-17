@@ -578,7 +578,10 @@
                                             <p class=""><strong>{{'generics.Name' | translate}}:</strong><span
                                                     class="ml-1">{{proposedEvent.insight}}</span></p>
                                             <p class=""><strong>{{'generics.Date' | translate}}:</strong><span
-                                                    class="ml-1">{{proposedEvent.date | date: timeformat}}</span></p>
+                                                    class="ml-1">
+                                                    <span *ngIf="!proposedEvent.dateEnd">{{proposedEvent.date | date: timeformat}}</span>
+                                                    <span *ngIf="proposedEvent.dateEnd">{{proposedEvent.date | date: timeformat}} - {{proposedEvent.dateEnd | date: timeformat}}</span>
+                                                </span></p>
                                             <p class=""><strong>{{'timeline.Event type' | translate }}:</strong>
                                                 <span class="ml-1"> {{getEventTypeDisplay(proposedEvent.key)}}
 
@@ -781,7 +784,15 @@
                             <div class="note-content">
                                 <!-- Modo visualización -->
                                 <div *ngIf="!note.isEditing">
-                                    <p [innerHTML]="note.content | safe: 'html'"></p>
+                                    <div *ngIf="truncateNoteContent(note.content, noteMaxLength).isTruncated; else fullContent">
+                                        <p [innerHTML]="truncateNoteContent(note.content, noteMaxLength).truncated | safe: 'html'"></p>
+                                        <button (click)="viewFullNote(note, noteFullModal)" class="btn btn-sm btn-link p-0 mt-1">
+                                            {{'notes.View more' | translate}}
+                                        </button>
+                                    </div>
+                                    <ng-template #fullContent>
+                                        <p [innerHTML]="note.content | safe: 'html'"></p>
+                                    </ng-template>
                                     <small>{{note.date | date: 'longDate'}}</small>
                                     <div class="mt-2">
                                         <div class="btn-group" role="group">
@@ -791,28 +802,10 @@
                                             <button (click)="copymsg(note.content)" class="btn btn-sm btn-white custom-white-button" title="{{'generics.Copy' | translate }}">
                                                 <i class="fa fa-copy"></i>
                                             </button>
-                                            <button (click)="editNote(i)" class="btn btn-sm btn-white custom-white-button" title="{{'generics.Edit' | translate }}">
+                                            <button (click)="editNote(i, editNoteModal)" class="btn btn-sm btn-white custom-white-button" title="{{'generics.Edit' | translate }}">
                                                 <i class="fa fa-edit"></i>
                                             </button>
                                         </div>
-                                    </div>
-                                </div>
-    
-                                <!-- Modo edición -->
-                                <div *ngIf="note.isEditing">
-                                    <div class="custom-body text-left p-2 border rounded mb-2" contenteditable="true"
-                                        [id]="'editableNote' + i">
-                                        <span [innerHTML]="note.content | safe: 'html'"></span>
-                                    </div>
-                                    <div>
-                                        <button class="btn btn-sm btn-success mr-2" (click)="saveNoteEdit(i)"
-                                            [disabled]="savingNote" title="{{'generics.Save' | translate }}">
-                                            <em class="fa fa-check"></em> {{'generics.Save' | translate }}
-                                        </button>
-                                        <button class="btn btn-sm btn-danger" (click)="cancelNoteEdit(i)"
-                                            title="{{'generics.Cancel' | translate }}">
-                                            <em class="fa fa-times"></em> {{'generics.Cancel' | translate }}
-                                        </button>
                                     </div>
                                 </div>
                             </div>
@@ -1302,9 +1295,27 @@
                             {{'generics.Sort' | translate }} <em class="fa" [class.fa-arrow-down]="!isOldestFirst"
                                 [class.fa-arrow-up]="isOldestFirst"></em>
                         </span>
-                        <button class="btn btn-sm btn-white" (click)="newMedicalEventTimeline()">
-                            <i class="fa fa-plus"></i> {{'events.New Medical Event' | translate }}
-                        </button>
+                        <div class="d-flex gap-2">
+                            <div ngbDropdown class="btn-group mr-2" role="group">
+                                <button type="button" class="btn btn-sm btn-white" ngbDropdownToggle>
+                                    <i class="fa fa-download"></i> {{'timeline.Export' | translate }}
+                                </button>
+                                <div ngbDropdownMenu class="dropdown-menu-right">
+                                    <button class="dropdown-item" (click)="copyTimelineToClipboard()">
+                                        <i class="fa fa-copy mr-2"></i> {{'timeline.Copy to clipboard' | translate }}
+                                    </button>
+                                    <button class="dropdown-item" (click)="exportTimelineToCSV()">
+                                        <i class="fa fa-file-csv mr-2"></i> {{'timeline.Export to CSV' | translate }}
+                                    </button>
+                                    <button class="dropdown-item" (click)="exportTimelineToPDF()">
+                                        <i class="fa fa-file-pdf mr-2"></i> {{'timeline.Export to PDF' | translate }}
+                                    </button>
+                                </div>
+                            </div>
+                            <button class="btn btn-sm btn-white" (click)="newMedicalEventTimeline()">
+                                <i class="fa fa-plus"></i> {{'events.New Medical Event' | translate }}
+                            </button>
+                        </div>
                     </div>
                     <div *ngFor="let group of groupedEvents">
                         <div class="timeline-month-title">{{ group.monthYear | date: 'MMMM y' : '' : lang }}</div>
@@ -1318,7 +1329,10 @@
                                                 title="{{getEventTypeDisplay(event.key)}}">{{getEventTypeIcon(event.key)}}</span>
                                             {{ event.name }}
                                         </p>
-                                        <small class="text-muted">{{ event.date | date }}</small>
+                                        <small class="text-muted">
+                                            <span *ngIf="!event.dateEnd">{{ event.date | date }}</span>
+                                            <span *ngIf="event.dateEnd">{{ event.date | date }} - {{ event.dateEnd | date }}</span>
+                                        </small>
                                     </div>
                                     <button class="btn btn-link btn-sm" [matMenuTriggerFor]="menu"
                                         aria-label="More options">
@@ -1364,10 +1378,13 @@
                     </span>
                 </h4>
                 <div *ngIf="editingTitle" class="d-flex align-items-center">
-                    <input #titleInput autoFocus type="text" class="form-control"
+                    <input #titleInput autoFocus type="text" 
+                        class="editable-title-input"
+                        [style.width.px]="getInputWidth(getFileNameWithoutExtension(actualDoc.title))"
                         [ngModel]="getFileNameWithoutExtension(actualDoc.title)"
                         (ngModelChange)="actualDoc.title = $event + actualDoc.title.substring(actualDoc.title.lastIndexOf('.'))"
                         (blur)="saveTitle()" (keyup.enter)="saveTitle()" (keyup.escape)="cancelEditing()"
+                        (input)="adjustInputWidth($event)"
                         (ngAfterViewInit)="titleInput.focus(); titleInput.select()">
                 </div>
                 <div>
@@ -1424,11 +1441,10 @@
                         </div>
                     </div>
                 </div>
-                <div class="modal-footer" id="idFooter" *ngIf="needFeedback">
+                <!--<div class="modal-footer" id="idFooter" *ngIf="needFeedback">
                     <app-feedback-summary-page [documents]="[actualDoc]" [type]="'individual'" (close)="handleClose2()">
                     </app-feedback-summary-page>
-                    <!--<button type="button" class="btn btn-dark" (click)="openFeedback('individual');">{{'feedback.Give us your opinion on the summary' | translate }}</button>-->
-                </div>
+                </div>-->
             </mat-tab>
             <mat-tab label="{{'events.title' | translate }}">
                 <div class="modal-body content-wrapper p-2">
@@ -1467,7 +1483,10 @@
                                                 *ngIf="event.key == 'other'">🔍 </span>
                                             <span class="">{{ event.name }}</span>
                                         </p>
-                                        <p>{{ event.date | date }}</p>
+                                        <p>
+                                            <span *ngIf="!event.dateEnd">{{ event.date | date }}</span>
+                                            <span *ngIf="event.dateEnd">{{ event.date | date }} - {{ event.dateEnd | date }}</span>
+                                        </p>
                                         <span (click)="explainMedicalEvent(event.name)" class="pointer ml-1"><span
                                                 class="fa fa-question-circle-o fa-1_3x"></span></span>
                                         <span (click)="editMedicalEvent(event)" class="pointer ml-1"><span
@@ -1711,11 +1730,10 @@
             </div>
         </div>
     </div>
-    <div class="modal-footer" id="idFooter" *ngIf="needFeedback">
+    <!--<div class="modal-footer" id="idFooter" *ngIf="needFeedback">
         <app-feedback-summary-page [documents]="docs" [type]="'general'" (close)="handleClose()">
         </app-feedback-summary-page>
-        <!--<button type="button" class="btn btn-dark" (click)="openFeedback('general');">{{'feedback.Give us your opinion on the summary' | translate }}</button>-->
-    </div>
+    </div>-->
 </ng-template>
 
 <ng-template #contentviewProposedEvents let-c="close" let-d="dismiss" appendTo="body">
@@ -2090,8 +2108,26 @@
     </div>
 </ng-template>
 <ng-template #contentPhoto let-c="close" let-d="dismiss" appendTo="body">
-    <div class="modal-header" id="idHeader">
-        <button type="button" class="close" aria-label="Close" (click)="closeModal();">
+    <div class="modal-header" id="idHeader" style="display: flex; justify-content: space-between; align-items: center; padding: 15px 20px;">
+        <div style="flex: 1;">
+            <h5 class="modal-title mb-0" style="font-weight: 600; font-size: 1.1em;">
+                {{'demo.Capture document' | translate }}
+            </h5>
+            <div *ngIf="stepPhoto==1" style="font-size: 0.85em; color: #666; margin-top: 4px; font-weight: 400;">
+                {{'demo.Position the document in front of the camera' | translate }}
+            </div>
+            <div *ngIf="stepPhoto==2" style="font-size: 0.85em; color: #666; margin-top: 4px;">
+                <span style="font-style: italic;">{{'demo.New document' | translate }} ({{'demo.unsaved' | translate }})</span>
+                <span style="margin-left: 8px; font-weight: 500;">
+                    {{'demo.Pages' | translate }}: 
+                    <span *ngFor="let doc of tempDocs; let i = index">
+                        <strong>{{i + 1}}</strong><span *ngIf="i < tempDocs.length - 1 || capturedImage"> · </span>
+                    </span>
+                    <strong *ngIf="capturedImage">{{tempDocs.length + 1}}</strong>
+                </span>
+            </div>
+        </div>
+        <button type="button" class="close" aria-label="Close" (click)="closeModal();" style="margin-left: 15px;">
             <span aria-hidden="true">&times;</span>
         </button>
     </div>
@@ -2103,38 +2139,41 @@
                         <video #videoElement id="videoElement" class="w-100" autoplay></video>
                     </div>
                     <div class="col-sm-12" *ngIf="stepPhoto==2">
-                        <div class="mb-3">
-                            <label for="nameFileCamera" class=""><strong>{{'demo.Document name' | translate
-                                    }}</strong></label>
-                            <input type="text" class="mt-0 form-control" [(ngModel)]="nameFileCamera"
-                                placeholder="{{'demo.Document name' | translate }}">
+                        <div style="position: relative; display: inline-block; width: 100%;">
+                            <img *ngIf="capturedImage" class="w-100" style="border: 1px solid #dee2e6; border-radius: 4px; display: block;" [src]="capturedImage" />
+                            <button type="button" class="btn btn-outline-light" 
+                                style="position: absolute; top: 10px; right: 10px; border-radius: 50%; width: 45px; height: 45px; padding: 0; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 8px rgba(0,0,0,0.3); background-color: rgba(255,255,255,0.9); border: 2px solid #fff;"
+                                (click)="prevCamera();" 
+                                title="{{'demo.Repeat page' | translate}}">
+                                <i class="fa fa-redo" style="font-size: 1.2em; color: #333;"></i>
+                            </button>
                         </div>
-                        <img *ngIf="capturedImage" class="w-100" [src]="capturedImage" />
-                        <div class="center-elements">
-                            <button type="button" class="mt-2 btn btn-dark" (click)="prevCamera();">{{'demo.Repeat
-                                photo' | translate }}</button>
-                        </div>
-
                     </div>
                 </div>
             </div>
         </div>
-        <div *ngIf="tempDocs.length>0">
-            <strong>{{'demo.Photos taken' | translate }}:</strong>
-            <p *ngFor="let doc of tempDocs; let i = index" class="mb-0">
-                <span>{{doc.dataFile.name}} <em class="ml-1 danger fa fa-trash pointer"
-                        (click)="deletephoto(i)"></em></span>
+        <div *ngIf="tempDocs.length>0" style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #dee2e6;">
+            <strong>{{'demo.Captured pages' | translate }}: {{tempDocs.length}}</strong>
+            <p *ngFor="let doc of tempDocs; let i = index" class="mb-1 mt-2" style="font-size: 0.9em;">
+                <span>{{i + 1}}. {{doc.dataFile.name}} <em class="ml-1 danger fa fa-trash pointer"
+                        (click)="deletephoto(i)" title="{{'generics.Delete' | translate }}"></em></span>
             </p>
         </div>
     </div>
     <div class="modal-footer">
         <div class="form-actions col-md-12 center-elements">
             <button type="button" *ngIf="stepPhoto==1" class="btn btn-dark float-right"
-                (click)="captureImage()">{{'demo.Capture photo' | translate }}</button>
+                (click)="captureImage()">
+                <i class="fa fa-camera mr-2"></i>{{'demo.Capture page' | translate }}
+            </button>
             <button type="button" *ngIf="stepPhoto==2 && tempDocs.length<5" class="btn btn-dark float-left"
-                (click)="otherPhoto(true)">{{'demo.Add another photo' | translate }}</button>
+                (click)="otherPhoto(true)">
+                <i class="fa fa-plus-circle mr-2"></i>{{'demo.Add another page' | translate }}
+            </button>
             <button type="button" *ngIf="stepPhoto==2" class="btn btn-dark float-right"
-                (click)="otherPhoto(false)">{{'generics.Finish' | translate }}</button>
+                (click)="otherPhoto(false)">
+                <i class="fa fa-check-circle mr-2"></i>{{'demo.Finalize document' | translate }}
+            </button>
         </div>
     </div>
 </ng-template>
@@ -2296,17 +2335,69 @@
         </button>
     </div>
     <div class="modal-body">
-        <form>
-            <div class="form-group">
-                <label for="noteContent">{{'notes.Note Content' | translate}}</label>
-                <textarea class="form-control" id="noteContent" rows="5" [(ngModel)]="newNoteContent"
-                    name="noteContent"></textarea>
-            </div>
-        </form>
+        <div class="note-editor-container mb-2">
+            <quill-editor 
+                [modules]="quillConfig"
+                [ngModel]="newNoteContent"
+                (ngModelChange)="onNewNoteContentChange($event)"
+                (onEditorCreated)="onNewNoteEditorCreated($event)"
+                [styles]="quillEditorStyles"
+                [placeholder]="'notes.Enter note content' | translate">
+            </quill-editor>
+        </div>
     </div>
     <div class="modal-footer">
         <button type="button" class="btn btn-secondary" (click)="cancelEdit()">{{'generics.Cancel' |
             translate}}</button>
-        <button type="button" class="btn btn-dark" (click)="saveNote()">{{'generics.Save' | translate}}</button>
+        <button type="button" class="btn btn-primary" (click)="saveNote()" [disabled]="savingNote">
+            <em class="fa fa-check"></em> {{'generics.Save' | translate}}
+        </button>
+    </div>
+</ng-template>
+
+<ng-template #noteFullModal let-modal>
+    <div class="modal-header">
+        <h4 class="modal-title">{{'notes.Note' | translate}}</h4>
+        <button type="button" class="close" aria-label="Close" (click)="closeNoteModal()">
+            <span aria-hidden="true">&times;</span>
+        </button>
+    </div>
+    <div class="modal-body">
+        <div *ngIf="selectedNoteForModal">
+            <div [innerHTML]="selectedNoteForModal.content | safe: 'html'" class="note-full-content"></div>
+            <small class="text-muted d-block mt-2">{{selectedNoteForModal.date | date: 'longDate'}}</small>
+        </div>
+    </div>
+    <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" (click)="closeNoteModal()">{{'generics.Close' | translate }}</button>
+    </div>
+</ng-template>
+
+<ng-template #editNoteModal let-modal>
+    <div class="modal-header">
+        <h4 class="modal-title">{{'notes.Edit Note' | translate}}</h4>
+        <button type="button" class="close" aria-label="Close" (click)="cancelNoteEdit()">
+            <span aria-hidden="true">&times;</span>
+        </button>
+    </div>
+    <div class="modal-body">
+        <div *ngIf="editingNoteIndex !== null && editingNoteIndex !== undefined && notes[editingNoteIndex]">
+            <div class="note-editor-container mb-2">
+                <quill-editor 
+                    [modules]="quillConfig"
+                    [ngModel]="notes[editingNoteIndex].editContent"
+                    (ngModelChange)="onNoteContentChange($event)"
+                    (onEditorCreated)="onEditorCreated($event)"
+                    [styles]="quillEditorStyles"
+                    [placeholder]="'notes.Enter note content' | translate">
+                </quill-editor>
+            </div>
+        </div>
+    </div>
+    <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" (click)="cancelNoteEdit()">{{'generics.Cancel' | translate }}</button>
+        <button type="button" class="btn btn-primary" (click)="saveNoteEdit()" [disabled]="savingNote">
+            <em class="fa fa-check"></em> {{'generics.Save' | translate }}
+        </button>
     </div>
 </ng-template>

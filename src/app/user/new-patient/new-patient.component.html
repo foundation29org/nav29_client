@@ -612,11 +612,29 @@
     </div>
 </div>
 <ng-template #contentPhoto let-c="close" let-d="dismiss" appendTo="body">
-    <div class="modal-header" id="idHeader">
-        <button type="button" class="close" aria-label="Close" (click)="closeModal();">
-          <span aria-hidden="true">&times;</span>
+    <div class="modal-header" id="idHeader" style="display: flex; justify-content: space-between; align-items: center; padding: 15px 20px;">
+        <div style="flex: 1;">
+            <h5 class="modal-title mb-0" style="font-weight: 600; font-size: 1.1em;">
+                {{'demo.Capture document' | translate }}
+            </h5>
+            <div *ngIf="stepPhoto==1" style="font-size: 0.85em; color: #666; margin-top: 4px; font-weight: 400;">
+                {{'demo.Position the document in front of the camera' | translate }}
+            </div>
+            <div *ngIf="stepPhoto==2" style="font-size: 0.85em; color: #666; margin-top: 4px;">
+                <span style="font-style: italic;">{{'demo.New document' | translate }} ({{'demo.unsaved' | translate }})</span>
+                <span style="margin-left: 8px; font-weight: 500;">
+                    {{'demo.Pages' | translate }}: 
+                    <span *ngFor="let doc of tempDocs; let i = index">
+                        <strong>{{i + 1}}</strong><span *ngIf="i < tempDocs.length - 1 || capturedImage"> · </span>
+                    </span>
+                    <strong *ngIf="capturedImage">{{tempDocs.length + 1}}</strong>
+                </span>
+            </div>
+        </div>
+        <button type="button" class="close" aria-label="Close" (click)="closeModal();" style="margin-left: 15px;">
+            <span aria-hidden="true">&times;</span>
         </button>
-      </div>
+    </div>
     <div class="modal-body">
       <div class="row text-left">
         <div class="card-body col-md-12">
@@ -625,33 +643,40 @@
                 <video #videoElement id="videoElement" class="w-100" autoplay></video>
             </div>
             <div class="col-sm-12" *ngIf="stepPhoto==2">
-              <div class="mb-3">
-                <label for="nameFileCamera" class=""><strong>{{'demo.Document name' | translate }}</strong></label>
-                <input type="text" class="mt-0 form-control" [(ngModel)]="nameFileCamera" placeholder="{{'demo.Document name' | translate }}">
-            </div>
-                <img *ngIf="capturedImage" class="w-100" [src]="capturedImage" />
-                <div class="center-elements">
-                  <button type="button" class="mt-2 btn btn-primary btn-sm" (click)="prevCamera();">{{'demo.Repeat photo' | translate }}</button>
+                <div style="position: relative; display: inline-block; width: 100%;">
+                    <img *ngIf="capturedImage" class="w-100" style="border: 1px solid #dee2e6; border-radius: 4px; display: block;" [src]="capturedImage" />
+                    <button type="button" class="btn btn-outline-light" 
+                        style="position: absolute; top: 10px; right: 10px; border-radius: 50%; width: 45px; height: 45px; padding: 0; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 8px rgba(0,0,0,0.3); background-color: rgba(255,255,255,0.9); border: 2px solid #fff;"
+                        (click)="prevCamera();" 
+                        title="{{'demo.Repeat page' | translate}}">
+                        <i class="fa fa-redo" style="font-size: 1.2em; color: #333;"></i>
+                    </button>
                 </div>
-                
-                
             </div>
           </div>
         </div>
       </div>
-      <div *ngIf="docs.length>0">
-          <strong>{{'demo.Photos taken' | translate }}:</strong>
-          <p *ngFor="let doc of docs; let i = index" class="mb-0">
-            <span>{{doc.dataFile.name}} <em class="ml-1 danger fa fa-trash pointer" (click)="deletephoto(i)"></em></span>
+      <div *ngIf="tempDocs.length>0" style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #dee2e6;">
+          <strong>{{'demo.Captured pages' | translate }}: {{tempDocs.length}}</strong>
+          <p *ngFor="let doc of tempDocs; let i = index" class="mb-1 mt-2" style="font-size: 0.9em;">
+            <span>{{i + 1}}. {{doc.dataFile.name}} <em class="ml-1 danger fa fa-trash pointer" (click)="deletephoto(i)" title="{{'generics.Delete' | translate }}"></em></span>
           </p>
       </div>
     </div>
     <div class="modal-footer">
       <div class="form-actions col-md-12 center-elements">
-        
-        <button type="button" *ngIf="stepPhoto==1" class="btn btn-dark btn-sm float-right" (click)="captureImage()">{{'demo.Capture photo' | translate }}</button>
-        <button type="button" *ngIf="stepPhoto==2" class="btn btn-dark btn-sm float-left" (click)="otherPhoto(true)">{{'demo.Add another photo' | translate }}</button>
-        <button type="button" *ngIf="stepPhoto==2" class="btn btn-dark btn-sm float-right" (click)="otherPhoto(false)">{{'generics.Finish' | translate }}</button>
+        <button type="button" *ngIf="stepPhoto==1" class="btn btn-dark float-right"
+            (click)="captureImage()">
+            <i class="fa fa-camera mr-2"></i>{{'demo.Capture page' | translate }}
+        </button>
+        <button type="button" *ngIf="stepPhoto==2 && tempDocs.length<5" class="btn btn-dark float-left"
+            (click)="otherPhoto(true)">
+            <i class="fa fa-plus-circle mr-2"></i>{{'demo.Add another page' | translate }}
+        </button>
+        <button type="button" *ngIf="stepPhoto==2" class="btn btn-dark float-right"
+            (click)="otherPhoto(false)">
+            <i class="fa fa-check-circle mr-2"></i>{{'demo.Finalize document' | translate }}
+        </button>
       </div>
     </div>
 </ng-template>

@@ -48,6 +48,7 @@ export class AuthService implements OnInit, OnDestroy {
   private sessionChecked: boolean = false; // Bandera para saber si ya se verificó la sesión
   private isRefreshingToken: boolean = false; // Bandera para evitar múltiples refreshes simultáneos
   private refreshTokenPromise: Promise<boolean> | null = null; // Promise compartida para las peticiones que esperan
+  private proactiveRefreshTimeout: any = null; // Timeout para refresh proactivo del token
   
   // Método público para verificar si hay un refresh en curso
   get isRefreshingTokenStatus(): boolean {
@@ -161,10 +162,17 @@ export class AuthService implements OnInit, OnDestroy {
           },
           (err) => {
             this.isCheckingSession = false;
-            this.sessionChecked = true; // Marcar como verificado aunque haya fallado
-            // No hay sesión válida - esto es normal antes del login, no hacer nada
-            // Solo loguear si es un error inesperado (no 401/403)
-            if(err.status !== 401 && err.status !== 403){
+            this.sessionChecked = true; // Marcar como verificado siempre
+            
+            // Si es un error 401/403, podría ser que el access token expiró pero el refresh token siga válido
+            // PERO solo intentar refrescar si NO estamos en el proceso de login (para no bloquear el login)
+            // Verificamos si hay un refresh token en las cookies antes de intentar refrescar
+            if(err.status === 401 || err.status === 403) {
+              // Solo intentar refrescar si hay una sesión previa (no es un usuario completamente deslogueado)
+              // El interceptor ya manejará el refresh para otras peticiones, así que aquí solo marcamos como verificado
+              // No hacer nada más - esto es normal antes del login o cuando no hay sesión válida
+            } else {
+              // Para otros errores, loguear el error
               console.error('Error checking session:', err);
               this.insightsService.trackException(err);
             }
@@ -275,6 +283,12 @@ export class AuthService implements OnInit, OnDestroy {
   async logout() {
     this.router.navigate(['/.']);
     this.lang = localStorage.getItem('lang');
+    
+    // Limpiar timeout de refresh proactivo
+    if (this.proactiveRefreshTimeout) {
+      clearTimeout(this.proactiveRefreshTimeout);
+      this.proactiveRefreshTimeout = null;
+    }
     
     // Llamar al endpoint de logout para limpiar cookies en el servidor
     try {
@@ -413,9 +427,58 @@ export class AuthService implements OnInit, OnDestroy {
   }
   setExpToken(expToken: number): void {
     this.expToken = expToken;
+    // Programar refresh proactivo del token antes de que expire (5 minutos antes)
+    this.scheduleProactiveRefresh(expToken);
   }
   getExpToken(): number {
     return this.expToken;
+  }
+  
+  // Verificar si el token está cerca de expirar (menos de 5 minutos)
+  isTokenNearExpiration(): boolean {
+    if (!this.expToken) {
+      return false;
+    }
+    const now = Math.floor(Date.now() / 1000);
+    const timeUntilExpiration = this.expToken - now;
+    // Considerar "cerca de expirar" si quedan menos de 5 minutos (300 segundos)
+    return timeUntilExpiration < 300 && timeUntilExpiration > 0;
+  }
+  
+  // Programar refresh proactivo del token antes de que expire
+  private scheduleProactiveRefresh(expToken: number) {
+    // Limpiar timeout anterior si existe
+    if (this.proactiveRefreshTimeout) {
+      clearTimeout(this.proactiveRefreshTimeout);
+      this.proactiveRefreshTimeout = null;
+    }
+    
+    if (!expToken) {
+      return;
+    }
+    
+    const now = Math.floor(Date.now() / 1000);
+    const timeUntilExpiration = expToken - now;
+    
+    // Si el token ya expiró, no programar refresh
+    if (timeUntilExpiration <= 0) {
+      return;
+    }
+    
+    // Programar refresh 5 minutos antes de que expire (o inmediatamente si ya está cerca)
+    const refreshDelay = Math.max(0, (timeUntilExpiration - 300) * 1000);
+    
+    this.proactiveRefreshTimeout = setTimeout(() => {
+      // Refrescar el token proactivamente antes de que expire
+      if (this.isTokenNearExpiration() && !this.isRefreshingToken) {
+        console.log('Refreshing token proactively before expiration');
+        this.refreshAccessToken().catch(err => {
+          console.warn('Proactive token refresh failed:', err);
+          // No hacer logout en refresh proactivo fallido - el interceptor lo manejará cuando sea necesario
+        });
+      }
+      this.proactiveRefreshTimeout = null;
+    }, refreshDelay);
   }
   setIdUser(iduser: string): void {
     this.iduser = iduser;
@@ -568,11 +631,36 @@ export class AuthService implements OnInit, OnDestroy {
       }
       this.isRefreshingToken = false;
       return false;
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to refresh token:', err);
       this.insightsService.trackException(err);
-      // Si falla el refresh, marcar como no autenticado
-      this.isloggedIn = false;
+      
+      // Solo hacer logout si es un error de autenticación real (401/403)
+      // NO hacer logout en errores de red (status 0) o errores temporales del servidor (500, 503)
+      // Estos errores pueden ser temporales y el refresh token puede seguir siendo válido
+      const isAuthError = err.status === 401 || err.status === 403;
+      const isNetworkError = err.status === 0 || err.status === null;
+      const isServerError = err.status >= 500 && err.status < 600;
+      
+      // Si es un error de autenticación real, el refresh token ha expirado o es inválido
+      if (isAuthError) {
+        this.isloggedIn = false;
+        this.isRefreshingToken = false;
+        return false;
+      }
+      
+      // Si es un error de red o del servidor, NO hacer logout
+      // El refresh token puede seguir siendo válido, solo fue un error temporal
+      if (isNetworkError || isServerError) {
+        console.warn('Refresh token failed due to network/server error. Token may still be valid. Status:', err.status);
+        this.isRefreshingToken = false;
+        // Retornar false para que el interceptor no reintente inmediatamente
+        // pero NO hacer logout - el usuario puede intentar de nuevo más tarde
+        return false;
+      }
+      
+      // Para otros errores, también evitar logout automático
+      // Solo hacer logout si es explícitamente un error de autenticación
       this.isRefreshingToken = false;
       return false;
     }

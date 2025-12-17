@@ -488,7 +488,13 @@ export class NavbarComponent implements OnInit, AfterViewInit, OnDestroy {
       'failed': () => {
         stepsTaskUpload.forEach((step, idx) => updateStepStatus(stepsTaskUpload, 'failed', idx));
         if (this.actualUrl !== '/welcome' && this.actualUrl !== '/new-patient') {
-          Swal.fire('', this.translate.instant("messages.errProcFile"), "error");
+          // Usar el error específico si existe, sino usar el genérico
+          const errorKey = parsedData.error || "messages.errProcFile";
+          // Si es una key de traducción (empieza con messages.), traducirla
+          const errorMessage = errorKey.startsWith('messages.') 
+            ? this.translate.instant(errorKey) 
+            : errorKey;
+          Swal.fire('', errorMessage, "error");
         }
       },
       'error summarize': () => updateStepStatus(stepsTaskUpload, 'failed', 3),

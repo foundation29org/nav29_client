@@ -157,6 +157,31 @@
   }
 }
 
+.editable-title-input {
+  border: 1px solid #ced4da;
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 1.5rem;
+  font-weight: 500;
+  line-height: 1.2;
+  color: #212529;
+  background-color: #fff;
+  transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+  min-width: 200px;
+  max-width: 600px;
+  
+  &:focus {
+    outline: none;
+    border-color: #80bdff;
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+  }
+  
+  &::placeholder {
+    color: #6c757d;
+    opacity: 0.6;
+  }
+}
+
 .document-link {
   color: #333; /* Color base similar al texto normal */
   text-decoration: none;
@@ -461,6 +486,54 @@
 
 .note-content {
   margin-bottom: 10px;
+}
+
+.note-editor-container {
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  overflow: hidden;
+  
+  ::ng-deep .ql-container {
+    font-size: 14px;
+    font-family: inherit;
+  }
+  
+  ::ng-deep .ql-editor {
+    min-height: 200px;
+    max-height: 500px;
+    overflow-y: auto;
+  }
+  
+  ::ng-deep .ql-toolbar {
+    border-top: none;
+    border-left: none;
+    border-right: none;
+    border-bottom: 1px solid #e0e0e0;
+    background: #fafafa;
+  }
+  
+  ::ng-deep .ql-toolbar .ql-stroke {
+    stroke: #444;
+  }
+  
+  ::ng-deep .ql-toolbar .ql-fill {
+    fill: #444;
+  }
+  
+  ::ng-deep .ql-toolbar button:hover,
+  ::ng-deep .ql-toolbar button.ql-active {
+    color: #2F8BE6;
+  }
+  
+  ::ng-deep .ql-toolbar button:hover .ql-stroke,
+  ::ng-deep .ql-toolbar button.ql-active .ql-stroke {
+    stroke: #2F8BE6;
+  }
+  
+  ::ng-deep .ql-toolbar button:hover .ql-fill,
+  ::ng-deep .ql-toolbar button.ql-active .ql-fill {
+    fill: #2F8BE6;
+  }
 }
 
 .custom-body {
@@ -810,6 +883,8 @@ ul, ol {
   
   @media (max-width: 991px) {
     left: 0;
+    bottom: 60px; // Espacio para el menú de navegación
+    z-index: 1; // Menor que el menú de navegación (z-index: 2)
   }
 }
 
@@ -1137,11 +1212,6 @@ display: none !important;
       display: block;
     }
   }
-
-  .chat-input-container{
-    left: 0;
-  }
-
 
   .notes-sidebar {
     height: calc(100vh - 8.32rem);

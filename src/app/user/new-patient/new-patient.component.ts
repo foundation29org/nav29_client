@@ -14,6 +14,7 @@ import { AuthGuard } from 'app/shared/auth/auth-guard.service';
 import { DateService } from 'app/shared/services/date.service';
 import { InsightsService } from 'app/shared/services/azureInsights.service';
 import * as datos from './icons.json';
+import { jsPDF } from "jspdf";
 declare var webkitSpeechRecognition: any;
 
 @Component({
@@ -31,6 +32,7 @@ export class NewPatientComponent implements OnInit, OnDestroy {
   modalReference: NgbModalRef;
   nameFileCamera: string = '';
   docs: any = [];
+  tempDocs: any = [];
   isCheckingDocsStatus = false;
   totalTokens = 0;
   containerName: string = '';
@@ -500,64 +502,302 @@ export class NewPatientComponent implements OnInit, OnDestroy {
       filename = filename.split(extension)[0];
       var uniqueFileName = this.getUniqueFileName2();
       filename = 'raitofile/' + uniqueFileName + '/' + filename + extension;
-      this.docs.push({ dataFile: { event: file, name: file.name, url: filename, content: event2.target.result }, langToExtract: '', medicalText: '', state: 'false', tokens: 0 });
+      let dataFile = { event: file, url: filename, name: file.name };
+      this.tempDocs.push({ dataFile: dataFile, state: 'false' });
       if(goprev){
         this.prevCamera();
       }else{
-        if (this.modalReference != undefined) {
-          this.modalReference.close();
-          this.modalReference = undefined;
+        // Si hay más de 1 foto, preguntar si quiere agrupar
+        if (this.tempDocs.length > 1) {
+          this.askGroupPhotos();
+        } else {
+          // Si solo hay 1 foto, procesar directamente
+          if (this.modalReference != undefined) {
+            this.modalReference.close();
+            this.modalReference = undefined;
+          }
+          this.processFilesSequentially();
         }
-        this.isCheckingDocsStatus = false;
-        for (let i = 0; i < this.docs.length; i++) {
-          this.prepareFile(i);
-        }
-        
       }
     }
   }
 
   deletephoto(index) {
-    this.docs.splice(index, 1);
+    this.tempDocs.splice(index, 1);
   }
 
-
-  finishPhoto() {
-    if (this.modalReference != undefined) {
-      this.modalReference.close();
-      this.modalReference = undefined;
-    }
-    //add file to docs
-    if (this.nameFileCamera == '') {
-      this.nameFileCamera = 'photo-' + this.getUniqueFileName();
-    }
-    this.nameFileCamera = this.nameFileCamera + '.png';
-    let file = this.dataURLtoFile(this.capturedImage, this.nameFileCamera);
-    var reader = new FileReader();
-    reader.readAsArrayBuffer(file); // read file as data url
-    reader.onload = (event2: any) => { // called once readAsDataURL is completed
-      var filename = (file).name;
-      var extension = filename.substr(filename.lastIndexOf('.'));
-      var pos = (filename).lastIndexOf('.')
-      pos = pos - 4;
-      if (pos > 0 && extension == '.gz') {
-        extension = (filename).substr(pos);
+  askGroupPhotos() {
+    const pageCount = this.tempDocs.length;
+    const pageList = this.tempDocs.map((doc, index) => `${index + 1}. ${doc.dataFile.name}`).join('<br>');
+    
+    // Generar nombre por defecto inteligente
+    const defaultName = this.generateDefaultDocumentName();
+    
+    // Crear HTML con selector y campo de nombre condicional
+    let htmlContent = `
+      <p style="margin-bottom: 15px; font-size: 1.1em;">
+        ${this.translate.instant('demo.You have captured')} <strong>${pageCount}</strong> ${pageCount === 1 ? this.translate.instant('demo.page') : this.translate.instant('demo.pages')}.
+      </p>
+      <p style="margin-bottom: 10px;"><strong>${this.translate.instant('demo.Captured pages')}:</strong></p>
+      <div style="text-align: left; max-height: 120px; overflow-y: auto; margin: 10px 0; padding: 10px; background-color: #f8f9fa; border-radius: 4px; font-size: 0.9em;">${pageList}</div>
+      <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #dee2e6;">
+        <p style="margin-bottom: 15px; font-weight: 600;">${this.translate.instant('demo.How do you want to save this document?')}</p>
+        <div style="text-align: left;">
+          <label style="display: block; margin-bottom: 15px; cursor: pointer; padding: 10px; border: 2px solid #2F8BE6; border-radius: 6px; background-color: #f0f7ff;">
+            <input type="radio" name="saveOption" value="group" checked style="margin-right: 10px; cursor: pointer; width: 18px; height: 18px; accent-color: #2F8BE6;">
+            <span style="font-weight: 600; color: #2F8BE6;">${this.translate.instant('demo.Save as one document')}</span>
+            <span style="display: block; margin-left: 28px; margin-top: 5px; font-size: 0.9em; color: #666;">${this.translate.instant('demo.Save as one document description')}</span>
+          </label>
+          <label style="display: block; margin-bottom: 10px; cursor: pointer; padding: 10px; border: 2px solid #dee2e6; border-radius: 6px; background-color: #fff;">
+            <input type="radio" name="saveOption" value="separate" style="margin-right: 10px; cursor: pointer; width: 18px; height: 18px; accent-color: #2F8BE6;">
+            <span style="font-weight: 600;">${this.translate.instant('demo.Save as separate documents')}</span>
+            <span style="display: block; margin-left: 28px; margin-top: 5px; font-size: 0.9em; color: #666;">${this.translate.instant('demo.Save as separate documents description')}</span>
+          </label>
+        </div>
+        <div id="documentNameContainer" style="margin-top: 20px; padding-top: 15px; border-top: 1px solid #dee2e6;">
+          <label style="display: block; margin-bottom: 8px; font-weight: 600;">${this.translate.instant('demo.Document name')}</label>
+          <input type="text" id="documentNameInput" value="${defaultName}" style="width: 100%; padding: 8px; border: 1px solid #ced4da; border-radius: 4px; font-size: 1em;" placeholder="${this.translate.instant('demo.Enter document name')}">
+          <p style="margin-top: 5px; font-size: 0.85em; color: #666; font-style: italic;">${this.translate.instant('demo.You can change it later')}</p>
+        </div>
+      </div>
+    `;
+    
+    Swal.fire({
+      title: this.translate.instant('demo.Finalize document'),
+      html: htmlContent,
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonText: this.translate.instant('demo.Save document'),
+      cancelButtonText: this.translate.instant('generics.Cancel'),
+      confirmButtonColor: '#2F8BE6',
+      cancelButtonColor: '#B0B6BB',
+      reverseButtons: true,
+      didOpen: () => {
+        // Manejar cambio de opción y actualizar estilos visuales
+        const container = Swal.getHtmlContainer();
+        const radioButtons = container?.querySelectorAll('input[name="saveOption"]') as NodeListOf<HTMLInputElement>;
+        const nameContainer = container?.querySelector('#documentNameContainer') as HTMLElement;
+        const labels = container?.querySelectorAll('label') as NodeListOf<HTMLLabelElement>;
+        
+        // Función para actualizar estilos visuales de los labels
+        const updateLabelStyles = () => {
+          radioButtons?.forEach((radio, index) => {
+            const label = labels?.[index];
+            if (label && radio.checked) {
+              label.style.borderColor = '#2F8BE6';
+              label.style.backgroundColor = '#f0f7ff';
+            } else if (label) {
+              label.style.borderColor = '#dee2e6';
+              label.style.backgroundColor = '#fff';
+            }
+          });
+        };
+        
+        // Actualizar estilos iniciales
+        updateLabelStyles();
+        
+        radioButtons?.forEach(radio => {
+          radio.addEventListener('change', () => {
+            updateLabelStyles();
+            if (radio.value === 'group' && nameContainer) {
+              nameContainer.style.display = 'block';
+            } else if (radio.value === 'separate' && nameContainer) {
+              nameContainer.style.display = 'none';
+            }
+          });
+        });
+      },
+      preConfirm: () => {
+        const container = Swal.getHtmlContainer();
+        const selectedOption = (container?.querySelector('input[name="saveOption"]:checked') as HTMLInputElement)?.value;
+        const nameInput = container?.querySelector('#documentNameInput') as HTMLInputElement;
+        
+        if (selectedOption === 'group') {
+          const documentName = nameInput?.value?.trim();
+          if (!documentName) {
+            Swal.showValidationMessage(this.translate.instant('demo.Document name is required'));
+            return false;
+          }
+          return { option: 'group', name: documentName };
+        } else {
+          return { option: 'separate', name: null };
+        }
       }
-      filename = filename.split(extension)[0];
+    }).then((result) => {
+      if (this.modalReference != undefined) {
+        this.modalReference.close();
+        this.modalReference = undefined;
+      }
+      
+      if (result.isConfirmed && result.value) {
+        if (result.value.option === 'group') {
+          // Agrupar en un solo PDF con el nombre proporcionado
+          this.groupPhotosIntoPDF(result.value.name);
+        } else {
+          // Subir como documentos separados
+          this.processFilesSequentially();
+        }
+      }
+    });
+  }
+
+  generateDefaultDocumentName(): string {
+    // Generar nombre inteligente basado en fecha y contexto
+    const now = new Date();
+    const dateStr = now.toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' });
+    
+    // Opciones de nombres sugeridos
+    const suggestions = [
+      this.translate.instant('demo.Medical report'),
+      this.translate.instant('demo.Test results'),
+      this.translate.instant('demo.Medical documentation')
+    ];
+    
+    // Usar el nombre de la cámara si existe y tiene sentido, sino usar sugerencia
+    if (this.nameFileCamera && this.nameFileCamera !== '' && !this.nameFileCamera.startsWith('photo-')) {
+      return this.nameFileCamera.replace('.png', '');
+    }
+    
+    // Usar primera sugerencia con fecha
+    return `${suggestions[0]} – ${dateStr}`;
+  }
+
+  async groupPhotosIntoPDF(documentName: string) {
+    try {
+      // Mostrar mensaje de carga
+      Swal.fire({
+        title: this.translate.instant('demo.Combining photos'),
+        html: `<p>${this.translate.instant('demo.Combining')} ${this.tempDocs.length} ${this.tempDocs.length === 1 ? this.translate.instant('demo.photo') : this.translate.instant('demo.photos')} ${this.translate.instant('demo.into one document')}...</p>`,
+        allowOutsideClick: false,
+        didOpen: () => {
+          Swal.showLoading();
+        }
+      });
+
+      // Crear PDF con jsPDF
+      const doc = new jsPDF();
+      const pdfWidth = doc.internal.pageSize.getWidth();
+      const pdfHeight = doc.internal.pageSize.getHeight();
+      const margin = 10;
+      const maxWidth = pdfWidth - (margin * 2);
+      const maxHeight = pdfHeight - (margin * 2);
+
+      // Procesar cada foto y añadirla al PDF
+      for (let i = 0; i < this.tempDocs.length; i++) {
+        const photoData = this.tempDocs[i].dataFile;
+        const imageDataUrl = await this.fileToDataURL(photoData.event);
+        
+        // Crear imagen para obtener dimensiones
+        const img = new Image();
+        await new Promise((resolve) => {
+          img.onload = () => {
+            // Calcular dimensiones manteniendo proporción
+            let imgWidth = img.width;
+            let imgHeight = img.height;
+            const ratio = Math.min(maxWidth / imgWidth, maxHeight / imgHeight);
+            imgWidth = imgWidth * ratio;
+            imgHeight = imgHeight * ratio;
+
+            // Centrar imagen en la página
+            const x = (pdfWidth - imgWidth) / 2;
+            const y = (pdfHeight - imgHeight) / 2;
+
+            // Añadir nueva página si no es la primera foto
+            if (i > 0) {
+              doc.addPage();
+            }
+
+            // Añadir imagen al PDF
+            doc.addImage(imageDataUrl, 'PNG', x, y, imgWidth, imgHeight);
+            resolve(null);
+          };
+          img.src = imageDataUrl;
+        });
+      }
+
+      // Generar blob del PDF
+      const pdfBlob = doc.output('blob');
+      
+      // Crear File desde el blob usando el nombre proporcionado por el usuario
+      let cleanName = documentName.trim();
+      if (cleanName.toLowerCase().endsWith('.pdf')) {
+        cleanName = cleanName.slice(0, -4);
+      }
+      const pdfFileName = cleanName + '.pdf';
+      const pdfFile = new File([pdfBlob], pdfFileName, { type: 'application/pdf' });
+
+      // Preparar para subir
       var uniqueFileName = this.getUniqueFileName2();
-      filename = 'raitofile/' + uniqueFileName + '/' + filename + extension;
-      this.docs.push({ dataFile: { event: file, name: file.name, url: filename, content: event2.target.result }, langToExtract: '', medicalText: '', state: 'false', tokens: 0 });
-      if (file.type == 'application/pdf' || extension == '.docx' || file.type == 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' || extension == '.jpg' || extension == '.png' || extension == '.jpeg' || extension == '.bmp' || extension == '.tiff' || extension == '.heif' || extension == '.pptx' || file.type == 'text/plain' || extension == '.txt') {
-        let index = this.docs.length - 1;
-        //this.callParser(index);
+      var filename = 'raitofile/' + uniqueFileName + '/' + pdfFileName;
+      
+      // Leer el archivo como ArrayBuffer para el contenido
+      var reader = new FileReader();
+      reader.readAsArrayBuffer(pdfFile);
+      reader.onload = async (event2: any) => {
+        // Limpiar tempDocs y añadir el PDF a docs
+        this.tempDocs = [];
+        this.docs.push({ dataFile: { event: pdfFile, name: pdfFileName, url: filename, content: event2.target.result }, langToExtract: '', medicalText: '', state: 'false', tokens: 0 });
+
+        // Cerrar mensaje de carga y esperar un poco para que se cierre completamente
+        Swal.close();
+        await this.delay(300);
+
+        // Procesar el archivo
         this.isCheckingDocsStatus = false;
-        this.prepareFile(index);
-      } else {
-        Swal.fire(this.translate.instant("dashboardpatient.error extension"), '', "error");
-        this.insightsService.trackEvent('Invalid file extension', { extension: extension });
-      }
+        for (let i = 0; i < this.docs.length; i++) {
+          this.prepareFile(i);
+        }
+      };
+    } catch (error) {
+      console.error('Error combining photos:', error);
+      Swal.fire({
+        title: this.translate.instant('demo.Error combining photos'),
+        text: error.message || '',
+        icon: 'error'
+      });
+      this.insightsService.trackException(error);
     }
   }
+
+  fileToDataURL(file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => resolve(e.target?.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+
+  processFilesSequentially(index = 0) {
+    if (index < this.tempDocs.length) {
+      let file = this.tempDocs[index].dataFile.event;
+      var reader = new FileReader();
+      reader.readAsArrayBuffer(file);
+      reader.onload = (event2: any) => {
+        var filename = this.tempDocs[index].dataFile.url;
+        this.docs.push({ dataFile: { event: file, name: file.name, url: filename, content: event2.target.result }, langToExtract: '', medicalText: '', state: 'false', tokens: 0 });
+        
+        // Procesar siguiente archivo
+        this.processFilesSequentially(index + 1);
+      };
+    } else {
+      // Todos los archivos procesados, limpiar tempDocs y procesar docs
+      this.tempDocs = [];
+      if (this.modalReference != undefined) {
+        this.modalReference.close();
+        this.modalReference = undefined;
+      }
+      // Esperar un poco antes de procesar para asegurar que el modal se haya cerrado
+      setTimeout(() => {
+        this.isCheckingDocsStatus = false;
+        for (let i = 0; i < this.docs.length; i++) {
+          this.prepareFile(i);
+        }
+      }, 300);
+    }
+  }
+
+
 
   getUniqueFileName() {
     var now = new Date();

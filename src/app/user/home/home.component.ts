@@ -21,6 +21,7 @@ import { EventsService } from 'app/shared/services/events.service';
 import { WebPubSubService } from 'app/shared/services/web-pub-sub.service';
 import { jsPDFService } from 'app/shared/services/jsPDF.service'
 import { Clipboard } from "@angular/cdk/clipboard"
+import { jsPDF } from "jspdf";
 
 import { InsightsService } from 'app/shared/services/azureInsights.service';
 import { LangService } from 'app/shared/services/lang.service';
@@ -305,6 +306,34 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
   savingNote: boolean = false;
   editableDiv: ElementRef | null = null;
   deletingNote: boolean = false;
+  selectedNoteForModal: any = null;
+  noteMaxLength: number = 500; // Límite de caracteres para mostrar preview
+  editingNoteIndex: number | null = null; // Índice de la nota que se está editando en el modal
+  
+  // Quill Editor Configuration
+  quillConfig = {
+    toolbar: [
+      ['bold', 'italic', 'underline', 'strike'],        // toggled buttons
+      ['blockquote', 'code-block'],
+      [{ 'header': 1 }, { 'header': 2 }],               // custom button values
+      [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+      [{ 'script': 'sub'}, { 'script': 'super' }],      // superscript/subscript
+      [{ 'indent': '-1'}, { 'indent': '+1' }],          // outdent/indent
+      [{ 'direction': 'rtl' }],                         // text direction
+      [{ 'size': ['small', false, 'large', 'huge'] }],  // custom dropdown
+      [{ 'header': [1, 2, 3, 4, 5, 6, false] }],
+      [{ 'color': [] }, { 'background': [] }],          // dropdown with defaults from theme
+      [{ 'font': [] }],
+      [{ 'align': [] }],
+      ['clean'],                                         // remove formatting button
+      ['link', 'image']                                 // link and image, video
+    ]
+  };
+  
+  quillEditorStyles = {
+    height: '300px',
+    'min-height': '200px'
+  };
   selectAllDocuments: boolean = true;
   searchTerm: string = '';
   filteredDocs: any[] = [];
@@ -1738,7 +1767,7 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
           this.defaultDoc = this.docs[0];
         }
         this.loadedDocs = true;
-        this.assignFeedbackToDocs(this.docs);
+        //this.assignFeedbackToDocs(this.docs);
         
         // Hacer scroll después de que se carguen los documentos
         setTimeout(() => {
@@ -1817,7 +1846,7 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
       const eventsResponse: any = await this.http.get(environment.api + '/api/events/' + this.currentPatient).toPromise();
 
       if (!eventsResponse.message && eventsResponse.length > 0) {
-        eventsResponse.sort(this.sortService.DateSort("dateInput"));
+        eventsResponse.sort(this.sortService.DateSort("date"));
         if (!newEvent) {
           this.allTypesEvents = eventsResponse;
           this.allEvents = eventsResponse;
@@ -1825,17 +1854,29 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
         for (let i = 0; i < eventsResponse.length; i++) {
           eventsResponse[i].dateInput = new Date(eventsResponse[i].dateInput);
           let dateWithoutTime = '';
+          let dateEndWithoutTime = '';
           if (eventsResponse[i].date != undefined && eventsResponse[i].date.indexOf("T") != -1) {
             dateWithoutTime = eventsResponse[i].date.split("T")[0];
           }
+          if (eventsResponse[i].dateEnd != undefined && eventsResponse[i].dateEnd.indexOf("T") != -1) {
+            dateEndWithoutTime = eventsResponse[i].dateEnd.split("T")[0];
+          }
           if (eventsResponse[i].key != undefined) {
-            this.initialEvents.push({
+            const initialEvent: any = {
               "insight": eventsResponse[i].name,
               "date": dateWithoutTime,
               "key": eventsResponse[i].key
-            });
+            };
+            if (dateEndWithoutTime) {
+              initialEvent.dateEnd = dateEndWithoutTime;
+            }
+            this.initialEvents.push(initialEvent);
           }
-          this.metadata.push({ name: eventsResponse[i].name, date: dateWithoutTime });
+          const metadataItem: any = { name: eventsResponse[i].name, date: dateWithoutTime };
+          if (dateEndWithoutTime) {
+            metadataItem.dateEnd = dateEndWithoutTime;
+          }
+          this.metadata.push(metadataItem);
         }
         this.events = eventsResponse;
       }
@@ -1905,6 +1946,15 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
   openUpdateDocDate(doc, PanelChangeDate) {
     // create a copy on this.tempDoc
     this.tempDoc = JSON.parse(JSON.stringify(doc));
+    
+    // Si no hay originaldate, usar la fecha de subida (date) como valor por defecto
+    if (!this.tempDoc.originaldate) {
+      this.tempDoc.originaldate = this.tempDoc.date ? new Date(this.tempDoc.date) : new Date();
+    } else {
+      // Asegurar que originaldate sea un objeto Date si es una cadena
+      this.tempDoc.originaldate = new Date(this.tempDoc.originaldate);
+    }
+    
     if (this.modalReference2 != undefined) {
       this.modalReference2.close();
       this.modalReference2 = undefined;
@@ -2011,6 +2061,25 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
 
   async startEditing() {
     this.editingTitle = true;
+  }
+  
+  // Calcular el ancho del input basado en el contenido
+  getInputWidth(text: string): number {
+    if (!text) return 200; // Ancho mínimo
+    // Aproximadamente 8px por carácter (ajustable según la fuente)
+    const charWidth = 8;
+    const minWidth = 200;
+    const maxWidth = 600;
+    const calculatedWidth = text.length * charWidth + 40; // +40 para padding
+    return Math.max(minWidth, Math.min(calculatedWidth, maxWidth));
+  }
+  
+  // Ajustar el ancho del input mientras se escribe
+  adjustInputWidth(event: any) {
+    const input = event.target;
+    const text = input.value;
+    const newWidth = this.getInputWidth(text);
+    input.style.width = newWidth + 'px';
   }
 
   cancelEditing() {
@@ -2802,6 +2871,7 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     this.eventsForm = this.formBuilder.group({
       name: ['', Validators.required],
       date: [new Date()],
+      dateEnd: [null],
       key: [''],
       notes: []
     });
@@ -2857,17 +2927,6 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     this.callingOpenai = false;
   }
 
-  dateGreaterThan(dateField: string): any {
-    return (control: any): { [key: string]: any } => {
-      const dateInput = control.value;
-      const dateFieldControl = control.root.get(dateField);
-      if (dateFieldControl && dateInput && dateFieldControl.value && dateInput <= dateFieldControl.value) {
-        return { 'dateGreaterThan': true };
-      }
-      return null;
-    };
-  }
-
   get date() {
     //return this.seizuresForm.get('date').value;
     let minDate = new Date(this.eventsForm.get('date').value);
@@ -2899,6 +2958,9 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
 
       if (this.eventsForm.value.date != null) {
         this.eventsForm.value.date = this.dateService.transformDate(this.eventsForm.value.date);
+      }
+      if (this.eventsForm.value.dateEnd != null) {
+        this.eventsForm.value.dateEnd = this.dateService.transformDate(this.eventsForm.value.dateEnd);
       }
 
       if (this.authGuard.testtoken()) {
@@ -3004,7 +3066,8 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
         this.summaryDoc = res;
         //this.resultText = res;
         let documentsToCheck = [this.actualDoc];
-        this.checkIfNeedFeedback(contentSummaryDoc, documentsToCheck, 'individual')
+        //this.checkIfNeedFeedback(contentSummaryDoc, documentsToCheck, 'individual')
+        this.showContent(contentSummaryDoc);
         this.loadEventFromDoc(doc);
       }, (err) => {
         this.openingResults = false;
@@ -3012,6 +3075,25 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
         this.insightsService.trackException(err);
         this.toastr.error('', this.translate.instant('messages.msgError'));
       }));
+  }
+
+  async showContent(contentSummaryDoc) {
+    let ngbModalOptions: NgbModalOptions = {
+      backdrop: 'static',
+      keyboard: false,
+      windowClass: 'ModalClass-lg' // xl, lg, sm
+    };
+    if (this.modalReference != undefined) {
+      this.modalReference.close();
+      this.modalReference = undefined;
+    }
+    this.selectedIndexTab = 0;
+    this.modalReference = this.modalService.open(contentSummaryDoc, ngbModalOptions);
+    await this.delay(200)
+    document.getElementById('contentHeader').scrollIntoView(true);
+
+    // CLOSE SWAL MSG
+    Swal.close();
   }
 
   checkIfNeedFeedback(contentSummaryDoc, documentsToCheck, type) {
@@ -3366,7 +3448,7 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
 
           }
           this.docs.forEach(doc => doc.selected = true);
-          this.assignFeedbackToDocs(this.docs);
+          //this.assignFeedbackToDocs(this.docs);
         }
 
       }, (err) => {
@@ -3389,20 +3471,11 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
         const currentVersion = environment.version + ' - ' + environment.subversion;
         if (this.summaryJson.version == currentVersion) {
           let documentsToCheck = this.docs;
-          this.checkIfNeedFeedback(this.contentviewSummary, documentsToCheck, 'general')
+          this.showContent(this.contentviewSummary);
+          //this.checkIfNeedFeedback(this.contentviewSummary, documentsToCheck, 'general')
         } else {
           this.getPatientSummary(true);
         }
-        //this.resultText = res;
-        /*let ngbModalOptions: NgbModalOptions = {
-          keyboard: false,
-          windowClass: 'ModalClass-sm' // xl, lg, sm
-        };
-        if (this.modalReference != undefined) {
-          this.modalReference.close();
-          this.modalReference = undefined;
-        }
-        this.modalReference = this.modalService.open(this.contentviewSummary, ngbModalOptions);*/
 
       }, (err) => {
         console.log(err);
@@ -3590,6 +3663,7 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     this.eventsForm = this.formBuilder.group({
       name: ['', Validators.required],
       date: [new Date()],
+      dateEnd: [null],
       notes: [],
       key: []
     });
@@ -3597,6 +3671,9 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
       event.date = new Date(event.date);
     } else {
       event.date = new Date();
+    }
+    if (event.dateEnd != undefined) {
+      event.dateEnd = new Date(event.dateEnd);
     }
     event.name = event.insight;
     //info.date = this.dateService.transformDate(new Date());
@@ -3608,6 +3685,7 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     var info = {
       name: event.insight.toLowerCase(),
       date: event.date,
+      dateEnd: event.dateEnd || null,
       notes: '',
       data: event.data,
       key: event.key
@@ -3636,10 +3714,14 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
       this.eventsForm = this.formBuilder.group({
         name: ['', Validators.required],
         date: [new Date()],
+        dateEnd: [null],
         notes: [],
         key: []
       });
       event.date = new Date();
+      if (event.dateEnd) {
+        event.dateEnd = new Date(event.dateEnd);
+      }
       //info.date = this.dateService.transformDate(new Date());
       this.eventsForm.patchValue(event);
       savePromises.push(this.saveData(false, false));
@@ -4219,67 +4301,264 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
       if (goprev) {
         this.prevCamera();
       } else {
-        if (this.modalReference != undefined) {
-          this.modalReference.close();
-          this.modalReference = undefined;
+        // Si hay más de 1 foto, preguntar si quiere agrupar
+        if (this.tempDocs.length > 1) {
+          this.askGroupPhotos();
+        } else {
+          // Si solo hay 1 foto, procesar directamente
+          if (this.modalReference != undefined) {
+            this.modalReference.close();
+            this.modalReference = undefined;
+          }
+          this.processFilesSequentially();
         }
-        this.processFilesSequentially();
       }
     }
+  }
+
+  askGroupPhotos() {
+    const pageCount = this.tempDocs.length;
+    const pageList = this.tempDocs.map((doc, index) => `${index + 1}. ${doc.dataFile.name}`).join('<br>');
+    
+    // Generar nombre por defecto inteligente
+    const defaultName = this.generateDefaultDocumentName();
+    
+    // Crear HTML con selector y campo de nombre condicional
+    let htmlContent = `
+      <p style="margin-bottom: 15px; font-size: 1.1em;">
+        ${this.translate.instant('demo.You have captured')} <strong>${pageCount}</strong> ${pageCount === 1 ? this.translate.instant('demo.page') : this.translate.instant('demo.pages')}.
+      </p>
+      <p style="margin-bottom: 10px;"><strong>${this.translate.instant('demo.Captured pages')}:</strong></p>
+      <div style="text-align: left; max-height: 120px; overflow-y: auto; margin: 10px 0; padding: 10px; background-color: #f8f9fa; border-radius: 4px; font-size: 0.9em;">${pageList}</div>
+      <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #dee2e6;">
+        <p style="margin-bottom: 15px; font-weight: 600;">${this.translate.instant('demo.How do you want to save this document?')}</p>
+        <div style="text-align: left;">
+          <label style="display: block; margin-bottom: 15px; cursor: pointer; padding: 10px; border: 2px solid #2F8BE6; border-radius: 6px; background-color: #f0f7ff;">
+            <input type="radio" name="saveOption" value="group" checked style="margin-right: 10px; cursor: pointer; width: 18px; height: 18px; accent-color: #2F8BE6;">
+            <span style="font-weight: 600; color: #2F8BE6;">${this.translate.instant('demo.Save as one document')}</span>
+            <span style="display: block; margin-left: 28px; margin-top: 5px; font-size: 0.9em; color: #666;">${this.translate.instant('demo.Save as one document description')}</span>
+          </label>
+          <label style="display: block; margin-bottom: 10px; cursor: pointer; padding: 10px; border: 2px solid #dee2e6; border-radius: 6px; background-color: #fff;">
+            <input type="radio" name="saveOption" value="separate" style="margin-right: 10px; cursor: pointer; width: 18px; height: 18px; accent-color: #2F8BE6;">
+            <span style="font-weight: 600;">${this.translate.instant('demo.Save as separate documents')}</span>
+            <span style="display: block; margin-left: 28px; margin-top: 5px; font-size: 0.9em; color: #666;">${this.translate.instant('demo.Save as separate documents description')}</span>
+          </label>
+        </div>
+        <div id="documentNameContainer" style="margin-top: 20px; padding-top: 15px; border-top: 1px solid #dee2e6;">
+          <label style="display: block; margin-bottom: 8px; font-weight: 600;">${this.translate.instant('demo.Document name')}</label>
+          <input type="text" id="documentNameInput" value="${defaultName}" style="width: 100%; padding: 8px; border: 1px solid #ced4da; border-radius: 4px; font-size: 1em;" placeholder="${this.translate.instant('demo.Enter document name')}">
+          <p style="margin-top: 5px; font-size: 0.85em; color: #666; font-style: italic;">${this.translate.instant('demo.You can change it later')}</p>
+        </div>
+      </div>
+    `;
+    
+    Swal.fire({
+      title: this.translate.instant('demo.Finalize document'),
+      html: htmlContent,
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonText: this.translate.instant('demo.Save document'),
+      cancelButtonText: this.translate.instant('generics.Cancel'),
+      confirmButtonColor: '#2F8BE6',
+      cancelButtonColor: '#B0B6BB',
+      reverseButtons: true,
+      didOpen: () => {
+        // Manejar cambio de opción y actualizar estilos visuales
+        const container = Swal.getHtmlContainer();
+        const radioButtons = container?.querySelectorAll('input[name="saveOption"]') as NodeListOf<HTMLInputElement>;
+        const nameContainer = container?.querySelector('#documentNameContainer') as HTMLElement;
+        const labels = container?.querySelectorAll('label') as NodeListOf<HTMLLabelElement>;
+        
+        // Función para actualizar estilos visuales de los labels
+        const updateLabelStyles = () => {
+          radioButtons?.forEach((radio, index) => {
+            const label = labels?.[index];
+            if (label && radio.checked) {
+              label.style.borderColor = '#2F8BE6';
+              label.style.backgroundColor = '#f0f7ff';
+            } else if (label) {
+              label.style.borderColor = '#dee2e6';
+              label.style.backgroundColor = '#fff';
+            }
+          });
+        };
+        
+        // Actualizar estilos iniciales
+        updateLabelStyles();
+        
+        radioButtons?.forEach(radio => {
+          radio.addEventListener('change', () => {
+            updateLabelStyles();
+            if (radio.value === 'group' && nameContainer) {
+              nameContainer.style.display = 'block';
+            } else if (radio.value === 'separate' && nameContainer) {
+              nameContainer.style.display = 'none';
+            }
+          });
+        });
+      },
+      preConfirm: () => {
+        const container = Swal.getHtmlContainer();
+        const selectedOption = (container?.querySelector('input[name="saveOption"]:checked') as HTMLInputElement)?.value;
+        const nameInput = container?.querySelector('#documentNameInput') as HTMLInputElement;
+        
+        if (selectedOption === 'group') {
+          const documentName = nameInput?.value?.trim();
+          if (!documentName) {
+            Swal.showValidationMessage(this.translate.instant('demo.Document name is required'));
+            return false;
+          }
+          return { option: 'group', name: documentName };
+        } else {
+          return { option: 'separate', name: null };
+        }
+      }
+    }).then((result) => {
+      if (this.modalReference != undefined) {
+        this.modalReference.close();
+        this.modalReference = undefined;
+      }
+      
+      if (result.isConfirmed && result.value) {
+        if (result.value.option === 'group') {
+          // Agrupar en un solo PDF con el nombre proporcionado
+          this.groupPhotosIntoPDF(result.value.name);
+        } else {
+          // Subir como documentos separados
+          this.processFilesSequentially();
+        }
+      }
+    });
+  }
+
+  generateDefaultDocumentName(): string {
+    // Generar nombre inteligente basado en fecha y contexto
+    const now = new Date();
+    const dateStr = now.toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' });
+    
+    // Opciones de nombres sugeridos
+    const suggestions = [
+      this.translate.instant('demo.Medical report'),
+      this.translate.instant('demo.Test results'),
+      this.translate.instant('demo.Medical documentation')
+    ];
+    
+    // Usar el nombre de la cámara si existe y tiene sentido, sino usar sugerencia
+    if (this.nameFileCamera && this.nameFileCamera !== '' && !this.nameFileCamera.startsWith('photo-')) {
+      return this.nameFileCamera.replace('.png', '');
+    }
+    
+    // Usar primera sugerencia con fecha
+    return `${suggestions[0]} – ${dateStr}`;
+  }
+
+  async groupPhotosIntoPDF(documentName: string) {
+    try {
+      // Mostrar mensaje de carga
+      Swal.fire({
+        title: this.translate.instant('demo.Combining photos'),
+        html: `<p>${this.translate.instant('demo.Combining')} ${this.tempDocs.length} ${this.tempDocs.length === 1 ? this.translate.instant('demo.photo') : this.translate.instant('demo.photos')} ${this.translate.instant('demo.into one document')}...</p>
+               <p style="font-size: 0.9em; color: #666; margin-top: 10px;">${this.translate.instant('demo.Please wait')}</p>`,
+        allowOutsideClick: false,
+        didOpen: () => {
+          Swal.showLoading();
+        }
+      });
+
+      // Crear PDF con jsPDF
+      const doc = new jsPDF();
+      const pdfWidth = doc.internal.pageSize.getWidth();
+      const pdfHeight = doc.internal.pageSize.getHeight();
+      const margin = 10;
+      const maxWidth = pdfWidth - (margin * 2);
+      const maxHeight = pdfHeight - (margin * 2);
+
+      // Procesar cada foto y añadirla al PDF
+      for (let i = 0; i < this.tempDocs.length; i++) {
+        const photoData = this.tempDocs[i].dataFile;
+        const imageDataUrl = await this.fileToDataURL(photoData.event);
+        
+        // Crear imagen para obtener dimensiones
+        const img = new Image();
+        await new Promise((resolve) => {
+          img.onload = () => {
+            // Calcular dimensiones manteniendo proporción
+            let imgWidth = img.width;
+            let imgHeight = img.height;
+            const ratio = Math.min(maxWidth / imgWidth, maxHeight / imgHeight);
+            imgWidth = imgWidth * ratio;
+            imgHeight = imgHeight * ratio;
+
+            // Centrar imagen en la página
+            const x = (pdfWidth - imgWidth) / 2;
+            const y = (pdfHeight - imgHeight) / 2;
+
+            // Añadir nueva página si no es la primera foto
+            if (i > 0) {
+              doc.addPage();
+            }
+
+            // Añadir imagen al PDF
+            doc.addImage(imageDataUrl, 'PNG', x, y, imgWidth, imgHeight);
+            resolve(null);
+          };
+          img.src = imageDataUrl;
+        });
+      }
+
+      // Generar blob del PDF
+      const pdfBlob = doc.output('blob');
+      
+      // Crear File desde el blob usando el nombre proporcionado por el usuario
+      // Asegurarse de que el nombre no tenga extensión .pdf ya
+      let cleanName = documentName.trim();
+      if (cleanName.toLowerCase().endsWith('.pdf')) {
+        cleanName = cleanName.slice(0, -4);
+      }
+      const pdfFileName = cleanName + '.pdf';
+      const pdfFile = new File([pdfBlob], pdfFileName, { type: 'application/pdf' });
+
+      // Preparar para subir
+      var uniqueFileName = this.getUniqueFileName();
+      var filename = 'raitofile/' + uniqueFileName + '/' + pdfFileName;
+      
+      // Limpiar tempDocs y añadir el PDF
+      this.tempDocs = [];
+      let dataFile = { event: pdfFile, url: filename, name: pdfFileName };
+      this.tempDocs.push({ dataFile: dataFile, state: 'false' });
+
+      // Cerrar mensaje de carga
+      Swal.close();
+
+      // Subir el PDF
+      this.processFilesSequentially();
+    } catch (error) {
+      console.error('Error combining photos:', error);
+      this.insightsService.trackException(error);
+      Swal.fire({
+        icon: 'error',
+        title: this.translate.instant('generics.error try again'),
+        text: this.translate.instant('demo.Error combining photos')
+      });
+      // Si falla, intentar subir como documentos separados
+      this.processFilesSequentially();
+    }
+  }
+
+  fileToDataURL(file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => resolve(e.target?.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
   }
 
   deletephoto(index) {
     this.tempDocs.splice(index, 1);
   }
 
-  finishPhoto() {
-    if (this.modalReference != undefined) {
-      this.modalReference.close();
-      this.modalReference = undefined;
-    }
-    let filePromises: Promise<void>[] = [];
-    if (this.nameFileCamera == '') {
-      this.nameFileCamera = 'photo-' + this.getUniqueFileName();
-    }
-    let filePromise = new Promise<void>((resolve, reject) => {
-      this.nameFileCamera = this.nameFileCamera + '.png';
-      let file = this.dataURLtoFile(this.capturedImage, this.nameFileCamera);
-      var reader = new FileReader();
-      reader.readAsDataURL(file); // read file as data url
-      reader.onload = (event2: any) => { // called once readAsDataURL is completed
-        var filename = (file).name;
-        var extension = filename.substr(filename.lastIndexOf('.'));
-        var pos = (filename).lastIndexOf('.')
-        pos = pos - 4;
-        if (pos > 0 && extension == '.gz') {
-          extension = (filename).substr(pos);
-        }
-        filename = filename.split(extension)[0];
-        if (extension == '.jpg' || extension == '.png' || extension == '.jpeg' || file.type == 'application/pdf' || extension == '.docx' || file.type == 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' || file.type == 'text/plain' || extension == '.txt') {
-          var uniqueFileName = this.getUniqueFileName();
-          filename = 'raitofile/' + uniqueFileName + '/' + filename + extension;
-          let dataFile = { event: file, url: filename, name: file.name }
-          this.tempDocs.push({ dataFile: dataFile, state: 'false' });
-          resolve();
-          /*let index = this.tempDocs.length - 1;
-          this.prepareFile(index);*/
-        } else {
-          Swal.fire(this.translate.instant("dashboardpatient.error extension"), '', "warning");
-          this.insightsService.trackEvent('Invalid file extension', { extension: extension });
-          reject();
-        }
-      }
-    });
-    filePromises.push(filePromise);
-
-    Promise.all(filePromises).then(() => {
-      this.processFilesSequentially();
-    }).catch(() => {
-      console.log("One or more files had invalid extensions. Stopping the process.");
-    });
-
-
-  }
+ 
 
   getUniqueFileCamera() {
     var now = new Date();
@@ -4413,9 +4692,23 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     const startDate = this.startDate ? new Date(this.startDate) : null;
     const endDate = this.endDate ? new Date(this.endDate) : null;
     const filtered = this.originalEvents.filter(event => {
-      const eventDate = new Date(event.date);
-      const isAfterStartDate = !startDate || eventDate >= startDate;
-      const isBeforeEndDate = !endDate || eventDate <= endDate;
+      const eventStart = event.date ? new Date(event.date) : null;
+      const eventEnd = event.dateEnd ? new Date(event.dateEnd) : eventStart;
+      
+      // Si el evento tiene un rango (dateEnd), verificar si se solapa con el rango de filtrado
+      let isAfterStartDate = true;
+      let isBeforeEndDate = true;
+      
+      if (startDate) {
+        // El evento debe terminar después del inicio del filtro (o no tener fin)
+        isAfterStartDate = !eventEnd || eventEnd >= startDate;
+      }
+      
+      if (endDate) {
+        // El evento debe empezar antes del fin del filtro
+        isBeforeEndDate = !eventStart || eventStart <= endDate;
+      }
+      
       const isEventTypeMatch = !this.selectedEventType || this.selectedEventType == 'null' || !event.key || event.key === this.selectedEventType;
       return isAfterStartDate && isBeforeEndDate && isEventTypeMatch;
     });
@@ -4630,7 +4923,7 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
   }
 
   isXSScreen(): boolean {
-    return this.screenWidth < 650; // Bootstrap's breakpoint for small screen
+    return this.screenWidth < 991; //650; // Bootstrap's breakpoint for small screen
   }
 
 
@@ -4659,17 +4952,47 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
       this.modalReference.close();
       this.modalReference = undefined;
     }
+    // Inicializar el contenido vacío
+    this.newNoteContent = '';
     let ngbModalOptions: NgbModalOptions = {
       backdrop: 'static',
       keyboard: false,
-      windowClass: 'ModalClass-xs'// xl, lg, sm
+      windowClass: 'ModalClass-lg'// xl, lg, sm
     };
     this.modalReference = this.modalService.open(addNoteModal, ngbModalOptions);
   }
 
+  onNewNoteContentChange(event: any) {
+    // Actualizar el contenido cuando cambia en el editor de nueva nota
+    if (event) {
+      const content = typeof event === 'string' ? event : (event.html || event);
+      this.newNoteContent = content;
+    }
+  }
+
+  onNewNoteEditorCreated(editor: any) {
+    // El editor se inicializa vacío, no necesitamos establecer contenido
+    // Pero podemos usarlo para limpiar si es necesario
+  }
+
   saveNote() {
-    if (this.newNoteContent.trim()) {
-      this.addNoteWithMessage(this.newNoteContent);
+    // Obtener el texto plano para validar que no esté vacío
+    const plainText = this.getPlainText(this.newNoteContent || '');
+    if (plainText.trim()) {
+      this.savingNote = true;
+      this.patientService.savePatientNote(this.currentPatient, { content: this.newNoteContent, date: new Date() }).subscribe((res: any) => {
+        if (res.message == 'Notes saved') {
+          Swal.fire('', this.translate.instant("notes.Note saved"), "success");
+          this.notes.unshift({ content: this.newNoteContent, date: new Date(), _id: res.noteId });
+          this.notesSidebarOpen = true;
+          if (this.isSmallScreen && this.sidebarOpen) {
+            this.sidebarOpen = false;
+          }
+          // Cerrar el modal de agregar nota
+          this.cancelEdit();
+        }
+        this.savingNote = false;
+      });
     }
   }
 
@@ -4683,7 +5006,8 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
         if (this.isSmallScreen && this.sidebarOpen) {
           this.sidebarOpen = false;
         }
-        this.modalService.dismissAll();
+        // No cerramos modales aquí para no afectar otros modales abiertos (como el resumen del paciente)
+       //this.modalService.dismissAll();
       }
       this.savingNote = false;
     });
@@ -4729,28 +5053,33 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     });
   }
 
-  editNote(index: number) {
-    this.notes[index].isEditing = true;
-
-    // Dar tiempo al DOM para actualizarse
-    setTimeout(() => {
-      const editableElement = document.getElementById('editableNote' + index);
-      if (editableElement) {
-        this.editableDiv = new ElementRef(editableElement);
-        editableElement.focus();
-      }
-    });
+  editNote(index: number, editNoteModal: TemplateRef<any>) {
+    const note = this.notes[index];
+    // Inicializar el contenido de edición con el contenido actual
+    note.editContent = note.content || '';
+    this.editingNoteIndex = index;
+    
+    // Abrir modal de edición
+    const ngbModalOptions: NgbModalOptions = {
+      backdrop: 'static',
+      keyboard: false,
+      windowClass: 'ModalClass-lg'
+    };
+    this.modalReference = this.modalService.open(editNoteModal, ngbModalOptions);
   }
 
-  saveNoteEdit(index: number) {
-    if (!this.editableDiv) return;
-
+  saveNoteEdit() {
+    if (this.editingNoteIndex === null || this.editingNoteIndex === undefined) return;
+    
     this.savingNote = true;
-    const note = this.notes[index];
+    const note = this.notes[this.editingNoteIndex];
+
+    // Usar editContent que contiene el HTML del editor Quill
+    const content = note.editContent || '';
 
     const updatedNote = {
       _id: note._id,
-      content: this.editableDiv.nativeElement.innerHTML,
+      content: content,
       date: new Date()
     };
 
@@ -4762,11 +5091,11 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
         .subscribe({
           next: (res: any) => {
             if(res.message == 'Note updated'){
-              this.notes[index] = {
+              this.notes[this.editingNoteIndex] = {
                 ...updatedNote,
-                isEditing: false
+                editContent: undefined
               };
-              this.editableDiv = null;
+              this.closeEditNoteModal();
               this.toastr.success('', this.translate.instant("generics.Updated successfully"));
             }else{
               this.toastr.error('', this.translate.instant("generics.error try again"));
@@ -4782,9 +5111,104 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     );
   }
 
-  cancelNoteEdit(index: number) {
-    this.notes[index].isEditing = false;
-    this.editableDiv = null;
+  cancelNoteEdit() {
+    if (this.editingNoteIndex !== null && this.editingNoteIndex !== undefined) {
+      const note = this.notes[this.editingNoteIndex];
+      note.editContent = undefined;
+    }
+    this.closeEditNoteModal();
+  }
+
+  closeEditNoteModal() {
+    if (this.modalReference) {
+      this.modalReference.close();
+    }
+    this.editingNoteIndex = null;
+  }
+
+  onNoteContentChange(event: any) {
+    // Actualizar el contenido cuando cambia en el modal
+    if (event && this.editingNoteIndex !== null && this.editingNoteIndex !== undefined) {
+      const content = typeof event === 'string' ? event : (event.html || event);
+      this.notes[this.editingNoteIndex].editContent = content;
+    }
+  }
+
+  onEditorCreated(editor: any) {
+    // Establecer el contenido cuando el editor esté listo en el modal
+    if (editor && this.editingNoteIndex !== null && this.editingNoteIndex !== undefined) {
+      const note = this.notes[this.editingNoteIndex];
+      const content = note.editContent || note.content || '';
+      if (content && editor.root) {
+        // Usar setTimeout para asegurar que el editor esté completamente inicializado
+        setTimeout(() => {
+          try {
+            // Convertir HTML a Delta de Quill y establecerlo
+            if (editor.clipboard && typeof editor.clipboard.convert === 'function') {
+              const delta = editor.clipboard.convert(content);
+              editor.setContents(delta, 'silent');
+              this.notes[this.editingNoteIndex].editContent = editor.root.innerHTML;
+            } else {
+              editor.root.innerHTML = content;
+              this.notes[this.editingNoteIndex].editContent = content;
+            }
+            this.cdr.detectChanges();
+          } catch (e) {
+            console.error('Error setting content in editor:', e);
+            if (editor.root) {
+              editor.root.innerHTML = content;
+              this.notes[this.editingNoteIndex].editContent = content;
+              this.cdr.detectChanges();
+            }
+          }
+        }, 100);
+      }
+    }
+  }
+
+
+
+  // Función para obtener el texto plano de HTML (sin etiquetas)
+  getPlainText(html: string): string {
+    if (!html) return '';
+    const tmp = document.createElement('DIV');
+    tmp.innerHTML = html;
+    return tmp.textContent || tmp.innerText || '';
+  }
+
+  // Función para truncar contenido HTML manteniendo el formato
+  truncateNoteContent(content: string, maxLength: number = 500): { truncated: string, isTruncated: boolean } {
+    if (!content) return { truncated: '', isTruncated: false };
+    
+    const plainText = this.getPlainText(content);
+    if (plainText.length <= maxLength) {
+      return { truncated: content, isTruncated: false };
+    }
+
+    // Truncar el texto plano
+    const truncatedText = plainText.substring(0, maxLength);
+    // Intentar mantener el formato HTML truncando de manera simple
+    // Por simplicidad, truncamos el HTML directamente en una posición segura
+    const truncatedHtml = content.substring(0, Math.min(content.length, maxLength * 2));
+    
+    return { truncated: truncatedHtml + '...', isTruncated: true };
+  }
+
+  // Abrir modal con contenido completo de la nota
+  viewFullNote(note: any, noteModal: TemplateRef<any>) {
+    const ngbModalOptions: NgbModalOptions = {
+      backdrop: 'static',
+      keyboard: false,
+      windowClass: 'ModalClass-lg'
+    };
+    this.selectedNoteForModal = note;
+    this.modalReference = this.modalService.open(noteModal, ngbModalOptions);
+  }
+
+  closeNoteModal() {
+    if (this.modalReference) {
+      this.modalReference.close();
+    }
   }
 
   truncateTitle(title: string, limit: number = 24): string {
@@ -4925,6 +5349,255 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
       // Modal dismissed
       console.log('Modal dismissed');
     });
+  }
+
+  copyTimelineToClipboard() {
+    if (this.groupedEvents.length === 0) {
+      Swal.fire({
+        icon: 'info',
+        title: this.translate.instant('generics.Info'),
+        html: this.translate.instant('timeline.There are no events')
+      });
+      return;
+    }
+
+    const lang = localStorage.getItem('lang') || this.translate.currentLang || 'es';
+    let text = this.translate.instant('timeline.Timeline') + '\n';
+    text += '='.repeat(50) + '\n\n';
+
+    this.groupedEvents.forEach(group => {
+      const monthYear = new Date(group.monthYear).toLocaleDateString(lang, { 
+        year: 'numeric', 
+        month: 'long' 
+      });
+      text += monthYear.toUpperCase() + '\n';
+      text += '-'.repeat(50) + '\n';
+
+      group.events.forEach(event => {
+        const eventType = this.getEventTypeDisplay(event.key) || event.key || '';
+        const eventDate = event.date ? new Date(event.date).toLocaleDateString(lang) : '';
+        const eventDateEnd = event.dateEnd ? new Date(event.dateEnd).toLocaleDateString(lang) : '';
+        
+        text += `${this.getEventTypeIcon(event.key)} ${event.name || ''}\n`;
+        text += `   ${eventType}\n`;
+        if (eventDateEnd) {
+          text += `   ${this.translate.instant('timeline.Start date')}: ${eventDate} - ${this.translate.instant('timeline.End date')}: ${eventDateEnd}\n`;
+        } else {
+          text += `   ${eventDate}\n`;
+        }
+        if (event.notes) {
+          text += `   ${this.translate.instant('generics.Notes')}: ${event.notes}\n`;
+        }
+        text += '\n';
+      });
+      text += '\n';
+    });
+
+    this.clipboard.copy(text);
+    Swal.fire({
+      icon: 'success',
+      title: this.translate.instant('generics.Success'),
+      html: this.translate.instant('timeline.Timeline copied to clipboard')
+    });
+  }
+
+  exportTimelineToCSV() {
+    if (this.groupedEvents.length === 0) {
+      Swal.fire({
+        icon: 'info',
+        title: this.translate.instant('generics.Info'),
+        html: this.translate.instant('timeline.There are no events')
+      });
+      return;
+    }
+
+    const lang = localStorage.getItem('lang') || this.translate.currentLang || 'es';
+    // Encabezados CSV
+    const headers = [
+      this.translate.instant('timeline.Date'),
+      this.translate.instant('timeline.End date'),
+      this.translate.instant('timeline.Event type'),
+      this.translate.instant('generics.Name'),
+      this.translate.instant('generics.Notes')
+    ];
+
+    let csvContent = headers.join(',') + '\n';
+
+    // Datos
+    this.groupedEvents.forEach(group => {
+      group.events.forEach(event => {
+        const eventDate = event.date ? new Date(event.date).toLocaleDateString(lang) : '';
+        const eventDateEnd = event.dateEnd ? new Date(event.dateEnd).toLocaleDateString(lang) : '';
+        const eventType = this.getEventTypeDisplay(event.key) || event.key || '';
+        const eventName = (event.name || '').replace(/"/g, '""'); // Escapar comillas
+        const eventNotes = (event.notes || '').replace(/"/g, '""'); // Escapar comillas
+
+        const row = [
+          `"${eventDate}"`,
+          `"${eventDateEnd}"`,
+          `"${eventType}"`,
+          `"${eventName}"`,
+          `"${eventNotes}"`
+        ];
+        csvContent += row.join(',') + '\n';
+      });
+    });
+
+    // Crear blob y descargar
+    const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `timeline_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+
+  getEventTypeDisplayWithoutEmoji(type: string): string {
+    const types = {
+      'diagnosis': this.translate.instant('timeline.Diagnoses'),
+      'treatment': this.translate.instant('timeline.Treatment'),
+      'test': this.translate.instant('timeline.Tests'),
+      'appointment': this.translate.instant('events.appointment'),
+      'symptom': this.translate.instant('timeline.Symptoms'),
+      'medication': this.translate.instant('timeline.Medications'),
+      'other': this.translate.instant('timeline.Other')
+    };
+    return types[type] || type || '';
+  }
+
+  exportTimelineToPDF() {
+    if (this.groupedEvents.length === 0) {
+      Swal.fire({
+        icon: 'info',
+        title: this.translate.instant('generics.Info'),
+        html: this.translate.instant('timeline.There are no events')
+      });
+      return;
+    }
+
+    const lang = localStorage.getItem('lang') || this.translate.currentLang || 'es';
+    const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const margin = 20;
+    let yPosition = margin;
+    const lineHeight = 6;
+    const maxWidth = pageWidth - (margin * 2);
+
+    // Título principal
+    doc.setFontSize(20);
+    doc.setTextColor(0, 0, 0);
+    doc.setFont(undefined, 'bold');
+    const title = this.translate.instant('timeline.Timeline');
+    doc.text(title, margin, yPosition);
+    yPosition += lineHeight * 2.5;
+
+    // Fecha de exportación
+    doc.setFontSize(10);
+    doc.setTextColor(100, 100, 100);
+    doc.setFont(undefined, 'normal');
+    const exportDate = new Date().toLocaleDateString(lang, {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+    doc.text(`${this.translate.instant('timeline.Exported on')}: ${exportDate}`, margin, yPosition);
+    yPosition += lineHeight * 2;
+
+    // Eventos agrupados por mes
+    this.groupedEvents.forEach((group, groupIndex) => {
+      // Verificar si necesitamos una nueva página (dejar espacio para el título del mes y al menos un evento)
+      if (yPosition > pageHeight - 60) {
+        doc.addPage();
+        yPosition = margin;
+      }
+
+      // Título del mes y año
+      doc.setFontSize(16);
+      doc.setTextColor(0, 0, 0);
+      doc.setFont(undefined, 'bold');
+      const monthYear = new Date(group.monthYear).toLocaleDateString(lang, {
+        year: 'numeric',
+        month: 'long'
+      });
+      doc.text(monthYear.toUpperCase(), margin, yPosition);
+      yPosition += lineHeight * 1.8;
+
+      // Línea separadora debajo del mes
+      doc.setDrawColor(180, 180, 180);
+      doc.setLineWidth(0.5);
+      doc.line(margin, yPosition, pageWidth - margin, yPosition);
+      yPosition += lineHeight * 1.5;
+
+      // Eventos del mes
+      group.events.forEach((event, eventIndex) => {
+        // Verificar si necesitamos una nueva página
+        if (yPosition > pageHeight - 40) {
+          doc.addPage();
+          yPosition = margin;
+        }
+
+        // Nombre del evento (sin emoji)
+        doc.setFontSize(11);
+        doc.setTextColor(0, 0, 0);
+        doc.setFont(undefined, 'normal');
+        const eventName = (event.name || '').trim();
+        
+        if (eventName) {
+          // Dividir texto si es muy largo
+          const splitText = doc.splitTextToSize(eventName, maxWidth);
+          doc.text(splitText, margin + 3, yPosition);
+          yPosition += lineHeight * splitText.length;
+        }
+
+        // Tipo de evento (sin emoji)
+        doc.setFontSize(9);
+        doc.setTextColor(120, 120, 120);
+        const eventType = this.getEventTypeDisplayWithoutEmoji(event.key);
+        if (eventType) {
+          doc.text(eventType, margin + 3, yPosition);
+          yPosition += lineHeight * 1.2;
+        }
+
+        // Fechas
+        doc.setFontSize(9);
+        doc.setTextColor(100, 100, 100);
+        const eventDate = event.date ? new Date(event.date).toLocaleDateString(lang) : '';
+        const eventDateEnd = event.dateEnd ? new Date(event.dateEnd).toLocaleDateString(lang) : '';
+        
+        if (eventDateEnd && eventDateEnd !== eventDate) {
+          const dateText = `${this.translate.instant('timeline.Start date')}: ${eventDate} - ${this.translate.instant('timeline.End date')}: ${eventDateEnd}`;
+          const splitDate = doc.splitTextToSize(dateText, maxWidth - 6);
+          doc.text(splitDate, margin + 3, yPosition);
+          yPosition += lineHeight * splitDate.length;
+        } else if (eventDate) {
+          doc.text(eventDate, margin + 3, yPosition);
+          yPosition += lineHeight * 1.2;
+        }
+
+        // Notas si existen
+        if (event.notes && event.notes.trim()) {
+          doc.setFontSize(9);
+          doc.setTextColor(80, 80, 80);
+          const notesLabel = this.translate.instant('generics.Notes');
+          const notesText = `${notesLabel}: ${event.notes.trim()}`;
+          const splitNotes = doc.splitTextToSize(notesText, maxWidth - 6);
+          doc.text(splitNotes, margin + 3, yPosition);
+          yPosition += lineHeight * splitNotes.length;
+        }
+
+        yPosition += lineHeight * 1.2; // Espacio entre eventos
+      });
+
+      yPosition += lineHeight * 0.8; // Espacio adicional entre grupos de meses
+    });
+
+    // Guardar PDF
+    const fileName = `timeline_${new Date().toISOString().split('T')[0]}.pdf`;
+    doc.save(fileName);
   }
 
   toggleDiagnosisCard(index: number): void {
