@@ -71,7 +71,7 @@
       "Medical documentation": "Documentazione medica",
       "Error combining photos": "Errore nel combinare le foto",
       "I like it": "Mi piace",
-      "Create report": "Crea rapporto",
+      "Create report": "Inserimento testo",
       "demot": "Nav29: il tuo secondo cervello per la salute",
       "demot2": "I tuoi documenti, conversazioni e strumenti in un unico posto per prendere il controllo della tua salute.",
       "Extracting the text from the documents": "Nav29 sta analizzando il documento ed estraendo il testo.",
@@ -215,7 +215,7 @@
   "dxgpt": {
     "description": "Analizza automaticamente le informazioni cliniche che inserisci, inclusi rapporti, note ed eventi registrati, e genera un elenco strutturato di possibili diagnosi basato sui modelli di sintomi estratti.",
     "analyze": "Analizza",
-    "button": "Diagnosi",
+    "button": "Cerca diagnosi",
     "analyzing": "Analizzando",
     "patientInfo": "Informazioni del paziente",
     "possibleDiagnoses": "Possibili diagnosi",
@@ -255,6 +255,23 @@
       "editInfo": {
         "title": "Non sei soddisfatto dei risultati?",
         "message": "Puoi modificare la descrizione del paziente cliccando sull'icona della matita (✏️) sopra. Aggiungi informazioni dettagliate su sintomi, età, genere e da quando sono iniziati i sintomi per ottenere diagnosi più accurate."
+      },
+      "chooseMethod": {
+        "title": "Scegli il metodo di analisi",
+        "message": "Il paziente ha un riassunto generato. Come desideri eseguire l'analisi?<br><br><small><strong>Riassunto del paziente:</strong> Più veloce, include informazioni strutturate e contestualizzate.<br><strong>Eventi e documenti:</strong> Include informazioni più recenti che potrebbero non essere nel riassunto.</small>",
+        "withSummary": "Analizza con il riassunto del paziente",
+        "withEvents": "Analizza con eventi e documenti"
+      },
+      "async": {
+        "processing": "Elaborazione dell'analisi",
+        "message": "L'analisi è in corso. Riceverai una notifica quando sarà pronta.",
+        "timeMessage": "Questo processo può richiedere diversi minuti a seconda del numero di documenti.",
+        "cancel": "Annulla",
+        "cancelled": "Elaborazione annullata",
+        "cancelledMessage": "L'analisi è stata annullata. Puoi avviarla nuovamente quando vuoi.",
+        "completed": "Analisi completata",
+        "success": "L'analisi di diagnosi differenziale è stata completata con successo.",
+        "error": "Errore nell'analisi"
       }
   },
    "categoriesPatients":{
@@ -1611,6 +1628,7 @@
     },
     "trialgpt": {
       "title": "TrialGPT - In arrivo",
+      "button": "Cerca studi clinici",
       "comingSoon": "Prossimamente disponibile"
     }
   }

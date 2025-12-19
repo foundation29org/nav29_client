@@ -874,7 +874,7 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     await this.updateSuggestions(currentLang);
     this.getTranslations();
     this.suggestions = this.getAllSuggestions(4);
-
+    
     this.messageSubscription = this.webPubSubService.getMessageObservable().subscribe(message => {
       this.handleMessage(message);
     });
@@ -1148,6 +1148,13 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     // Validar que el mensaje no sea demasiado antiguo (más de 5 minutos)
     try {
       const parsedData = JSON.parse(message.data);
+      
+      // Manejar mensajes de DxGPT (procesamiento asíncrono)
+      if (parsedData.type === 'dxgpt-processing' || parsedData.type === 'dxgpt-result') {
+        this.handleDxGptMessage(parsedData);
+        return;
+      }
+      
       if (parsedData.time) {
         const messageTime = new Date(parsedData.time).getTime();
         const currentTime = Date.now();
@@ -1196,6 +1203,86 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
 
       }
       this.handleStep(parsedData);
+    }
+  }
+
+  /**
+   * Maneja mensajes de WebPubSub relacionados con DxGPT
+   */
+  private handleDxGptMessage(parsedData: any) {
+    console.log('📨 Mensaje DxGPT recibido:', parsedData);
+    console.log('📨 Current patient ID:', this.currentPatientId);
+    
+    // Validar que el mensaje sea para el paciente actual
+    if (parsedData.patientId && this.currentPatientId) {
+      // El servidor envía el patientId encriptado, comparar con el actual
+      const currentEncrypted = this.currentPatientId; // Ya viene encriptado desde el componente
+      console.log('📨 Comparando patientIds:');
+      console.log('  - Mensaje patientId:', parsedData.patientId);
+      console.log('  - Paciente actual:', currentEncrypted);
+      console.log('  - ¿Coinciden?', parsedData.patientId === currentEncrypted);
+      
+      if (parsedData.patientId !== currentEncrypted) {
+        console.log('⚠️ Mensaje DxGPT ignorado: no corresponde al paciente actual');
+        return;
+      }
+      console.log('✅ PatientId válido, procesando mensaje...');
+    } else {
+      console.log('⚠️ Mensaje DxGPT sin patientId o sin paciente actual seleccionado');
+      console.log('  - parsedData.patientId:', parsedData.patientId);
+      console.log('  - this.currentPatientId:', this.currentPatientId);
+      // Continuar de todas formas si no hay patientId (por compatibilidad)
+    }
+    
+    if (parsedData.type === 'dxgpt-processing') {
+      // Actualización de progreso
+      if (parsedData.message) {
+        const timeMessage = this.translate.instant('dxgpt.async.timeMessage') || 'Este proceso puede tardar varios minutos dependiendo del número de documentos.';
+        
+        // Actualizar el mensaje de SweetAlert si está abierto
+        Swal.update({
+          html: `<div style="text-align: left;">
+            <p><strong>${parsedData.message}</strong></p>
+            ${parsedData.progress ? `<div class="progress" style="margin-top: 10px; margin-bottom: 10px;">
+              <div class="progress-bar" role="progressbar" style="width: ${parsedData.progress}%">${parsedData.progress}%</div>
+            </div>` : ''}
+            <p style="font-size: 0.9em; color: #666; margin-top: 10px;"><em>${timeMessage}</em></p>
+          </div>`
+        });
+      }
+    } else if (parsedData.type === 'dxgpt-result') {
+      // Resultado final
+      Swal.close();
+      
+      if (parsedData.success && parsedData.analysis) {
+        this.dxGptResults = {
+          success: true,
+          analysis: parsedData.analysis
+        };
+        this.isDxGptLoading = false;
+        this.cdr.detectChanges();
+        
+        Swal.fire({
+          title: this.translate.instant('dxgpt.async.completed') || 'Análisis completado',
+          text: this.translate.instant('dxgpt.async.success') || 'El análisis de diagnóstico diferencial se ha completado correctamente.',
+          icon: 'success',
+          confirmButtonText: 'OK'
+        });
+      } else {
+        this.dxGptResults = {
+          success: false,
+          analysis: parsedData.error || this.translate.instant('dxgpt.errorMessage')
+        };
+        this.isDxGptLoading = false;
+        this.cdr.detectChanges();
+        
+        Swal.fire({
+          title: this.translate.instant('dxgpt.async.error') || 'Error en el análisis',
+          text: parsedData.error || this.translate.instant('dxgpt.errorMessage'),
+          icon: 'error',
+          confirmButtonText: 'OK'
+        });
+      }
     }
   }
 
@@ -5704,8 +5791,9 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
 
   /**
    * Ejecuta fetchDxGptResults después de verificar/crear el resumen
+   * @param useEventsAndDocuments - Si true, usa eventos/documentos en lugar del resumen
    */
-  private executeFetchDxGptResults() {
+  private executeFetchDxGptResults(useEventsAndDocuments: boolean = false) {
     console.log('=== FRONTEND DXGPT DEBUG START ===');
     console.log('1. Current patient ID:', this.currentPatientId);
     
@@ -5723,11 +5811,55 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     // Get current language from localStorage
     const currentLang = localStorage.getItem('lang') || 'en';
     // Call the DxGPT API to get initial diagnosis
-    this.apiDx29ServerService.getDifferentialDiagnosis(this.currentPatientId, currentLang, null).subscribe({
+    this.apiDx29ServerService.getDifferentialDiagnosis(this.currentPatientId, currentLang, null, undefined, useEventsAndDocuments).subscribe({
       next: (res: any) => {
         console.log('4. API Response received:', res);
         console.log('4.1. res.success:', res.success);
         console.log('4.2. res.analysis exists:', !!res.analysis);
+        console.log('4.3. res.async exists:', res.async);
+        
+        // Si el procesamiento es asíncrono, esperar notificaciones de WebPubSub
+        if (res.async === true) {
+          console.log('5. Procesamiento asíncrono iniciado, esperando notificaciones...');
+          // El estado de carga se mantendrá hasta recibir el resultado por WebPubSub
+          // Mostrar mensaje informativo con botón de cancelar
+          const message = res.message || this.translate.instant('dxgpt.async.message') || 'El análisis está en proceso. Recibirás una notificación cuando esté listo.';
+          const timeMessage = this.translate.instant('dxgpt.async.timeMessage') || 'Este proceso puede tardar varios minutos dependiendo del número de documentos.';
+          
+          Swal.fire({
+            title: this.translate.instant('dxgpt.async.processing') || 'Procesando...',
+            html: `<div style="text-align: left;">
+              <p><strong>${message}</strong></p>
+              <p style="font-size: 0.9em; color: #666; margin-top: 10px;"><em>${timeMessage}</em></p>
+            </div>`,
+            icon: 'info',
+            allowOutsideClick: false,
+            allowEscapeKey: true,
+            showConfirmButton: false,
+            showCancelButton: true,
+            cancelButtonText: this.translate.instant('dxgpt.async.cancel') || 'Cancelar',
+            cancelButtonColor: '#6c757d',
+            didOpen: () => {
+              Swal.showLoading();
+            }
+          }).then((result) => {
+            if (result.dismiss === Swal.DismissReason.cancel || result.dismiss === Swal.DismissReason.esc || result.dismiss === Swal.DismissReason.backdrop) {
+              // Usuario canceló
+              console.log('Usuario canceló el procesamiento de DxGPT');
+              this.isDxGptLoading = false;
+              this.dxGptResults = null;
+              this.cdr.detectChanges();
+              
+              Swal.fire({
+                title: this.translate.instant('dxgpt.async.cancelled') || 'Procesamiento cancelado',
+                text: this.translate.instant('dxgpt.async.cancelledMessage') || 'El análisis ha sido cancelado. Puedes iniciarlo nuevamente cuando lo desees.',
+                icon: 'info',
+                confirmButtonText: 'OK'
+              });
+            }
+          });
+          return; // No cambiar el estado de carga todavía
+        }
         
         if (res && res.analysis) {
            // El backend siempre manda success: true si llega al controller
@@ -5779,8 +5911,29 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     const hasSummary = await this.checkPatientSummary();
     
     if (hasSummary) {
-      // Si tiene resumen, ejecutar directamente
-      this.executeFetchDxGptResults();
+      // Si tiene resumen, preguntar al usuario qué método quiere usar
+      const result = await Swal.fire({
+        title: this.translate.instant('dxgpt.chooseMethod.title') || 'Elegir método de análisis',
+        html: this.translate.instant('dxgpt.chooseMethod.message') || 
+              'El paciente tiene un resumen generado. ¿Cómo deseas realizar el análisis?<br><br>' +
+              '<small><strong>Resumen del paciente:</strong> Más rápido, incluye información estructurada y contextualizada.<br>' +
+              '<strong>Eventos y documentos:</strong> Incluye información más reciente que pueda no estar en el resumen.</small>',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: this.translate.instant('dxgpt.chooseMethod.withSummary') || 'Analizar con resumen del paciente',
+        cancelButtonText: this.translate.instant('dxgpt.chooseMethod.withEvents') || 'Analizar con eventos y documentos',
+        confirmButtonColor: '#3085d6',
+        cancelButtonColor: '#6c757d',
+        reverseButtons: true
+      });
+
+      if (result.isConfirmed) {
+        // Usuario quiere usar el resumen
+        this.executeFetchDxGptResults(false);
+      } else if (result.dismiss === Swal.DismissReason.cancel) {
+        // Usuario quiere usar eventos y documentos
+        this.executeFetchDxGptResults(true);
+      }
     } else {
       // Si no tiene resumen, preguntar al usuario
       const result = await Swal.fire({
@@ -5805,7 +5958,7 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
                 'El resumen se está generando. Recibirás una notificación cuando esté listo.<br><br>' +
                 'Puedes volver aquí después para ejecutar el análisis de diagnóstico diferencial.',
           icon: 'info',
-          confirmButtonText: this.translate.instant('generics.OK') || 'OK'
+          confirmButtonText: 'OK'
         });
       } else {
         // Usuario quiere continuar sin resumen (usará el flujo actual)

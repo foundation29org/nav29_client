@@ -2914,6 +2914,33 @@ display: none !important;
   }
 }
 
+// Estilos más pequeños cuando el sidebar está visible
+.right-sidebar-content {
+  .tools-grid {
+    gap: 0.5rem;
+  }
+  
+  .tool-card {
+    padding: 0.6rem 0.5rem;
+    min-height: 70px;
+    
+    .tool-icon {
+      font-size: 1.2rem;
+      margin-bottom: 0.35rem;
+    }
+    
+    .tool-name {
+      font-size: 0.75rem;
+      line-height: 1.2;
+    }
+    
+    .tool-coming-soon {
+      font-size: 0.6rem;
+      margin-top: 0.15rem;
+    }
+  }
+}
+
 // Tarjetas de resultados
 .result-card {
   display: flex;

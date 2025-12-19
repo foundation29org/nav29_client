@@ -74,7 +74,7 @@
     "Document name is required": "Document name is required",
     "Error combining photos": "Error combining photos",
     "I like it": "I like it",
-    "Create report": "Create report",
+    "Create report": "Text input",
     "demot": "Nav29: your second health brain",
     "demot2": "Your documents, conversations and tools in one place to take control of your health.",
     "Extracting the text from the documents": "Nav29 is analyzing the document and extracting the text.",
@@ -218,7 +218,7 @@
   "dxgpt": {
     "description": "Automatically analyzes the clinical information you enter, including reports, notes and recorded events, and generates a structured list of possible diagnoses based on extracted symptom patterns.",
     "analyze": "Analyze",
-    "button": "Diagnoses",
+    "button": "Search diagnosis",
     "analyzing": "Analyzing",
     "patientInfo": "Patient Information",
     "possibleDiagnoses": "Possible Diagnoses",
@@ -256,6 +256,23 @@
     "editInfo": {
       "title": "Not satisfied with the results?",
       "message": "You can edit the patient description by clicking the pencil icon (✏️) above. Add detailed information about symptoms, age, gender, and when symptoms started to get more accurate diagnoses."
+    },
+    "chooseMethod": {
+      "title": "Choose analysis method",
+      "message": "The patient has a generated summary. How would you like to perform the analysis?<br><br><small><strong>Patient summary:</strong> Faster, includes structured and contextualized information.<br><strong>Events and documents:</strong> Includes more recent information that may not be in the summary.</small>",
+      "withSummary": "Analyze with patient summary",
+      "withEvents": "Analyze with events and documents"
+    },
+    "async": {
+      "processing": "Processing analysis",
+      "message": "The analysis is in process. You will receive a notification when it's ready.",
+      "timeMessage": "This process may take several minutes depending on the number of documents.",
+      "cancel": "Cancel",
+      "cancelled": "Processing cancelled",
+      "cancelledMessage": "The analysis has been cancelled. You can start it again whenever you want.",
+      "completed": "Analysis completed",
+      "success": "The differential diagnosis analysis has been completed successfully.",
+      "error": "Analysis error"
     },
     "errorLoadingInfo": "Error loading information. Please try again.",
     "errorMessage": "An error occurred while processing the analysis. Please try again.",
@@ -1617,6 +1634,7 @@
   },
   "trialgpt": {
     "title": "TrialGPT - Coming Soon",
+    "button": "Search clinical trials",
     "comingSoon": "Coming soon"
   }
 }

@@ -71,7 +71,7 @@
       "Medical documentation": "Medizinische Dokumentation",
       "Error combining photos": "Fehler beim Kombinieren der Fotos",
       "I like it": "Ich mag es",
-      "Create report": "Bericht erstellen",
+      "Create report": "Texteingabe",
       "demot": "Nav29: Ihr zweites Gesundheitsgehirn",
       "demot2": "Ihre Dokumente, Gespräche und Tools an einem Ort, um die Kontrolle über Ihre Gesundheit zu übernehmen.",
       "Extracting the text from the documents": "Nav29 analysiert das Dokument und extrahiert den Text.",
@@ -215,7 +215,7 @@
   "dxgpt": {
     "description": "Analysiert automatisch die von Ihnen eingegebenen klinischen Informationen, einschließlich Berichte, Notizen und erfasste Ereignisse, und erstellt eine strukturierte Liste möglicher Diagnosen basierend auf extrahierten Symptommustern.",
     "analyze": "Analysieren",
-    "button": "Diagnosen",
+    "button": "Diagnose suchen",
     "analyzing": "Analysiere",
     "patientInfo": "Patienteninformationen",
     "possibleDiagnoses": "Mögliche Diagnosen",
@@ -255,6 +255,23 @@
       "editInfo": {
         "title": "Sind Sie mit den Ergebnissen nicht zufrieden?",
         "message": "Sie können die Patientenbescheibung bearbeiten, indem Sie auf das Stiftsymbol (✏️) oben klicken. Fügen Sie detaillierte Informationen über Symptome, Alter, Geschlecht und wann die Symptome begannen hinzu, um genauere Diagnosen zu erhalten."
+      },
+      "chooseMethod": {
+        "title": "Analysemethode wählen",
+        "message": "Der Patient hat eine generierte Zusammenfassung. Wie möchten Sie die Analyse durchführen?<br><br><small><strong>Patientenzusammenfassung:</strong> Schneller, enthält strukturierte und kontextualisierte Informationen.<br><strong>Ereignisse und Dokumente:</strong> Enthält neuere Informationen, die möglicherweise nicht in der Zusammenfassung enthalten sind.</small>",
+        "withSummary": "Mit Patientenzusammenfassung analysieren",
+        "withEvents": "Mit Ereignissen und Dokumenten analysieren"
+      },
+      "async": {
+        "processing": "Analyse wird verarbeitet",
+        "message": "Die Analyse wird verarbeitet. Sie erhalten eine Benachrichtigung, wenn sie fertig ist.",
+        "timeMessage": "Dieser Prozess kann je nach Anzahl der Dokumente mehrere Minuten dauern.",
+        "cancel": "Abbrechen",
+        "cancelled": "Verarbeitung abgebrochen",
+        "cancelledMessage": "Die Analyse wurde abgebrochen. Sie können sie jederzeit erneut starten.",
+        "completed": "Analyse abgeschlossen",
+        "success": "Die Differentialdiagnose-Analyse wurde erfolgreich abgeschlossen.",
+        "error": "Fehler bei der Analyse"
       }
   },
    "categoriesPatients":{
@@ -1613,6 +1630,7 @@
     },
     "trialgpt": {
       "title": "TrialGPT - Demnächst verfügbar",
+      "button": "Klinische Studien suchen",
       "comingSoon": "Demnächst verfügbar"
     }
   }

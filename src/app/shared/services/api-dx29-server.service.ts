@@ -105,7 +105,7 @@ export class ApiDx29ServerService {
       );
     }
 
-    getDifferentialDiagnosis(patientId: string, lang: string = 'en', excludeDiseases?: string[], customMedicalDescription?: string) {
+    getDifferentialDiagnosis(patientId: string, lang: string = 'en', excludeDiseases?: string[], customMedicalDescription?: string, useEventsAndDocuments?: boolean) {
       const body: any = { lang: lang };
       
       // Add custom medical description if provided
@@ -118,7 +118,13 @@ export class ApiDx29ServerService {
         body.diseases_list = excludeDiseases.join(',');
       }
       
-      // Timeout de 2 minutos (120000ms) para peticiones de IA
+      // Add useEventsAndDocuments flag if provided
+      if (useEventsAndDocuments === true) {
+        body.useEventsAndDocuments = true;
+      }
+      
+      // Timeout de 30 segundos para peticiones asíncronas (el servidor responde inmediatamente)
+      // Si es asíncrono, el servidor responde rápido con async: true
       return this.http.post(environment.api + '/api/ai/dxgpt/' + patientId, body).pipe(
         timeout(120000), // 2 minutos
         map((res: any) => {
