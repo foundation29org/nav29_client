@@ -13,9 +13,9 @@ import { PatientService } from 'app/shared/services/patient.service';
 import { AuthGuard } from 'app/shared/auth/auth-guard.service';
 import { DateService } from 'app/shared/services/date.service';
 import { InsightsService } from 'app/shared/services/azureInsights.service';
+import { SpeechRecognitionService } from 'app/shared/services/speech-recognition.service';
 import * as datos from './icons.json';
 import { jsPDF } from "jspdf";
-declare var webkitSpeechRecognition: any;
 
 @Component({
   selector: 'app-new-patient',
@@ -57,7 +57,6 @@ export class NewPatientComponent implements OnInit, OnDestroy {
   havetreatment = false;
   havediagnosis = false;
 
-  recognition: any;
   recording = false;
   supported = false;
   timer: number = 0;
@@ -68,9 +67,10 @@ export class NewPatientComponent implements OnInit, OnDestroy {
   tempFileName: string = '';
   showCameraButton: boolean = false;
   preferredResponseLanguage: string = '';
+  private speechSubscription: Subscription;
 
 
-  constructor(private patientService: PatientService, private router: Router, private modalService: NgbModal, public toastr: ToastrService, public translate: TranslateService, private http: HttpClient, private authService: AuthService, private formBuilder: FormBuilder, private dateService: DateService, private authGuard: AuthGuard, public insightsService: InsightsService) {
+  constructor(private patientService: PatientService, private router: Router, private modalService: NgbModal, public toastr: ToastrService, public translate: TranslateService, private http: HttpClient, private authService: AuthService, private formBuilder: FormBuilder, private dateService: DateService, private authGuard: AuthGuard, public insightsService: InsightsService, private speechRecognitionService: SpeechRecognitionService) {
     this.getTranslations();
   }
 
@@ -86,7 +86,56 @@ export class NewPatientComponent implements OnInit, OnDestroy {
   ngOnInit() {
     this.showCameraButton = this.isMobileDevice();
     this.maxDate = new Date();
+    this.supported = this.speechRecognitionService.isSupported();
     this.initEnvironment();
+    
+    // Suscribirse a los resultados del reconocimiento de voz
+    if (this.supported) {
+      let lastFinalText = '';
+      let lastInterimText = '';
+      this.speechSubscription = this.speechRecognitionService.results$.subscribe((result) => {
+        if (result && result.text) {
+          if (result.isFinal) {
+            // Para resultados finales, extraer solo el nuevo texto
+            const newText = result.text.replace(lastFinalText, '').trim();
+            if (newText) {
+              // Remover el último texto intermedio si existe
+              if (lastInterimText && this.medicalText.endsWith(lastInterimText)) {
+                this.medicalText = this.medicalText.slice(0, -lastInterimText.length);
+              }
+              this.medicalText += (this.medicalText && !this.medicalText.endsWith('\n') ? '\n' : '') + newText;
+            }
+            lastFinalText = result.text;
+            lastInterimText = '';
+          } else {
+            // Para resultados intermedios, reemplazar el último texto intermedio
+            if (lastInterimText && this.medicalText.endsWith(lastInterimText)) {
+              this.medicalText = this.medicalText.slice(0, -lastInterimText.length) + result.text;
+            } else {
+              // Si no hay texto intermedio previo, añadir el nuevo
+              const currentText = this.medicalText.trim();
+              if (currentText && !currentText.endsWith('\n')) {
+                this.medicalText += '\n' + result.text;
+              } else {
+                this.medicalText += result.text;
+              }
+            }
+            lastInterimText = result.text;
+          }
+        }
+      });
+
+      // Suscribirse a los errores
+      this.speechRecognitionService.errors$.subscribe((error) => {
+        if (error) {
+          this.toastr.error('', error);
+          if (this.recording) {
+            this.stopTimer();
+            this.recording = false;
+          }
+        }
+      });
+    }
   }
 
 
@@ -95,6 +144,10 @@ export class NewPatientComponent implements OnInit, OnDestroy {
     if (this.messageSubscription) {
       this.messageSubscription.unsubscribe();
     }
+    if (this.speechSubscription) {
+      this.speechSubscription.unsubscribe();
+    }
+    this.speechRecognitionService.stop();
   }
 
 
@@ -199,9 +252,9 @@ export class NewPatientComponent implements OnInit, OnDestroy {
       await this.delay(200);
       this.openCamera();
     }else if(opt=='opt2'){
-      this.setupRecognition();
       this.medicalText = '';
       this.summaryDx29 = '';
+      this.speechRecognitionService.clearAccumulatedText();
       if (this.modalReference != undefined) {
           this.modalReference.close();
       }
@@ -213,35 +266,6 @@ export class NewPatientComponent implements OnInit, OnDestroy {
       this.modalReference = this.modalService.open(content, ngbModalOptions);
     }
     
-  }
-
-  setupRecognition() {
-    if ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window) {
-      // El navegador soporta la funcionalidad
-      console.log('soporta')
-      this.recognition = new webkitSpeechRecognition();
-      let lang = localStorage.getItem('lang');
-      if(lang == 'en'){
-        this.recognition.lang = 'en-US';
-      }else if(lang == 'es'){
-        this.recognition.lang = 'es-ES';
-      }else if(lang == 'fr'){
-        this.recognition.lang = 'fr-FR';
-      }else if(lang == 'de'){
-        this.recognition.lang = 'de-DE';
-      }else if(lang == 'it'){
-        this.recognition.lang = 'it-IT';
-      }else if(lang == 'pt'){
-        this.recognition.lang = 'pt-PT';
-      }
-      this.recognition.continuous = true;
-      this.recognition.maxAlternatives = 3;
-      this.supported = true;
-    } else {
-      // El navegador no soporta la funcionalidad
-      this.supported = false;
-      console.log('no soporta')
-    }
   }
 
   startTimer(restartClock) {
@@ -268,28 +292,26 @@ export class NewPatientComponent implements OnInit, OnDestroy {
 
   toggleRecording() {
     if (this.recording) {
-      //mosstrar el swal durante dos segundos diciendo que es está procesando
+      // Mostrar el swal durante dos segundos diciendo que está procesando
       Swal.fire({
         title: this.translate.instant("voice.Processing audio..."),
         html: this.translate.instant("voice.Please wait a few seconds."),
         showCancelButton: false,
         showConfirmButton: false,
         allowOutsideClick: false
-      })
-      //esperar 4 segundos
-      console.log('esperando 4 segundos')
-      setTimeout(function () {
-        console.log('cerrando swal')
-        this.stopTimer();
-        this.recognition.stop();
-        Swal.close();
-      }.bind(this), 4000);
+      });
       
-      this.recording = !this.recording;
+      // Esperar 4 segundos
+      setTimeout(() => {
+        this.stopTimer();
+        this.speechRecognitionService.stop();
+        Swal.close();
+        this.recording = false;
+      }, 4000);
       
     } else {
       if(this.medicalText.length > 0){
-        //quiere continuar con la grabacion o empezar una nueva
+        // Quiere continuar con la grabación o empezar una nueva
         Swal.fire({
           title: this.translate.instant("voice.Do you want to continue recording?"),
           icon: 'warning',
@@ -302,53 +324,26 @@ export class NewPatientComponent implements OnInit, OnDestroy {
           allowOutsideClick: false
         }).then((result) => {
           if (result.value) {
-            this.continueRecording(false, true);
-          }else{
+            // Continuar grabación
+            this.startTimer(false);
+            this.speechRecognitionService.start();
+            this.recording = true;
+          } else {
+            // Empezar nueva grabación
             this.medicalText = '';
-            this.continueRecording(true, true);
+            this.speechRecognitionService.clearAccumulatedText();
+            this.startTimer(true);
+            this.speechRecognitionService.start();
+            this.recording = true;
           }
         });
-      }else{
-        this.continueRecording(true, true);
-      }
-    }
-    
-  }
-
-  continueRecording(restartClock, changeState){
-    this.startTimer(restartClock);
-    this.recognition.start();
-    this.recognition.onresult = (event) => {
-      console.log(event)
-      var transcript = event.results[event.resultIndex][0].transcript;
-      console.log(transcript); // Utilizar el texto aquí
-      this.medicalText += transcript + '\n';
-      /*this.ngZone.run(() => {
-        this.medicalText += transcript + '\n';
-      });*/
-      if (event.results[event.resultIndex].isFinal) {
-        console.log('ha terminado')
-      }
-    };
-
-   // this.recognition.onerror = function(event) {
-    this.recognition.onerror = (event) => {
-      if (event.error === 'no-speech') {
-        console.log('Reiniciando el reconocimiento de voz...');
-        this.restartRecognition(); // Llama a una función para reiniciar el reconocimiento
       } else {
-        // Para otros tipos de errores, muestra un mensaje de error
-        this.toastr.error('', this.translate.instant("voice.Error in voice recognition."));
+        // Empezar nueva grabación
+        this.startTimer(true);
+        this.speechRecognitionService.start();
+        this.recording = true;
       }
-    };
-    if(changeState){
-      this.recording = !this.recording;
     }
-  }
-
-  restartRecognition() {
-    this.recognition.stop(); // Detiene el reconocimiento actual
-    setTimeout(() => this.continueRecording(false, false), 100); // Un breve retraso antes de reiniciar
   }
 
   async createFile(){

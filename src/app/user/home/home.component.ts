@@ -25,6 +25,7 @@ import { jsPDF } from "jspdf";
 
 import { InsightsService } from 'app/shared/services/azureInsights.service';
 import { LangService } from 'app/shared/services/lang.service';
+import { SpeechRecognitionService } from 'app/shared/services/speech-recognition.service';
 import * as QRCode from 'qrcode';
 import { FeedbackSummaryPageComponent } from 'app/user/feedback-summary/feedback-summary-page.component';
 import { EditMedicalEventComponent } from 'app/user/edit-event-modal/edit-medical-event.component';
@@ -164,6 +165,9 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
   messages = [];
   message = '';
   callingOpenai: boolean = false;
+  chatRecording: boolean = false;
+  chatVoiceSupported: boolean = false;
+  private chatSpeechSubscription: Subscription;
   lastProcessedAnswerId: string = ''; // Para evitar procesar respuestas duplicadas
 
   tempInput: string = '';
@@ -210,6 +214,10 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
   @ViewChild('contentviewProposedAppointments', { static: false }) contentviewProposedAppointments: TemplateRef<any>;
   @ViewChild('shareCustom', { static: false }) contentshareCustom: TemplateRef<any>;
   @ViewChild('qrPanel', { static: false }) contentqrPanel: TemplateRef<any>;
+  @ViewChild('dxGptModal', { static: false }) dxGptModal: TemplateRef<any>;
+  @ViewChild('notesModal', { static: false }) notesModal: TemplateRef<any>;
+  @ViewChild('rarescopeModal', { static: false }) rarescopeModal: TemplateRef<any>;
+  @ViewChild('diaryModal', { static: false }) diaryModal: TemplateRef<any>;
   tasksUpload: any[] = [];
   taskAnonimize: any[] = [];
   translateYouCanAskInChat: string = '';
@@ -238,6 +246,7 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
   private questionSymptoms = new Map<string, any[]>();
   isEditingPatientInfo: boolean = false;
   editedPatientInfo: string = '';
+  isPatientInfoExpanded: boolean = false;
   isLoadingMoreDiagnoses: boolean = false;
   loadingDoc: boolean = false;
   summaryDate: Date = null;
@@ -301,6 +310,10 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
   selectedIndexTab: number = 0;
   sidebarOpen = false;
   notesSidebarOpen: boolean = false;
+  leftSidebarCollapsed: boolean = false;
+  rightSidebarCollapsed: boolean = false;
+  rightSidebarOpenMobile: boolean = false;
+  scrollToBottomVisible: boolean = false;
   notes: { _id: string, content: string, date: Date, isEditing?: boolean, editContent?: string }[] = [];
   newNoteContent: string = '';
   savingNote: boolean = false;
@@ -343,6 +356,8 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
   timer: number = 0;
   timerDisplay: string = '00:00';
   private interval: any;
+  private accumulatedText: string = '';
+  private speechSubscription: Subscription;
   tempFileName: string = '';
   showCameraButton: boolean = false;
   langs: any[] = [];
@@ -360,7 +375,7 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
   private isInitialLoad = true;
   currentPatientId: string | null = null;
 
-  constructor(private http: HttpClient, private authService: AuthService, public translate: TranslateService, private formBuilder: FormBuilder, private authGuard: AuthGuard, public toastr: ToastrService, private patientService: PatientService, private sortService: SortService, private modalService: NgbModal, private apiDx29ServerService: ApiDx29ServerService, private dateService: DateService, private eventsService: EventsService, private webPubSubService: WebPubSubService, private searchService: SearchService, public jsPDFService: jsPDFService, private clipboard: Clipboard, public trackEventsService: TrackEventsService, private route: ActivatedRoute, public insightsService: InsightsService, private cdr: ChangeDetectorRef, private router: Router, private langService: LangService, private highlightService: HighlightService, private activityService: ActivityService) {
+  constructor(private http: HttpClient, private authService: AuthService, public translate: TranslateService, private formBuilder: FormBuilder, private authGuard: AuthGuard, public toastr: ToastrService, private patientService: PatientService, private sortService: SortService, private modalService: NgbModal, private apiDx29ServerService: ApiDx29ServerService, private dateService: DateService, private eventsService: EventsService, private webPubSubService: WebPubSubService, private searchService: SearchService, public jsPDFService: jsPDFService, private clipboard: Clipboard, public trackEventsService: TrackEventsService, private route: ActivatedRoute, public insightsService: InsightsService, private cdr: ChangeDetectorRef, private router: Router, private langService: LangService, private highlightService: HighlightService, private activityService: ActivityService, private speechRecognitionService: SpeechRecognitionService) {
     this.screenWidth = window.innerWidth;
     this.categoriesPatients = [
       { "title": this.translate.instant('categoriesPatients.list.cat1'), "icon": "data:image/webp;base64,UklGRoAHAABXRUJQVlA4WAoAAAAwAAAAOwAAOwAASUNDUKACAAAAAAKgbGNtcwRAAABtbnRyUkdCIFhZWiAH5wALAB4AEQAdAClhY3NwTVNGVAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA9tYAAQAAAADTLWxjbXMAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA1kZXNjAAABIAAAAEBjcHJ0AAABYAAAADZ3dHB0AAABmAAAABRjaGFkAAABrAAAACxyWFlaAAAB2AAAABRiWFlaAAAB7AAAABRnWFlaAAACAAAAABRyVFJDAAACFAAAACBnVFJDAAACFAAAACBiVFJDAAACFAAAACBjaHJtAAACNAAAACRkbW5kAAACWAAAACRkbWRkAAACfAAAACRtbHVjAAAAAAAAAAEAAAAMZW5VUwAAACQAAAAcAEcASQBNAFAAIABiAHUAaQBsAHQALQBpAG4AIABzAFIARwBCbWx1YwAAAAAAAAABAAAADGVuVVMAAAAaAAAAHABQAHUAYgBsAGkAYwAgAEQAbwBtAGEAaQBuAABYWVogAAAAAAAA9tYAAQAAAADTLXNmMzIAAAAAAAEMQgAABd7///MlAAAHkwAA/ZD///uh///9ogAAA9wAAMBuWFlaIAAAAAAAAG+gAAA49QAAA5BYWVogAAAAAAAAJJ8AAA+EAAC2xFhZWiAAAAAAAABilwAAt4cAABjZcGFyYQAAAAAAAwAAAAJmZgAA8qcAAA1ZAAAT0AAACltjaHJtAAAAAAADAAAAAKPXAABUfAAATM0AAJmaAAAmZwAAD1xtbHVjAAAAAAAAAAEAAAAMZW5VUwAAAAgAAAAcAEcASQBNAFBtbHVjAAAAAAAAAAEAAAAMZW5VUwAAAAgAAAAcAHMAUgBHAEJBTFBISgEAAAGQQ22bIVm9RmibmW3U2plt27bt3ci8tm3btt03u6eCQddfex1FxAQw/8mr6+lo6+qpK6lr6+np6enqilJj1H0bE/ywJZwG2QFM/IoZmOwRDMi6QO3AoKwJTAoW+vvtG7cvvBQKHwcReSpckzNCyEU4jCB8sPBdCCHkyGEOohHuIcQ4h04eew6Yii8dDW3toTxuhU3tTafo2uKKhG+ia9WKQwtdRxDHJrquc+mgi+1srm4O4XGuriotPUUX33YeB8yRni4ex1/RkAdCyGWtvFm/devmw2uFLNj7keLIhITU+KTUtCnqtlrHj25a5n+ats3GuzBZdgNLgdU0JvzMI4OCMEz8lOlVuBvk8MBzoHYM/gYiBG4rhNQnsBgIpgnqrhSI7C0gfwZW9ylILgPok1PaMLQd4npzbk5OCqn9mMofeoQktaiUY/53BlZQOCBoAwAAkBQAnQEqPAA8AD4xGIlDoiGhFAQAIAMEsgBm/KCel/d+Oj5qM3evL8z9wHaA8S3pReYD9bv1g97T0YegB/XP5z1l/oX9KR+2/o4ZhzokvsdkwLwBnyf939oHxuf4H9V9AH0X7BH6hf73gVUtay9FSidNdcSqkfNA/8a/+Pr91rouwuB/SBa/ZK0+vGACxCB+AfAdCiFHQzODPVbL4hXPv4xAtz+elf8/6gQQ3UAA/v/zxTR//mhiT2bVfGwDXbPYafQJO/TOyb62/7sdR+bVJt/evdSuzij4TL9u+/sxjNRD+hHubZv7vqijVS/S6HEdDzl/36zviV7/ihSeG643QEmcS4YHqQDRJTdBC1ehGnh8P6cYFVuQ7FNaCjBixcB+f8CKsl30iwPvQ1+43VrGyx5ku4vwNmIVmjLV9FUfFsJB3yVkAERbsyi/zOXjdbg36lZMiCZBoPp13u4NOXNaLejqvQUeHnLTbw5KMR4M90TST1FS1zkujkt3I2sdr6xh2V/f/R6TKh7MNvQKMuKnVUJHUrYLR9sWNPU3x0gP8QB3mfFRAcxLNkbPxxeW1+JL6PpUyrnlTiFPvYS1IuDdf/OcyDmur7161W32ngHMcLpR+NUgJ+qQEDQRES0wf85U3NQlu8BXUinpJNCo3V2HwG7DKD9oMh91427yMUHXN6v3LmtQ3X1bk8rjpqkP4VALf//zPEHJsZgOCl99i2/0IVOVUJxLsWofdnwxA+akncXD+6dSVZiQ2u4UIPtNeZ0oH4UUICMPbCcqnxROp9Cu6xTASl3Iv/dEHWHEWdf+Nfjd2TfvwK9BSDyckfrAb2Kny5vUAH3Nu9/v0/SFYko0+XFfEUlzt2k/o7c+/e2V8yisqYo0xngw5QNePnu4KBmy39pd9XOEgZxQ0k+YIFIXqsOj5jhDWjOQoELXn/gWb10AXqA1beeSgh1EaOl6QgZJ4lyi36hiJSgKKOZMJ8B+Rc968ApfG3gjvdaP93AzZZW4f4O1RQ/HW2Z/6ctbyhwCsHg+nLp804tELkn6DYbRCbq5iJ6r8IRr4ZHFW/0akFMIPpwYITjgfqKSewTELtW+tYsYh+Er0XkEHnHA3ISHUMF7B9fyfWsmLL/sVMRXHe11hpCT9R5kO71YFfQ/ACkSeUSh3PyAAAA=", "idCat": "treatAndDrugs", "questions": [] },
@@ -600,6 +615,26 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
   get efappointment() { return this.appointmentsForm.controls; }
 
   async ngOnDestroy() {
+    // Detener reconocimiento de voz si está activo
+    if (this.recording) {
+      this.speechRecognitionService.stop();
+    }
+    
+    // Detener reconocimiento de voz del chat si está activo
+    if (this.chatRecording) {
+      this.speechRecognitionService.stop();
+    }
+    
+    // Limpiar suscripciones de reconocimiento de voz
+    if (this.speechSubscription) {
+      this.speechSubscription.unsubscribe();
+    }
+    
+    // Limpiar suscripciones de reconocimiento de voz del chat
+    if (this.chatSpeechSubscription) {
+      this.chatSpeechSubscription.unsubscribe();
+    }
+    
     //save this.messages in bbdd
     if (this.currentPatient) {
       await this.saveMessages(this.currentPatient);
@@ -765,6 +800,60 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
   async ngOnInit() {
     this.showCameraButton = this.isMobileDevice();
 
+    // Inicializar soporte de voz para el chat
+    this.chatVoiceSupported = this.speechRecognitionService.isSupported();
+    
+    // Suscribirse a los resultados del reconocimiento de voz para el chat
+    if (this.chatVoiceSupported) {
+      let lastFinalText = '';
+      let lastInterimText = '';
+      this.chatSpeechSubscription = this.speechRecognitionService.results$.subscribe((result) => {
+        if (result && result.text && this.chatRecording) {
+          if (result.isFinal) {
+            // Para resultados finales, extraer solo el nuevo texto
+            const newText = result.text.replace(lastFinalText, '').trim();
+            if (newText) {
+              // Remover el último texto intermedio si existe
+              if (lastInterimText && this.message.endsWith(lastInterimText)) {
+                this.message = this.message.slice(0, -lastInterimText.length);
+              }
+              this.message = (this.message.trim() ? this.message.trim() + ' ' : '') + newText;
+            }
+            lastFinalText = result.text;
+            lastInterimText = '';
+          } else {
+            // Para resultados intermedios, reemplazar el último texto intermedio
+            if (lastInterimText && this.message.endsWith(lastInterimText)) {
+              this.message = this.message.slice(0, -lastInterimText.length) + result.text;
+            } else {
+              // Si no hay texto intermedio previo, añadir el nuevo
+              const baseMessage = this.message.trim();
+              this.message = (baseMessage ? baseMessage + ' ' : '') + result.text;
+            }
+            lastInterimText = result.text;
+          }
+          
+          // Forzar el redimensionamiento del textarea cuando se actualiza el mensaje por voz
+          setTimeout(() => {
+            const textarea = document.querySelector('#chat-container textarea') as HTMLTextAreaElement;
+            if (textarea) {
+              // Disparar evento input para que autoResize se ejecute
+              const event = new Event('input', { bubbles: true });
+              textarea.dispatchEvent(event);
+            }
+          }, 0);
+        }
+      });
+
+      // Suscribirse a errores del reconocimiento de voz del chat
+      this.speechRecognitionService.errors$.subscribe((error) => {
+        if (error && this.chatRecording) {
+          this.toastr.error('', error);
+          this.chatRecording = false;
+        }
+      });
+    }
+
     // Precargar imagen DxGPT
     const dxGptLogo = new Image();
     dxGptLogo.src = 'assets/img/logo-dxgpt.png';
@@ -798,8 +887,15 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
       this.currentView = 'chat';
   }
 
-  setView(view: string) {
+  async setView(view: string) {
     this.currentView = view;
+    
+    // Cerrar el sidebar móvil de herramientas cuando se cambia a cualquier vista
+    // (las herramientas no son una vista, solo un sidebar que se muestra sobre chat)
+    if (this.isSmallScreen() && this.rightSidebarOpenMobile) {
+      this.rightSidebarOpenMobile = false;
+    }
+    
     if(view === 'documents'){
       this.sidebarOpen = true;
       this.notesSidebarOpen = false;
@@ -809,6 +905,9 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     }else if(view === 'chat'){
       this.sidebarOpen = false;
       this.notesSidebarOpen = false;
+      //scroll to bottom
+      await this.delay(200);
+      this.scrollToBottom();
     }else if(view === 'notes'){
       this.sidebarOpen = false;
       this.notesSidebarOpen = true;
@@ -826,7 +925,7 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
       this.sidebarOpen = false;
       this.notesSidebarOpen = false;
     } 
-    this.scrollToTop();
+    //this.scrollToTop();
   }
 
   handleChangeView(view: string) {
@@ -1213,6 +1312,35 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     try {
       document.getElementById('chatContainer').scrollIntoView(true);
     } catch (err) { }
+  }
+
+  scrollToBottomPage(): void {
+    window.scroll({
+      top: document.body.scrollHeight,
+      left: 0,
+      behavior: 'smooth'
+    });
+  }
+
+  @HostListener("window:scroll", [])
+  onWindowScroll() {
+    // Solo detectar scroll cuando estamos en la vista de chat
+    if (this.currentView !== 'chat') {
+      this.scrollToBottomVisible = false;
+      return;
+    }
+
+    let number = window.pageYOffset || document.documentElement.scrollTop || document.body.scrollTop || 0;
+    const windowHeight = window.innerHeight;
+    const documentHeight = document.documentElement.scrollHeight;
+    
+    // Scroll to bottom button visibility
+    // Mostrar cuando estamos cerca del inicio y ocultar cuando nos acercamos al final
+    if (number < (documentHeight - windowHeight - 600)) {
+      this.scrollToBottomVisible = true;
+    } else {
+      this.scrollToBottomVisible = false;
+    }
   }
 
   addMessage(message: any) {
@@ -4057,32 +4185,71 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
   }
 
   setupRecognition() {
-    if ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window) {
-      // El navegador soporta la funcionalidad
-      console.log('soporta')
-      this.recognition = new webkitSpeechRecognition();
-      let lang = localStorage.getItem('lang');
-      if (lang == 'en') {
-        this.recognition.lang = 'en-US';
-      } else if (lang == 'es') {
-        this.recognition.lang = 'es-ES';
-      } else if (lang == 'fr') {
-        this.recognition.lang = 'fr-FR';
-      } else if (lang == 'de') {
-        this.recognition.lang = 'de-DE';
-      } else if (lang == 'it') {
-        this.recognition.lang = 'it-IT';
-      } else if (lang == 'pt') {
-        this.recognition.lang = 'pt-PT';
-      }
-      this.recognition.continuous = true;
-      this.recognition.maxAlternatives = 3;
-      this.supported = true;
-    } else {
-      // El navegador no soporta la funcionalidad
-      this.supported = false;
-      console.log('no soporta')
+    // Usar el servicio de reconocimiento de voz que maneja Web Speech API y Azure
+    this.supported = this.speechRecognitionService.isSupported();
+    
+    // Limpiar suscripciones anteriores si existen
+    if (this.speechSubscription) {
+      this.speechSubscription.unsubscribe();
     }
+    
+    // Suscribirse a los resultados del reconocimiento
+    let lastFinalText = '';
+    let lastInterimText = '';
+    this.speechSubscription = this.speechRecognitionService.results$.subscribe((result) => {
+      if (result && result.text) {
+        if (result.isFinal) {
+          // Para resultados finales, extraer solo el nuevo texto
+          const newText = result.text.replace(lastFinalText, '').trim();
+          if (newText) {
+            // Remover el último texto intermedio si existe
+            if (lastInterimText && this.medicalText.endsWith(lastInterimText)) {
+              this.medicalText = this.medicalText.slice(0, -lastInterimText.length);
+            }
+            this.medicalText += (this.medicalText && !this.medicalText.endsWith('\n') ? '\n' : '') + newText;
+          }
+          lastFinalText = result.text;
+          lastInterimText = '';
+        } else {
+          // Para resultados intermedios, reemplazar el último texto intermedio
+          if (lastInterimText && this.medicalText.endsWith(lastInterimText)) {
+            this.medicalText = this.medicalText.slice(0, -lastInterimText.length) + result.text;
+          } else {
+            // Si no hay texto intermedio previo, añadir el nuevo
+            const currentText = this.medicalText.trim();
+            if (currentText && !currentText.endsWith('\n')) {
+              this.medicalText += '\n' + result.text;
+            } else {
+              this.medicalText += result.text;
+            }
+          }
+          lastInterimText = result.text;
+        }
+      }
+    });
+
+    // Suscribirse a errores
+    this.speechSubscription.add(
+      this.speechRecognitionService.errors$.subscribe((error) => {
+        this.toastr.error('', error);
+        if (this.recording) {
+          this.stopTimer();
+          this.recording = false;
+        }
+      })
+    );
+
+    // Suscribirse a cambios de estado
+    this.speechSubscription.add(
+      this.speechRecognitionService.status$.subscribe((status) => {
+        if (status === 'recording' && !this.recording) {
+          this.recording = true;
+        } else if (status === 'stopped' && this.recording) {
+          this.recording = false;
+          this.stopTimer();
+        }
+      })
+    );
   }
 
   startTimer(restartClock) {
@@ -4109,28 +4276,33 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
 
   toggleRecording() {
     if (this.recording) {
-      //mosstrar el swal durante dos segundos diciendo que es está procesando
+      // Mostrar el swal durante unos segundos diciendo que está procesando
       Swal.fire({
         title: this.translate.instant("voice.Processing audio..."),
         html: this.translate.instant("voice.Please wait a few seconds."),
         showCancelButton: false,
         showConfirmButton: false,
         allowOutsideClick: false
-      })
-      //esperar 4 segundos
-      console.log('esperando 4 segundos')
-      setTimeout(function () {
-        console.log('cerrando swal')
-        this.stopTimer();
-        this.recognition.stop();
+      });
+      
+      // Detener el reconocimiento
+      this.speechRecognitionService.stop();
+      this.stopTimer();
+      
+      // Obtener el texto acumulado y añadirlo al campo
+      const finalText = this.speechRecognitionService.getAccumulatedText();
+      if (finalText && !this.medicalText.includes(finalText)) {
+        this.medicalText += finalText;
+      }
+      
+      setTimeout(() => {
         Swal.close();
-      }.bind(this), 4000);
-
-      this.recording = !this.recording;
+        this.recording = false;
+      }, 2000);
 
     } else {
       if (this.medicalText.length > 0) {
-        //quiere continuar con la grabacion o empezar una nueva
+        // Quiere continuar con la grabación o empezar una nueva
         Swal.fire({
           title: this.translate.instant("voice.Do you want to continue recording?"),
           icon: 'warning',
@@ -4146,6 +4318,8 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
             this.continueRecording(false, true);
           } else {
             this.medicalText = '';
+            this.accumulatedText = '';
+            this.speechRecognitionService.clearAccumulatedText();
             this.continueRecording(true, true);
           }
         });
@@ -4153,43 +4327,60 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
         this.continueRecording(true, true);
       }
     }
-
   }
 
   continueRecording(restartClock, changeState) {
     this.startTimer(restartClock);
-    this.recognition.start();
-    this.recognition.onresult = (event) => {
-      console.log(event)
-      var transcript = event.results[event.resultIndex][0].transcript;
-      console.log(transcript); // Utilizar el texto aquí
-      this.medicalText += transcript + '\n';
-      /*this.ngZone.run(() => {
-        this.medicalText += transcript + '\n';
-      });*/
-      if (event.results[event.resultIndex].isFinal) {
-        console.log('ha terminado')
-      }
-    };
-
-    // this.recognition.onerror = function(event) {
-    this.recognition.onerror = (event) => {
-      if (event.error === 'no-speech') {
-        console.log('Reiniciando el reconocimiento de voz...');
-        this.restartRecognition(); // Llama a una función para reiniciar el reconocimiento
-      } else {
-        // Para otros tipos de errores, muestra un mensaje de error
-        this.toastr.error('', this.translate.instant("voice.Error in voice recognition."));
-      }
-    };
+    
+    if (restartClock) {
+      this.accumulatedText = '';
+      this.speechRecognitionService.clearAccumulatedText();
+    }
+    
+    // Usar el servicio de reconocimiento de voz
+    this.speechRecognitionService.start();
+    
     if (changeState) {
-      this.recording = !this.recording;
+      this.recording = true;
     }
   }
 
   restartRecognition() {
-    this.recognition.stop(); // Detiene el reconocimiento actual
-    setTimeout(() => this.continueRecording(false, false), 100); // Un breve retraso antes de reiniciar
+    // El servicio maneja automáticamente los reinicios
+    // Solo necesitamos detener y volver a iniciar si es necesario
+    if (this.recording) {
+      this.speechRecognitionService.stop();
+      setTimeout(() => {
+        if (this.recording) {
+          this.speechRecognitionService.start();
+        }
+      }, 100);
+    }
+  }
+
+  toggleChatRecording() {
+    if (this.chatRecording) {
+      // Detener el reconocimiento de voz
+      this.speechRecognitionService.stop();
+      this.chatRecording = false;
+      
+      // El texto ya debería estar en el mensaje gracias a la suscripción
+      // Limpiar el texto acumulado del servicio
+      this.speechRecognitionService.clearAccumulatedText();
+      
+      // Si hay mensaje, enviarlo automáticamente
+      if (this.message && this.message.trim()) {
+        // Pequeño delay para asegurar que el texto final se haya añadido
+        setTimeout(() => {
+          this.sendMessage();
+        }, 100);
+      }
+    } else {
+      // Iniciar el reconocimiento de voz
+      this.speechRecognitionService.clearAccumulatedText();
+      this.speechRecognitionService.start();
+      this.chatRecording = true;
+    }
   }
 
 
@@ -4907,8 +5098,26 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     if (!this.showNewCustom && this.listCustomShare.length > 0 && document.getElementById('panelCustomShare') != null) {
       this.widthPanelCustomShare = document.getElementById('panelCustomShare').offsetWidth;
     }
+    const previousScreenWidth = this.screenWidth;
     this.screenWidth = window.innerWidth;
-    if(this.screenWidth > 991 && this.currentView == 'documents'){
+    
+    // Si cambiamos de pantalla grande a pequeña
+    // Solo hacer esto si realmente hubo un cambio de tamaño (previousScreenWidth > 0)
+    // para evitar abrir el sidebar al cargar la página por primera vez
+    if (previousScreenWidth > 0 && previousScreenWidth >= 1199 && this.screenWidth < 1199) {
+      // No abrir automáticamente el sidebar móvil al cambiar de tamaño
+      // El usuario debe abrirlo manualmente desde el menú inferior
+      this.rightSidebarOpenMobile = false;
+      // Resetear el estado de colapsado en móvil (no aplica en pantallas pequeñas)
+      this.rightSidebarCollapsed = false;
+    }
+    
+    // Si cambiamos de pantalla pequeña a grande, cerrar el sidebar móvil
+    if (previousScreenWidth < 1199 && this.screenWidth >= 1199) {
+      this.rightSidebarOpenMobile = false;
+    }
+    
+    if(this.screenWidth > 1199 && this.currentView == 'documents'){
       this.setView('chat');
     }
   }
@@ -4919,11 +5128,11 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
   }
 
   isSmallScreen(): boolean {
-    return this.screenWidth < 991; // Bootstrap's breakpoint for small screen
+    return this.screenWidth < 1199; // Bootstrap's breakpoint for small screen
   }
 
   isXSScreen(): boolean {
-    return this.screenWidth < 991; //650; // Bootstrap's breakpoint for small screen
+    return this.screenWidth < 1199; //650; // Bootstrap's breakpoint for small screen
   }
 
 
@@ -4932,6 +5141,76 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     if (this.isSmallScreen && this.sidebarOpen) {
       this.sidebarOpen = false;
     }
+  }
+
+  toggleLeftSidebar() {
+    this.leftSidebarCollapsed = !this.leftSidebarCollapsed;
+  }
+
+  toggleRightSidebar() {
+    this.rightSidebarCollapsed = !this.rightSidebarCollapsed;
+  }
+
+  openRightSidebarMobile() {
+    // Si estamos en documentos u otra vista, cambiar a chat para mostrar el sidebar de herramientas
+    if (this.currentView !== 'chat') {
+      this.currentView = 'chat';
+    }
+    this.rightSidebarOpenMobile = true;
+  }
+
+  closeRightSidebarMobile() {
+    this.rightSidebarOpenMobile = false;
+  }
+
+  openToolModal(tool: string) {
+    let ngbModalOptions: NgbModalOptions = {
+      backdrop: 'static',
+      keyboard: false,
+      windowClass: 'ModalClass-xl' // xl para modales grandes
+    };
+    
+    if (this.modalReference != undefined) {
+      this.modalReference.close();
+    }
+    
+    if (tool === 'dxgpt') {
+      this.modalReference = this.modalService.open(this.dxGptModal, ngbModalOptions);
+    } else if (tool === 'rarescope') {
+      // Cargar los datos de Rarescope (carga desde BD o hace análisis si no hay datos)
+      this.loadRarescopeData();
+      this.modalReference = this.modalService.open(this.rarescopeModal, ngbModalOptions);
+    }
+    // Aquí se pueden añadir más herramientas cuando las implementemos
+  }
+
+  openNotesModal() {
+    // Cargar las notas antes de abrir el modal
+    this.getNotes();
+    
+    let ngbModalOptions: NgbModalOptions = {
+      backdrop: 'static',
+      keyboard: false,
+      windowClass: 'ModalClass-lg' // lg para el modal de notas
+    };
+    
+    if (this.modalReference != undefined) {
+      this.modalReference.close();
+    }
+    this.modalReference = this.modalService.open(this.notesModal, ngbModalOptions);
+  }
+
+  openDiaryModal() {
+    let ngbModalOptions: NgbModalOptions = {
+      backdrop: 'static',
+      keyboard: false,
+      windowClass: 'ModalClass-xl' // xl para el modal del diario
+    };
+    
+    if (this.modalReference != undefined) {
+      this.modalReference.close();
+    }
+    this.modalReference = this.modalService.open(this.diaryModal, ngbModalOptions);
   }
 
   getNotes() {
@@ -5862,6 +6141,23 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
   cancelEditingPatientInfo(): void {
     this.isEditingPatientInfo = false;
     this.editedPatientInfo = '';
+  }
+
+  togglePatientInfo(): void {
+    this.isPatientInfoExpanded = !this.isPatientInfoExpanded;
+  }
+
+  shouldShowPatientInfoToggle(): boolean {
+    if (!this.dxGptResults || !this.dxGptResults.analysis || !this.dxGptResults.analysis.anonymization) {
+      return false;
+    }
+    
+    const text = this.dxGptResults.analysis.anonymization.anonymizedText || '';
+    const textHtml = this.dxGptResults.analysis.anonymization.anonymizedTextHtml || '';
+    
+    // Mostrar el botón si el texto es más largo que aproximadamente 500 caracteres
+    // o si hay HTML y parece ser largo
+    return text.length > 500 || (textHtml.length > 500 && textHtml.includes('<p>'));
   }
 
   saveEditedPatientInfo(): void {

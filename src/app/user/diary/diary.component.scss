@@ -1,3 +1,10 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
 :host ::ng-deep {
   .popover {
     position: fixed;  // En lugar de absolute
@@ -6,25 +13,26 @@
 }
 
 .chat-timeline-container {
-  position: fixed;
-  top: 160px;
-  left: 0;
-  right: 0;
-  bottom: 80px;
-  overflow-y: auto;
+  position: relative;
+  flex: 1 1 auto;
+  overflow: hidden;
   background-color: #e5ddd5;
   z-index: 1;
-
-  @media (max-width: 991px) {
-    bottom: 130px;
-    top: 120px;
-  }
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  height: 100%;
 
   .chat-timeline {
     display: flex;
     flex-direction: column;
     gap: 1rem;
     padding: 1rem;
+    flex: 1 1 auto;
+    overflow-y: auto;
+    overflow-x: hidden;
+    min-height: 0;
+    -webkit-overflow-scrolling: touch;
   }
 
   .chat-item {
@@ -143,6 +151,7 @@
 }
 
 .diary-header {
+  flex-shrink: 0;
 
   .content-header {
     font-size: 1.5rem;
@@ -198,18 +207,12 @@
 }
 
 .new-message-container {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
+  position: relative;
   padding: 1rem;
   background-color: #f0f0f0;
   border-top: 1px solid #ddd;
   z-index: 2;
-
-  @media (max-width: 991px) {
-    bottom: 50px;
-  }
+  flex-shrink: 0;
 
 
   .input-group {
@@ -331,5 +334,17 @@
     font-size: 0.9em;
     color: #666;
     box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+  }
+}
+
+// Estilos cuando el diary está en modal
+:host-context(.diary-modal-body) {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+  
+  .diary-header {
+    flex-shrink: 0;
   }
 }

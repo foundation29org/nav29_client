@@ -16,93 +16,53 @@
             <span class="ml-2" *ngIf="!isXSScreen()">{{'topnavbar.Reports' | translate }}</span>
         </button>
         <button class="btn btn-dark flex-grow-1"
-            [ngClass]="{'active-view': currentView === 'chat'}"
+            [ngClass]="{'active-view': currentView === 'chat' && !(isSmallScreen() && rightSidebarOpenMobile)}"
             (click)="setView('chat')" title="{{'home.s1.2' | translate}}">
             <i class="fa-kit fa-ai"></i>
             <span class="ml-2" *ngIf="!isXSScreen()">{{'home.s1.2' | translate}}</span>
         </button>
-        <button id="notes-title" class="btn btn-dark flex-grow-1"
-            [ngClass]="{'active-view': currentView === 'notes'}"
-            (click)="setView('notes')" title="{{'summaryoptions.title' | translate}}">
-            <i class="fa fa-sticky-note"></i>
-            <span class="ml-2" *ngIf="!isXSScreen()">{{'summaryoptions.title' | translate}}</span>
-        </button>
         <button class="btn btn-dark flex-grow-1" id="diary-title"
-            [ngClass]="{'active-view': currentView === 'diary'}"
-            (click)="setView('diary')" title="{{'diary.title' | translate}}">
-            <i class="fa fa-comments"></i>
-            <span class="ml-2" *ngIf="!isXSScreen()">{{'diary.title' | translate}}</span>
-        </button>
-        <button class="btn btn-dark flex-grow-1" id="dxgpt-title"
-            [ngClass]="{'active-view': currentView === 'dxgpt'}"
-            (click)="setView('dxgpt')" title="{{'dxgpt.button' | translate}}">
-            <i class="fa fa-stethoscope"></i>
-            <span class="ml-2" *ngIf="!isXSScreen()">{{'dxgpt.button' | translate}}</span>
-        </button>
-        <button class="btn btn-dark flex-grow-1" id="rarescope-title"
-            [ngClass]="{'active-view': currentView === 'rarescope'}"
-            (click)="setView('rarescope')" title="{{'rarescope.My Needs' | translate}}">
-            <i class="fa fa-microscope"></i>
-            <span class="ml-2" *ngIf="!isXSScreen()">{{'rarescope.My Needs' | translate}}</span>
+            [ngClass]="{'active-view': currentView === 'diary' || (isSmallScreen() && rightSidebarOpenMobile)}"
+            (click)="isSmallScreen() ? openRightSidebarMobile() : setView('diary')" 
+            title="{{'tools.title' | translate}}">
+            <i class="fa fa-briefcase"></i>
+            <span class="ml-2" *ngIf="!isXSScreen()">{{'tools.title' | translate}}</span>
         </button>
     </div>
 </div>
-    <div class="main-container-user pb-4">
+    <div class="main-container-user pb-4" [ngClass]="{'right-sidebar-open': !isSmallScreen() && currentView === 'chat' && !rightSidebarCollapsed, 'right-sidebar-collapsed': !isSmallScreen() && currentView === 'chat' && rightSidebarCollapsed, 'right-sidebar-mobile-open': isSmallScreen() && rightSidebarOpenMobile}">
         <div *ngIf="isSmallScreen() && currentView === 'chat' && messages.length > 0"
             class="fixed-buttons-container p-0 pt-1 pb-1 border-bottom d-flex justify-content-between align-items-center"
             style="background-color: #f0f0f0;">
-            <div class="flex-grow-1 d-flex justify-content-center">
-                <div class="" style="z-index: 0;">
+            <div class="flex-grow-1 d-flex justify-content-center align-items-center gap-2">
+                <div class="mr-2" style="z-index: 0;">
                     <button class="btn btn-white" (click)="deleteChat()"
                         [attr.title]="isStepInProcess() ? ('generics.Please wait' | translate) : ('home.s1.2.1' | translate)"
                         [disabled]="isStepInProcess()">
                         <em class="fa fa-plus mr-1"></em> {{'home.s1.2.1' | translate }}
                     </button>
                 </div>
+                <button class="btn btn-primary btn-sm" 
+                        *ngIf="scrollToBottomVisible && currentView === 'chat' && messages.length > 0"
+                        (click)="scrollToBottomPage(); trackEventsService.lauchEvent('scroll btn 2')"
+                        title="Ir al final">
+                    <i class="fa fa-arrow-down"></i>
+                </button>
             </div>
         </div>
         <div *ngIf="!isSmallScreen()"
-            class="fixed-buttons-container border-bottom d-flex justify-content-between align-items-center" [ngClass]="{'left300': currentView === 'chat'}" style="background-color: #fff;">
-            <div class="flex-grow-1 d-flex justify-content-center remove-background">
-                <!-- Chat Button -->
-                <button class="btn btn-dark mx-2"
-                    [ngClass]="{'active-view': currentView === 'chat'}"
-                    (click)="setView('chat')">
-                    <i class="fa-kit fa-ai"></i>
-                    <span class="ml-2">{{'home.s1.2' | translate}}</span>
-                </button>
-                <!-- Notes Button -->
-                <button  class="btn btn-dark mx-2"
-                    [ngClass]="{'active-view': currentView === 'notes'}"
-                    (click)="setView('notes')">
-                    <i class="fa fa-sticky-note"></i>
-                    <span id="notes-title" class="ml-2">{{'summaryoptions.title' | translate}}</span>
-                </button>
-                <!-- Diary Button -->
-                <button class="btn btn-dark mx-2" 
-                    [ngClass]="{'active-view': currentView === 'diary'}"
-                    (click)="setView('diary')">
-                    <i class="fa fa-comments"></i>
-                    <span id="diary-title" class="ml-2">{{'diary.title' | translate}}</span>
-                </button>
-                <!-- DxGPT Button -->
-                <button class="btn btn-dark mx-2" 
-                    [ngClass]="{'active-view': currentView === 'dxgpt'}"
-                    (click)="setView('dxgpt')">
-                    <i class="fa fa-stethoscope"></i>
-                    <span id="dxgpt-title" class="ml-2">{{'dxgpt.button' | translate}}</span>
-                </button>
-                <!-- Rarescope Button -->
-                <button class="btn btn-dark mx-2" 
-                    [ngClass]="{'active-view': currentView === 'rarescope'}"
-                    (click)="setView('rarescope')">
-                    <i class="fa fa-microscope"></i>
-                    <span id="rarescope-title" class="ml-2">{{'rarescope.My Needs' | translate}}</span>
-                </button>                
-            </div>
+            class="fixed-buttons-container d-flex justify-content-between align-items-center" 
+            [ngClass]="{'left300': currentView === 'chat', 'left-sidebar-collapsed': leftSidebarCollapsed && currentView === 'chat'}">
 
-            <!-- New Chat Button - Solo visible en la vista de chat cuando hay mensajes -->
-            <div *ngIf="currentView === 'chat' && messages.length > 0" class="position-absolute" style="right: 1rem;">
+
+            <!-- New Chat Button y Scroll to Bottom - Solo visible en la vista de chat cuando hay mensajes -->
+            <div *ngIf="currentView === 'chat' && messages.length > 0" class="position-absolute d-flex align-items-center" style="right: 1rem; top: 0.5rem; gap: 0.5rem;">
+                <button class="btn btn-primary btn-sm" 
+                        *ngIf="scrollToBottomVisible"
+                        (click)="scrollToBottomPage(); trackEventsService.lauchEvent('scroll btn 2')"
+                        title="Ir al final">
+                    <i class="fa fa-arrow-down"></i>
+                </button>
                 <button class="btn btn-white btn-sm" (click)="deleteChat()"
                     [attr.title]="isStepInProcess() ? ('generics.Please wait' | translate) : ('home.s1.2.1' | translate)"
                     [disabled]="isStepInProcess()">
@@ -112,16 +72,30 @@
         </div>
 
         <div *ngIf="currentView != 'diary' && currentView != 'notes' && currentView != 'dxgpt' && currentView != 'rarescope'" class="sidebar border-right"
-            [ngClass]="{'open': sidebarOpen || !isSmallScreen()}">
+            [ngClass]="{'open': sidebarOpen || !isSmallScreen(), 'collapsed': leftSidebarCollapsed && !isSmallScreen()}">
             <div class="sidebar-content" id="sidebar-content">
+                <!-- Título vertical cuando está plegado -->
+                <div class="sidebar-title-vertical" *ngIf="leftSidebarCollapsed && !isSmallScreen()">
+                    <span>{{'home.s1.3' | translate}}</span>
+                </div>
                 <!-- Header -->
-                <div class="sidebar-header pb-0">
-                    <h3 class="font-medium-3">{{'topnavbar.Reports' | translate }}
-                        <button type="button" class="ml-1 btn botonAddDoc btn-dark"
+                <div class="sidebar-header">
+                    <div class="sidebar-header-top">
+                        <h2 class="sidebar-main-title">{{'home.s1.3' | translate}}</h2>
+                        <button class="sidebar-toggle-btn" 
+                                *ngIf="!isSmallScreen()"
+                                (click)="toggleLeftSidebar()" 
+                                [title]="leftSidebarCollapsed ? 'Expandir' : 'Plegar'">
+                            <i class="fa" [ngClass]="leftSidebarCollapsed ? 'fa-chevron-right' : 'fa-chevron-left'"></i>
+                        </button>
+                    </div>
+                    <div class="sidebar-section-header" *ngIf="!leftSidebarCollapsed">
+                        <h5 class="section-title">{{'topnavbar.Reports' | translate }}</h5>
+                        <button type="button" class="btn botonAddDoc btn-dark"
                             (click)="openOptionsFiles(contentviewSelectFile)" title="{{'generics.Add' | translate }}">
                             <i class="white fa fa-plus"></i>
                         </button>
-                    </h3>
+                    </div>
                     <!--<button class="sidebar-close" (click)="toggleSidebar()" *ngIf="isSmallScreen()"
                         title="{{'generics.Close' | translate }}">
                         <i class="fa fa-times"></i>
@@ -129,7 +103,7 @@
                 </div>
 
                 <!-- Main Content -->
-                <div class="sidebar-main">
+                <div class="sidebar-main" *ngIf="!leftSidebarCollapsed || isSmallScreen()">
                     <div *ngIf="docs.length > 0" class="pb-3">
                         <div *ngIf="docs.length > 7" class="mb-3">
                             <div class="input-group mb-2">
@@ -170,63 +144,71 @@
                         </div>
                         <hr class="mt-0 mb-0">
                         <ul class="document-list">
-                            <li *ngFor="let doc of filteredDocs" class="mt-3">
-                                <input
-                                    *ngIf="doc.status == 'finished' || doc.status == 'done' || doc.status == 'resumen ready'"
-                                    type="checkbox" [(ngModel)]="doc.selected" class="mr-1"
-                                    (change)="updateDocumentSelection()" [checked]="true">
-                                <span class="mr-1"
-                                    *ngIf="doc.status != 'finished' && doc.status != 'done' && doc.status != 'resumen ready'">
-                                    <em *ngIf="doc.status == 'pending' || doc.status == ''" class="fa fa-clock-o"></em>
-                                    <em *ngIf="doc.status == 'inProcess' || doc.status == 'creando resumen' || doc.status == 'extracted_translated done' || doc.status == 'extracted done'"
-                                        class="fa fa-spinner primary fa-spin"></em>
-                                    <em *ngIf="doc.status == 'finished' || doc.status == 'done' || doc.status == 'resumen ready'"
-                                        class="success fa fa-check"></em>
-                                    <em *ngIf="doc.status == 'failed'" class="danger fa-solid fa-file-exclamation"
-                                        title="{{'generics.A file has failed and needs to be deleted' | translate }}"></em>
-                                </span>
-                                <ng-container
-                                    *ngIf="doc.status == 'finished' || doc.status == 'done' || doc.status == 'resumen ready'; else regularTitle">
-                                    <a href="javascript:void(0)" class="document-link"
-                                        (click)="openResults(doc, contentSummaryDoc)" [disabled]="openingResults"
-                                        [title]="doc.title">
-                                        {{truncateTitle(doc.title)}}
-                                    </a>
-                                </ng-container>
-                                <ng-template #regularTitle>
-                                    <span class="document-title" [title]="doc.title">{{truncateTitle(doc.title)}}</span>
-                                </ng-template>
-                                <span *ngIf="doc.status == 'failed' && doc.isOwner">
-                                    <span [disabled]="openingResults" (click)="deleteDoc(doc)" class="ml-1 pointer"
-                                        href="javascript:void(0)" title="{{'generics.Delete' | translate }}"><em
-                                            class="fa fa-trash primary"></em></span>
-                                </span>
-                                <!--<span *ngIf="doc.feedback" class="d-inline-block"> <ngb-rating [rate]="doc.feedback.pregunta1" [readonly]="true" max="5" class="d-block pl-0 my-rating col-sm-5 col-xl-4"></ngb-rating></span>-->
-                                <span class="d-block document-date"
-                                    *ngIf="!isDateMissing(doc.originaldate); else missingDate">
-                                    {{ doc.originaldate | date: 'longDate' }}
-                                </span>
-                                <ng-template #missingDate>
-                                    <span class="d-block text-warning pointer d-flex align-items-center"
-                                        (click)="openUpdateDocDate(doc, PanelChangeDate)"
-                                        title="{{ 'dashboardpatient.Update document date' | translate }}">
-                                        <em class="fa fa-exclamation-triangle mr-1"></em>
-                                        <span>{{ 'generics.Missing date' | translate }}</span>
-                                        <em class="fa fa-edit ml-1"></em>
+                            <li *ngFor="let doc of filteredDocs">
+                                <div class="document-item-content">
+                                    <input
+                                        *ngIf="doc.status == 'finished' || doc.status == 'done' || doc.status == 'resumen ready'"
+                                        type="checkbox" [(ngModel)]="doc.selected" class="document-checkbox"
+                                        (change)="updateDocumentSelection()" [checked]="true">
+                                    <span class="document-status-icon"
+                                        *ngIf="doc.status != 'finished' && doc.status != 'done' && doc.status != 'resumen ready'">
+                                        <em *ngIf="doc.status == 'pending' || doc.status == ''" class="fa fa-clock-o"></em>
+                                        <em *ngIf="doc.status == 'inProcess' || doc.status == 'creando resumen' || doc.status == 'extracted_translated done' || doc.status == 'extracted done'"
+                                            class="fa fa-spinner primary fa-spin"></em>
+                                        <em *ngIf="doc.status == 'finished' || doc.status == 'done' || doc.status == 'resumen ready'"
+                                            class="success fa fa-check"></em>
+                                        <em *ngIf="doc.status == 'failed'" class="danger fa-solid fa-file-exclamation"
+                                            title="{{'generics.A file has failed and needs to be deleted' | translate }}"></em>
                                     </span>
-                                </ng-template>
-                                <span class="d-block mt-1" *ngIf="doc.categoryTag">
-                                    <span [ngClass]="doc.badge" class="badge">
-                                        {{doc.categoryTag}}
-                                    </span>
-                                </span>
+                                    <div class="document-info">
+                                        <div class="document-header">
+                                            <ng-container
+                                                *ngIf="doc.status == 'finished' || doc.status == 'done' || doc.status == 'resumen ready'; else regularTitle">
+                                                <a href="javascript:void(0)" class="document-link"
+                                                    (click)="openResults(doc, contentSummaryDoc)" [disabled]="openingResults"
+                                                    [title]="doc.title">
+                                                    {{truncateTitle(doc.title)}}
+                                                </a>
+                                            </ng-container>
+                                            <ng-template #regularTitle>
+                                                <span class="document-title" [title]="doc.title">{{truncateTitle(doc.title)}}</span>
+                                            </ng-template>
+                                            <span *ngIf="doc.status == 'failed' && doc.isOwner" class="document-delete">
+                                                <span [disabled]="openingResults" (click)="deleteDoc(doc)" class="pointer"
+                                                    href="javascript:void(0)" title="{{'generics.Delete' | translate }}">
+                                                    <em class="fa fa-trash primary"></em>
+                                                </span>
+                                            </span>
+                                        </div>
+                                        <div class="document-meta">
+                                            <span class="document-date"
+                                                *ngIf="!isDateMissing(doc.originaldate); else missingDate">
+                                                {{ doc.originaldate | date: 'mediumDate' }}
+                                            </span>
+                                            <ng-template #missingDate>
+                                                <span class="text-warning pointer d-flex align-items-center document-missing-date"
+                                                    (click)="openUpdateDocDate(doc, PanelChangeDate)"
+                                                    title="{{ 'dashboardpatient.Update document date' | translate }}">
+                                                    <em class="fa fa-exclamation-triangle mr-1"></em>
+                                                    <span>{{ 'generics.Missing date' | translate }}</span>
+                                                    <em class="fa fa-edit ml-1"></em>
+                                                </span>
+                                            </ng-template>
+                                            <span class="document-badge" *ngIf="doc.categoryTag">
+                                                <span [ngClass]="doc.badge" class="badge">
+                                                    {{doc.categoryTag}}
+                                                </span>
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
                             </li>
                         </ul>
                     </div>
                 </div>
 
                 <!-- Footer -->
-                <div class="sidebar-footer">
+                <div class="sidebar-footer" *ngIf="!leftSidebarCollapsed || isSmallScreen()">
                     <div class="d-flex justify-content-between align-items-center mb-3" *ngIf="loadedAllEvents">
                         <div class="btn-sm">
                             <span class="font-weight-bold">{{allEvents.length}}</span> {{'events.title' | translate }}
@@ -244,9 +226,9 @@
                 </div>
             </div>
         </div>
-        <div class="content mleft300" *ngIf="currentView === 'chat'" [ngClass]="{'mt-1': isSmallScreen() && messages.length == 0}">
+        <div class="content mleft300" *ngIf="currentView === 'chat'" [ngClass]="{'left-sidebar-collapsed': leftSidebarCollapsed && !isSmallScreen()}">
             <ng-container>
-                <div class="mt-2 mx-auto" style="max-width: 60rem !important;">
+                <div class="mx-auto" style="max-width: 60rem !important;">
                     <ng-container *ngIf="messages.length < 1" class="main-chat-container">
                         <div class="row center-elements">
                             <div class="col-md-12">
@@ -696,23 +678,33 @@
                         </div>
                     </div>
                     <a id="chatContainer"></a>
-                    <div class="chat-input-container">
+                    <div class="chat-input-container" [ngClass]="{'left-sidebar-collapsed': leftSidebarCollapsed && !isSmallScreen()}">
                         <!--<div class="d-flex align-items-center input-container" *ngIf="!callingOpenai && proposedEvents.length == 0 && proposedAppointments.length == 0">-->
-                        <div class="d-flex align-items-end input-container" id="chat-container">
-                            <textarea [(ngModel)]="message" [disabled]="callingOpenai"
+                        <div class="d-flex align-items-end input-container border" id="chat-container">
+                            <textarea [(ngModel)]="message" [disabled]="callingOpenai || chatRecording"
                                 placeholder="{{'generics.Write a message' | translate }}..."
                                 (keydown.enter)="onChatInputKeydown($event)" 
                                 autoResize
                                 class="mt-0 border-0 mr-2 flex-grow-1 chat-textarea"
                                 rows="1"></textarea>
-                            <button class="mr-1 btn btn-secondary" title="{{'generics.Upload' | translate }}"
-                                style="padding: 0.2rem 0.57rem;" [disabled]="callingOpenai"
+                            <button class="mr-1 btn btn-light chat-action-btn" title="{{'generics.Upload' | translate }}"
+                                style="padding: 0.2rem 0.57rem;" [disabled]="callingOpenai || chatRecording"
                                 (click)="openOptionsFiles(contentviewSelectFile)">
                                 <em class="fa fa-paperclip fa-rotate-180 h-4 w-auto" width="1em" height="1em"
                                     fill="currentColor"></em>
                             </button>
+                            <button *ngIf="chatVoiceSupported" 
+                                class="mr-1 btn chat-action-btn" 
+                                [ngClass]="{'btn-danger': chatRecording, 'btn-light': !chatRecording}"
+                                [title]="chatRecording ? ('voice.Stop recording' | translate) : ('voice.Start voice input' | translate)"
+                                style="padding: 0.2rem 0.57rem;" 
+                                [disabled]="callingOpenai"
+                                (click)="toggleChatRecording()">
+                                <em *ngIf="!chatRecording" class="fa fa-microphone h-4 w-auto"></em>
+                                <em *ngIf="chatRecording" class="fa fa-stop h-4 w-auto"></em>
+                            </button>
                             <button class="mr-1 btn btn-dark" title="{{'generics.Submit' | translate }}"
-                                style="padding: 0.2rem 0.57rem;" [disabled]="callingOpenai" (click)="sendMessage()">
+                                style="padding: 0.2rem 0.57rem;" [disabled]="callingOpenai || chatRecording" (click)="sendMessage()">
                                 <svg *ngIf="!callingOpenai" xmlns="http://www.w3.org/2000/svg" width="1em" height="1em"
                                     fill="currentColor" viewBox="0 0 256 256" class="h-4 w-auto">
                                     <path
@@ -760,454 +752,295 @@
                     </div>-->
             </ng-container>
         </div>
-        <div *ngIf="currentView === 'diary'" class="col-md-12" [ngClass]="{'pt-custom2': !isSmallScreen()}">
-            <div class="diary-content">
-                <app-diary></app-diary>
-            </div>
-        </div>
-
-        <!-- New Notes sidebar -->
-        <div *ngIf="currentView === 'notes'" class="col-md-12 diary-container pt-20px" [ngClass]="{'open': notesSidebarOpen, 'pt-custom': !isSmallScreen()}">
-            <div class="diary-content">
-                <div class="sidebar-header center-elements">
-                    <button (click)="getPatientSummary(false)" [disabled]="openingSummary" class="mt-2 mr-2 btn btn-dark"
-                        title="{{'home.Patient Summary' | translate }}">
-                        <span *ngIf="!openingSummary" class="white"><i class="fa fa-file-text-o me-2 white mr-1"></i> {{'home.Patient Summary' | translate }}</span>
-                        <span *ngIf="openingSummary"><em class="fa fa-spinner fa-spin fa-fw primary"></em></span>
-                    </button> 
-                    <button type="button" class="mt-2 btn btn-dark" (click)="addNote(addNoteModal)"
-                    title="{{'notes.Add Note' | translate}}"><i class="white fa fa-plus mr-1"></i> {{'notes.Add Note' | translate}}</button>                   
+        
+        <!-- Panel Derecho: "Mi Maletín de Herramientas" - Desktop -->
+        <div *ngIf="!isSmallScreen() && currentView === 'chat'"
+             class="right-sidebar sidebar border-left"
+             [ngClass]="{'collapsed': rightSidebarCollapsed}">
+            <div class="sidebar-content">
+                <!-- Header con título y botón de toggle -->
+                <div class="sidebar-header panel-header">
+                    <h2 class="panel-header-content">
+                        <span>{{'tools.title' | translate}}</span>
+                    </h2>
+                    <button class="sidebar-toggle-btn" 
+                            (click)="toggleRightSidebar()" 
+                            [attr.title]="rightSidebarCollapsed ? ('generics.Open' | translate) : ('generics.Close' | translate)"
+                            [attr.aria-label]="rightSidebarCollapsed ? ('generics.Open' | translate) : ('generics.Close' | translate)">
+                        <i class="fa" [ngClass]="rightSidebarCollapsed ? 'fa-chevron-left' : 'fa-chevron-right'"></i>
+                    </button>
                 </div>
-                <div *ngIf="notes.length > 0" class="pb-3">
-                    <ul class="notes-list">
-                        <li *ngFor="let note of notes; let i = index" class="mt-3 card bg-grey bg-lighten-4">
-                            <div class="note-content">
-                                <!-- Modo visualización -->
-                                <div *ngIf="!note.isEditing">
-                                    <div *ngIf="truncateNoteContent(note.content, noteMaxLength).isTruncated; else fullContent">
-                                        <p [innerHTML]="truncateNoteContent(note.content, noteMaxLength).truncated | safe: 'html'"></p>
-                                        <button (click)="viewFullNote(note, noteFullModal)" class="btn btn-sm btn-link p-0 mt-1">
-                                            {{'notes.View more' | translate}}
-                                        </button>
-                                    </div>
-                                    <ng-template #fullContent>
-                                        <p [innerHTML]="note.content | safe: 'html'"></p>
-                                    </ng-template>
-                                    <small>{{note.date | date: 'longDate'}}</small>
-                                    <div class="mt-2">
-                                        <div class="btn-group" role="group">
-                                            <button (click)="deleteNote(i)" class="btn btn-sm btn-danger" [disabled]="deletingNote" title="{{'generics.Delete' | translate }}">
-                                                <i class="fa fa-trash"></i>
-                                            </button>
-                                            <button (click)="copymsg(note.content)" class="btn btn-sm btn-white custom-white-button" title="{{'generics.Copy' | translate }}">
-                                                <i class="fa fa-copy"></i>
-                                            </button>
-                                            <button (click)="editNote(i, editNoteModal)" class="btn btn-sm btn-white custom-white-button" title="{{'generics.Edit' | translate }}">
-                                                <i class="fa fa-edit"></i>
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </li>
-                    </ul>
+                
+                <!-- Iconos cuando está plegado -->
+                <div class="collapsed-icons" *ngIf="rightSidebarCollapsed">
+                    <!-- Agentes -->
+                    <button class="collapsed-icon-btn tool-card-red" (click)="openToolModal('dxgpt')" 
+                            title="{{'dxgpt.button' | translate}}">
+                        <i class="fa fa-stethoscope"></i>
+                    </button>
+                    <button class="collapsed-icon-btn tool-card-green" (click)="openToolModal('rarescope')" 
+                            title="{{'rarescope.My Needs' | translate}}">
+                        <i class="fa fa-lightbulb-o"></i>
+                    </button>
+                    <button class="collapsed-icon-btn tool-card-blue" (click)="openToolModal('trialgpt')" 
+                            title="{{'trialgpt.title' | translate}}">
+                        <i class="fa fa-flask"></i>
+                    </button>
+                    
+                    <!-- Separador -->
+                    <div class="collapsed-separator"></div>
+                    
+                    <!-- Resultados -->
+                    <button class="collapsed-icon-btn result-icon-summary" (click)="getPatientSummary(false)" 
+                            [disabled]="openingSummary"
+                            title="{{'home.Patient Summary' | translate}}">
+                        <i class="fa" [ngClass]="openingSummary ? 'fa-spinner fa-spin' : 'fa-file-text-o'"></i>
+                    </button>
+                    <button class="collapsed-icon-btn result-icon-notes" (click)="openNotesModal()" 
+                            title="{{'notes.title' | translate}}">
+                        <i class="fa fa-sticky-note"></i>
+                    </button>
+                    <button class="collapsed-icon-btn result-icon-diary" (click)="openDiaryModal()" 
+                            title="{{'diary.title' | translate}}">
+                        <i class="fa fa-calendar"></i>
+                    </button>
                 </div>
-                <div *ngIf="notes.length === 0">
-                    <div class="center-elements pt-3">
-                        <p>{{'notes.noNotes' | translate}}</p>
-                    </div>
-                </div>
-
-            </div>
-            
-        </div>
-
-        <!-- DxGPT View -->
-        <div *ngIf="currentView === 'dxgpt'" class="col-md-12" [ngClass]="{'pt-custom2': !isSmallScreen()}">
-            <div class="dxgpt-content p-4">
-                <div class="text-center">
-                    <img src="assets/img/logo-dxgpt.png" alt="DxGPT Logo" class="mt-6" style="width: 170px; height: 62px; object-fit: contain;" loading="eager" fetchpriority="high">
-
-                    <!-- Loading state -->
-                    <div *ngIf="isDxGptLoading" class="my-2">
-                        <div class="spinner-border text-primary mt-3" role="status">
-                            <span class="sr-only">{{ 'generics.Loading' | translate }}...</span>
-                        </div>
-                        <p class="mt-3 text-muted">{{ 'dxgpt.analyzing' | translate }}</p>
-                    </div>
-
-                    <!-- Button to fetch results (Initial state) -->
-                    <div *ngIf="!isDxGptLoading && !dxGptResults" class="my-2">
-                        <p class="mt-3 mb-4" style="max-width: 600px; margin: 0 auto; text-align: center; font-size: 1.05rem; padding: 0 1rem;">{{ 'dxgpt.description' | translate }}</p>
-                        <button 
-                            type="button"
-                            class="btn btn-dark btn-lg" 
-                            (click)="fetchDxGptResults()" 
-                            [disabled]="!currentPatientId">
-                            <i class="fa fa-stethoscope mr-2"></i>
-                            {{ 'dxgpt.analyze' | translate }}
-                        </button>
-                        <p *ngIf="!currentPatientId" class="text-danger mt-2">
-                            {{ 'patients.No patient selected' | translate }}
-                        </p>
-                    </div>
-
-                    <!-- Results with existing styles -->
-                    <div *ngIf="!isDxGptLoading && dxGptResults && dxGptResults.success && dxGptResults.analysis" 
-                         class="dxgpt-results text-left">
-                        
-                        <!-- Anonymized patient info -->
-                        <div class="patient-info-card mb-4 mt-4" *ngIf="dxGptResults.analysis.anonymization">
-                            <div class="patient-info-header">
-                                <i class="fa fa-user-shield"></i>
-                                <h5>{{ 'dxgpt.patientInfo' | translate }}</h5>
-                                <button class="btn btn-sm btn-link edit-patient-info-btn" 
-                                        *ngIf="!isEditingPatientInfo"
-                                        (click)="startEditingPatientInfo()">
-                                    <i class="fa fa-pencil"></i>
-                                </button>
-                            </div>
-                            <div class="patient-info-text" *ngIf="!isEditingPatientInfo">
-                              <div *ngIf="dxGptResults.analysis.anonymization.anonymizedTextHtml" 
-                                   [innerHTML]="dxGptResults.analysis.anonymization.anonymizedTextHtml | safe: 'html'"></div>
-                              <div *ngIf="!dxGptResults.analysis.anonymization.anonymizedTextHtml" 
-                                   [style.white-space]="'pre-line'">{{ dxGptResults.analysis.anonymization.anonymizedText }}</div>
-                            </div>
-                            
-                            <!-- Edit mode -->
-                            <div *ngIf="isEditingPatientInfo" class="patient-info-edit">
-                                <textarea 
-                                    class="form-control patient-info-textarea"
-                                    [(ngModel)]="editedPatientInfo"
-                                    rows="5"
-                                    placeholder="{{ 'dxgpt.enterPatientDescription' | translate }}">
-                                </textarea>
-                                <div class="mt-2 text-right">
-                                    <button class="btn btn-sm btn-secondary mr-2" (click)="cancelEditingPatientInfo()">
-                                        {{ 'generics.Cancel' | translate }}
-                                    </button>
-                                    <button class="btn btn-sm btn-danger" (click)="saveEditedPatientInfo()">
-                                        <i class="fa fa-save mr-1"></i>
-                                        {{ 'generics.Save' | translate }}
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Diagnoses title and cards container -->
-                        <div class="diagnosis-cards-container">
-                            <h4 class="mb-4 text-left">{{ 'dxgpt.possibleDiagnoses' | translate }}</h4>
-                            <div *ngFor="let diagnosis of dxGptResults.analysis.data; let i = index" 
-                                 class="mb-3">
-                                <div class="card diagnosis-card">
-                                    <div class="card-body">
-                                        <!-- Diagnosis header -->
-                                        <div class="mb-3">
-                                            <!-- Primera fila: número + título + learn more -->
-                                            <div class="d-flex align-items-center justify-content-between mb-2">
-                                                <div class="d-flex align-items-center">
-                                                    <span class="badge badge-danger mr-2" style="min-width: 2rem;">
-                                                        {{ i + 1 }}
-                                                    </span>
-                                                    <h5 class="diagnosis-name mb-0">
-                                                        {{ diagnosis.diagnosis }}
-                                                    </h5>
-                                                </div>
-                                                <a href="javascript:void(0)" class="text-danger" style="font-size: 0.95rem; text-decoration: none;" (click)="toggleDiagnosisCard(i)">
-                                                    {{ 'dxgpt.moreInfo' | translate }}
-                                                </a>
-                                            </div>
-                                            
-                                            <!-- Segunda fila: descripción -->
-                                            <p class="card-text text-dark mb-3">
-                                                {{ diagnosis.description }}
-                                            </p>
-                                        </div>
-                                        
-                                        <!-- Symptoms section -->
-                                        <div class="symptoms-section">
-                                            <div class="symptoms-columns">
-                                                <!-- Matching symptoms column -->
-                                                <div class="symptoms-column">
-                                                    <h6 class="mb-3">{{ 'dxgpt.matchingSymptoms' | translate }}</h6>
-                                                    <div *ngIf="diagnosis.symptoms_in_common && diagnosis.symptoms_in_common.length > 0">
-                                                        <div *ngFor="let symptom of diagnosis.symptoms_in_common" class="symptom-item">
-                                                            <span class="symptom-icon symptom-icon-match"></span>
-                                                            <span>{{ symptom }}</span>
-                                                        </div>
-                                                    </div>
-                                                    <div *ngIf="!diagnosis.symptoms_in_common || diagnosis.symptoms_in_common.length === 0" class="text-muted">
-                                                        <small>{{ 'dxgpt.noMatchingSymptoms' | translate }}</small>
-                                                    </div>
-                                                </div>
-                                                
-                                                <!-- Additional symptoms column -->
-                                                <div class="symptoms-column">
-                                                    <h6 class="mb-3">{{ 'dxgpt.additionalSymptoms' | translate }}</h6>
-                                                    <div *ngIf="diagnosis.symptoms_not_in_common && diagnosis.symptoms_not_in_common.length > 0">
-                                                        <div *ngFor="let symptom of diagnosis.symptoms_not_in_common" class="symptom-item">
-                                                            <span class="symptom-icon symptom-icon-additional"></span>
-                                                            <span>{{ symptom }}</span>
-                                                        </div>
-                                                    </div>
-                                                    <div *ngIf="!diagnosis.symptoms_not_in_common || diagnosis.symptoms_not_in_common.length === 0" class="text-muted">
-                                                        <small>{{ 'dxgpt.noAdditionalSymptoms' | translate }}</small>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <!-- Nueva card expandible con secciones de preguntas -->
-                                <div class="card diagnosis-card mt-3" *ngIf="isDiagnosisCardExpanded(i)" [@slideDown]>
-                                    <div class="card-body p-0">
-                                        <!-- Sección 1: Síntomas comunes -->
-                                        <div class="diagnosis-question-section">
-                                            <div class="diagnosis-question-row" 
-                                                 [class.active]="isQuestionExpanded(i, 0)"
-                                                 [class.visited]="isQuestionVisited(i, 0)"
-                                                 (click)="toggleQuestion(i, 0)">
-                                                <p class="diagnosis-question mb-0">{{'dxgpt.commonSymptoms' | translate}}</p>
-                                            </div>
-                                            <div class="diagnosis-answer" *ngIf="isQuestionExpanded(i, 0)" [@slideDown]>
-                                                <div *ngIf="isQuestionLoading(i, 0)" class="text-center">
-                                                    <i class="fa fa-spinner fa-pulse"></i> {{'generics.Loading' | translate}}...
-                                                </div>
-                                                <div *ngIf="!isQuestionLoading(i, 0)" [innerHTML]="getQuestionResponse(i, 0)"></div>
-                                            </div>
-                                        </div>
-                                        
-                                        <!-- Sección 2: Información detallada -->
-                                        <div class="diagnosis-question-section">
-                                            <div class="diagnosis-question-row"
-                                                 [class.active]="isQuestionExpanded(i, 1)"
-                                                 [class.visited]="isQuestionVisited(i, 1)"
-                                                 (click)="toggleQuestion(i, 1)">
-                                                <p class="diagnosis-question mb-0">{{'dxgpt.detailedInformation' | translate}}</p>
-                                            </div>
-                                            <div class="diagnosis-answer" *ngIf="isQuestionExpanded(i, 1)" [@slideDown]>
-                                                <div *ngIf="isQuestionLoading(i, 1)" class="text-center">
-                                                    <i class="fa fa-spinner fa-pulse"></i> {{'generics.Loading' | translate}}...
-                                                </div>
-                                                <div *ngIf="!isQuestionLoading(i, 1)" [innerHTML]="getQuestionResponse(i, 1)"></div>
-                                            </div>
-                                        </div>
-                                        
-                                        <!-- Sección 3: Pruebas diagnósticas -->
-                                        <div class="diagnosis-question-section">
-                                            <div class="diagnosis-question-row"
-                                                 [class.active]="isQuestionExpanded(i, 2)"
-                                                 [class.visited]="isQuestionVisited(i, 2)"
-                                                 (click)="toggleQuestion(i, 2)">
-                                                <p class="diagnosis-question mb-0">{{'dxgpt.diagnosticTests' | translate}}</p>
-                                            </div>
-                                            <div class="diagnosis-answer" *ngIf="isQuestionExpanded(i, 2)" [@slideDown]>
-                                                <div *ngIf="isQuestionLoading(i, 2)" class="text-center">
-                                                    <i class="fa fa-spinner fa-pulse"></i> {{'generics.Loading' | translate}}...
-                                                </div>
-                                                <div *ngIf="!isQuestionLoading(i, 2)" [innerHTML]="getQuestionResponse(i, 2)"></div>
-                                            </div>
-                                        </div>
-                                        
-                                        <!-- Sección 4: Síntomas diferenciales -->
-                                        <div class="diagnosis-question-section">
-                                            <div class="diagnosis-question-row"
-                                                 [class.active]="isQuestionExpanded(i, 3)"
-                                                 [class.visited]="isQuestionVisited(i, 3)"
-                                                 (click)="toggleQuestion(i, 3)">
-                                                <p class="diagnosis-question mb-0">{{'dxgpt.differentialSymptoms' | translate}}</p>
-                                            </div>
-                                            <div class="diagnosis-answer" *ngIf="isQuestionExpanded(i, 3)" [@slideDown]>
-                                                <div *ngIf="isQuestionLoading(i, 3)" class="text-center">
-                                                    <i class="fa fa-spinner fa-pulse"></i> {{'generics.Loading' | translate}}...
-                                                </div>
-                                                <div *ngIf="!isQuestionLoading(i, 3)">
-                                                    <!-- Custom symptom list with checkboxes -->
-                                                    <div *ngIf="getQuestionResponse(i, 3) === 'custom-symptom-list'">
-                                                        <div *ngFor="let symptom of getSymptoms(i, 3); let j = index" class="custom-control custom-checkbox mb-2">
-                                                            <input type="checkbox" 
-                                                                   class="custom-control-input" 
-                                                                   [id]="'symptom-' + i + '-' + j"
-                                                                   [(ngModel)]="symptom.checked">
-                                                            <label class="custom-control-label" [for]="'symptom-' + i + '-' + j">
-                                                                {{ symptom.name }}
-                                                            </label>
-                                                        </div>
-                                                        <button class="btn btn-danger btn-sm mt-3" (click)="reRunDiagnosis(i, 3)">
-                                                            <i class="fa fa-redo mr-1"></i>
-                                                            {{'dxgpt.reanalyzeWithSymptoms' | translate}}
-                                                        </button>
-                                                    </div>
-                                                    <!-- Normal HTML content -->
-                                                    <div *ngIf="getQuestionResponse(i, 3) !== 'custom-symptom-list'" 
-                                                         [innerHTML]="getQuestionResponse(i, 3)">
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        
-                                        <!-- Sección 5: Coincidencias -->
-                                        <div class="diagnosis-question-section">
-                                            <div class="diagnosis-question-row"
-                                                 [class.active]="isQuestionExpanded(i, 4)"
-                                                 [class.visited]="isQuestionVisited(i, 4)"
-                                                 (click)="toggleQuestion(i, 4)">
-                                                <p class="diagnosis-question mb-0">{{'dxgpt.symptomMatches' | translate}}</p>
-                                            </div>
-                                            <div class="diagnosis-answer" *ngIf="isQuestionExpanded(i, 4)" [@slideDown]>
-                                                <div *ngIf="isQuestionLoading(i, 4)" class="text-center">
-                                                    <i class="fa fa-spinner fa-pulse"></i> {{'generics.Loading' | translate}}...
-                                                </div>
-                                                <div *ngIf="!isQuestionLoading(i, 4)" [innerHTML]="getQuestionResponse(i, 4)"></div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Button to find more diagnoses -->
-                        <div class="text-center mt-5">
-                            <button 
-                                type="button"
-                                class="btn btn-secondary btn-lg" 
-                                *ngIf="!isLoadingMoreDiagnoses"
-                                (click)="findMoreDiagnoses()">
-                                <i class="fa fa-search-plus mr-2"></i>
-                                {{ 'dxgpt.findMoreDiagnoses' | translate }}
+                
+                <div class="right-sidebar-content" *ngIf="!rightSidebarCollapsed">
+                    <!-- Sección Dinámica: Agentes -->
+                    <div class="sidebar-section">
+                        <h5 class="section-title">{{'tools.agents' | translate}}</h5>
+                        <div class="tools-grid">
+                            <!-- DxGPT -->
+                            <button class="tool-card tool-card-red" (click)="openToolModal('dxgpt')" 
+                                    title="{{'dxgpt.button' | translate}}">
+                                <i class="fa fa-stethoscope tool-icon"></i>
+                                <span class="tool-name">DxGPT</span>
                             </button>
-                            <div *ngIf="isLoadingMoreDiagnoses" class="text-center">
-                                <i class="fa fa-spinner fa-pulse fa-2x text-secondary"></i>
-                                <p class="mt-2 text-muted">{{ 'dxgpt.searchingMoreDiagnoses' | translate }}</p>
+                            
+                            <!-- Mis Necesidades (Rarescope) -->
+                            <button class="tool-card tool-card-green" (click)="openToolModal('rarescope')" 
+                                    title="{{'rarescope.My Needs' | translate}}">
+                                <i class="fa fa-lightbulb-o tool-icon"></i>
+                                <span class="tool-name">{{'rarescope.My Needs' | translate}}</span>
+                            </button>
+                            
+                            <!-- TrialGPT -->
+                            <button class="tool-card tool-card-blue" (click)="openToolModal('trialgpt')" 
+                                    title="{{'trialgpt.title' | translate}}"
+                                    [disabled]="true">
+                                <i class="fa fa-flask tool-icon"></i>
+                                <span class="tool-name">TrialGPT</span>
+                                <span class="tool-coming-soon">{{'trialgpt.comingSoon' | translate}}</span>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Sección de Salida: Resultados -->
+                    <div class="sidebar-section">
+                        <h5 class="section-title">{{'tools.results' | translate}}</h5>
+                        
+                        <!-- Resumen del Paciente -->
+                        <div class="result-card result-card-summary" (click)="getPatientSummary(false)" [class.disabled]="openingSummary">
+                            <div class="result-card-icon">
+                                <i class="fa" [ngClass]="openingSummary ? 'fa-spinner fa-spin' : 'fa-file-text-o'"></i>
+                            </div>
+                            <div class="result-card-content">
+                                <h6 class="result-card-title">{{'home.Patient Summary' | translate}}</h6>
+                                <p class="result-card-preview" *ngIf="openingSummary">
+                                    {{'generics.Loading' | translate}}...
+                                </p>
+                                <p class="result-card-preview" *ngIf="!openingSummary">
+                                    {{'tools.clickToView' | translate}}
+                                </p>
+                            </div>
+                            <div class="result-card-arrow">
+                                <i class="fa" [ngClass]="openingSummary ? 'fa-spinner fa-spin' : 'fa-chevron-right'"></i>
+                            </div>
+                        </div>
+                        
+                        <!-- Mis Notas -->
+                        <div class="result-card result-card-notes" (click)="openNotesModal()">
+                            <div class="result-card-icon">
+                                <i class="fa fa-sticky-note"></i>
+                            </div>
+                            <div class="result-card-content">
+                                <h6 class="result-card-title">{{'notes.title' | translate}}</h6>
+                                <p class="result-card-preview">
+                                    <span *ngIf="notes.length > 0">{{notes.length}} {{'tools.notesCount' | translate}}</span>
+                                    <span *ngIf="notes.length === 0" class="text-muted">{{'tools.noNotes' | translate}}</span>
+                                </p>
+                            </div>
+                            <div class="result-card-arrow">
+                                <i class="fa fa-chevron-right"></i>
+                            </div>
+                        </div>
+                        
+                        <!-- Diario -->
+                        <div class="result-card result-card-diary" (click)="openDiaryModal()">
+                            <div class="result-card-icon">
+                                <i class="fa fa-calendar"></i>
+                            </div>
+                            <div class="result-card-content">
+                                <h6 class="result-card-title">{{'diary.title' | translate}}</h6>
+                                <p class="result-card-preview text-muted">
+                                    {{'tools.clickToView' | translate}}
+                                </p>
+                            </div>
+                            <div class="result-card-arrow">
+                                <i class="fa fa-chevron-right"></i>
                             </div>
                         </div>
                     </div>
-
-                    <!-- Error state -->
-                    <div *ngIf="!isDxGptLoading && dxGptResults && !dxGptResults.success" 
-                         class="alert alert-danger mt-4">
-                        <div class="alert-heading d-flex align-items-center mb-3">
-                            <i class="fa fa-exclamation-triangle mr-2"></i>
-                            <h5 class="mb-0">{{ 'general.error' | translate }}</h5>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Panel Derecho Móvil: "Mi Maletín de Herramientas" - Siempre en DOM para animación -->
+        <div *ngIf="isSmallScreen()"
+             class="right-sidebar sidebar border-left"
+             [ngClass]="{'mobile-fullscreen': rightSidebarOpenMobile}">
+            <div class="sidebar-content">
+                <!-- Header con título y botón de toggle -->
+                <div class="sidebar-header panel-header">
+                    <h2 class="panel-header-content">
+                        <span>{{'tools.title' | translate}}</span>
+                    </h2>
+                    <button class="sidebar-toggle-btn" 
+                            *ngIf="!isSmallScreen()"
+                            (click)="toggleRightSidebar()" 
+                            [attr.title]="rightSidebarCollapsed ? ('generics.Open' | translate) : ('generics.Close' | translate)"
+                            [attr.aria-label]="rightSidebarCollapsed ? ('generics.Open' | translate) : ('generics.Close' | translate)">
+                        <i class="fa" [ngClass]="rightSidebarCollapsed ? 'fa-chevron-left' : 'fa-chevron-right'"></i>
+                    </button>
+                </div>
+                
+                <!-- Iconos cuando está plegado -->
+                <div class="collapsed-icons" *ngIf="rightSidebarCollapsed && !isSmallScreen()">
+                    <!-- Agentes -->
+                    <button class="collapsed-icon-btn tool-card-red" (click)="openToolModal('dxgpt')" 
+                            title="{{'dxgpt.button' | translate}}">
+                        <i class="fa fa-stethoscope"></i>
+                    </button>
+                    <button class="collapsed-icon-btn tool-card-green" (click)="openToolModal('rarescope')" 
+                            title="{{'rarescope.My Needs' | translate}}">
+                        <i class="fa fa-lightbulb-o"></i>
+                    </button>
+                    <button class="collapsed-icon-btn tool-card-blue" (click)="openToolModal('trialgpt')" 
+                            title="{{'trialgpt.title' | translate}}">
+                        <i class="fa fa-flask"></i>
+                    </button>
+                    
+                    <!-- Separador -->
+                    <div class="collapsed-separator"></div>
+                    
+                    <!-- Resultados -->
+                    <button class="collapsed-icon-btn result-icon-summary" (click)="getPatientSummary(false)" 
+                            [disabled]="openingSummary"
+                            title="{{'home.Patient Summary' | translate}}">
+                        <i class="fa" [ngClass]="openingSummary ? 'fa-spinner fa-spin' : 'fa-file-text-o'"></i>
+                    </button>
+                    <button class="collapsed-icon-btn result-icon-notes" (click)="openNotesModal()" 
+                            title="{{'notes.title' | translate}}">
+                        <i class="fa fa-sticky-note"></i>
+                    </button>
+                    <button class="collapsed-icon-btn result-icon-diary" (click)="openDiaryModal()" 
+                            title="{{'diary.title' | translate}}">
+                        <i class="fa fa-calendar"></i>
+                    </button>
+                </div>
+                
+                <div class="right-sidebar-content" *ngIf="!rightSidebarCollapsed">
+                    
+                    <!-- Sección Dinámica: Agentes -->
+                    <div class="sidebar-section">
+                        <h5 class="section-title">{{'tools.agents' | translate}}</h5>
+                        <div class="tools-grid">
+                            <!-- DxGPT -->
+                            <button class="tool-card tool-card-red" (click)="openToolModal('dxgpt')" 
+                                    title="{{'dxgpt.button' | translate}}">
+                                <i class="fa fa-stethoscope tool-icon"></i>
+                                <span class="tool-name">DxGPT</span>
+                            </button>
+                            
+                            <!-- Mis Necesidades (Rarescope) -->
+                            <button class="tool-card tool-card-green" (click)="openToolModal('rarescope')" 
+                                    title="{{'rarescope.My Needs' | translate}}">
+                                <i class="fa fa-lightbulb-o tool-icon"></i>
+                                <span class="tool-name">{{'rarescope.My Needs' | translate}}</span>
+                            </button>
+                            
+                            <!-- TrialGPT -->
+                            <button class="tool-card tool-card-blue" (click)="openToolModal('trialgpt')" 
+                                    title="{{'trialgpt.title' | translate}}"
+                                    [disabled]="true">
+                                <i class="fa fa-flask tool-icon"></i>
+                                <span class="tool-name">TrialGPT</span>
+                                <span class="tool-coming-soon">{{'trialgpt.comingSoon' | translate}}</span>
+                            </button>
                         </div>
-                        <p class="mb-3">
-                            {{ dxGptResults.error || ('dxgpt.errorMessage' | translate) }}
-                        </p>
-                        <hr>
-                        <button 
-                            type="button"
-                            class="btn btn-outline-danger" 
-                            (click)="resetDxGptResults()">
-                            <i class="fa fa-redo mr-1"></i>
-                            {{ 'dxgpt.tryAgain' | translate }}
-                        </button>
+                    </div>
+                    
+                    <!-- Sección de Salida: Resultados -->
+                    <div class="sidebar-section">
+                        <h5 class="section-title">{{'tools.results' | translate}}</h5>
+                        
+                        <!-- Resumen del Paciente -->
+                        <div class="result-card result-card-summary" (click)="getPatientSummary(false)" [class.disabled]="openingSummary">
+                            <div class="result-card-icon">
+                                <i class="fa" [ngClass]="openingSummary ? 'fa-spinner fa-spin' : 'fa-file-text-o'"></i>
+                            </div>
+                            <div class="result-card-content">
+                                <h6 class="result-card-title">{{'home.Patient Summary' | translate}}</h6>
+                                <p class="result-card-preview" *ngIf="openingSummary">
+                                    {{'generics.Loading' | translate}}...
+                                </p>
+                                <p class="result-card-preview" *ngIf="!openingSummary">
+                                    {{'tools.clickToView' | translate}}
+                                </p>
+                            </div>
+                            <div class="result-card-arrow">
+                                <i class="fa" [ngClass]="openingSummary ? 'fa-spinner fa-spin' : 'fa-chevron-right'"></i>
+                            </div>
+                        </div>
+                        
+                        <!-- Mis Notas -->
+                        <div class="result-card result-card-notes" (click)="openNotesModal()">
+                            <div class="result-card-icon">
+                                <i class="fa fa-sticky-note"></i>
+                            </div>
+                            <div class="result-card-content">
+                                <h6 class="result-card-title">{{'notes.title' | translate}}</h6>
+                                <p class="result-card-preview">
+                                    <span *ngIf="notes.length > 0">{{notes.length}} {{'tools.notesCount' | translate}}</span>
+                                    <span *ngIf="notes.length === 0" class="text-muted">{{'tools.noNotes' | translate}}</span>
+                                </p>
+                            </div>
+                            <div class="result-card-arrow">
+                                <i class="fa fa-chevron-right"></i>
+                            </div>
+                        </div>
+                        
+                        <!-- Diario -->
+                        <div class="result-card result-card-diary" (click)="openDiaryModal()">
+                            <div class="result-card-icon">
+                                <i class="fa fa-calendar"></i>
+                            </div>
+                            <div class="result-card-content">
+                                <h6 class="result-card-title">{{'diary.title' | translate}}</h6>
+                                <p class="result-card-preview text-muted">
+                                    {{'tools.clickToView' | translate}}
+                                </p>
+                            </div>
+                            <div class="result-card-arrow">
+                                <i class="fa fa-chevron-right"></i>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Rarescope View -->
-        <div *ngIf="currentView === 'rarescope'" class="col-md-12" [ngClass]="{'pt-custom2': !isSmallScreen()}">
-            <div class="rarescope-content p-4">
-                <div class="rarescope-intro mb-3 mt-3 text-center">
-                    <p>{{'rarescope.rarescopeAnalysis' | translate}}</p>
-                    <button *ngIf="!isLoadingRarescope && !rarescopeError" 
-                            class="btn btn-sm btn-outline-secondary mt-2" 
-                            (click)="fetchRarescopeAnalysis()"
-                            title="Actualizar análisis con la información más reciente">
-                        <i class="fa fa-refresh mr-1"></i> {{'rarescope.updateAnalysis' | translate}}
-                    </button>
-                </div>
-                
-                <!-- Loading state -->
-                <div *ngIf="isLoadingRarescope" class="text-center p-5">
-                    <em class="fa fa-spinner fa-spin fa-3x fa-fw text-muted"></em>
-                    <p class="mt-3 text-muted">{{'rarescope.analyzingInformation' | translate}}...</p>
-                </div>
-                
-                <!-- Error state -->
-                <div *ngIf="rarescopeError && !isLoadingRarescope" class="alert alert-danger mx-auto" style="max-width: 600px;">
-                    <i class="fa fa-exclamation-triangle mr-2"></i>
-                    {{ rarescopeError }}
-                    <button class="btn btn-sm btn-danger ml-3" (click)="fetchRarescopeAnalysis()">
-                        <i class="fa fa-refresh mr-1"></i> {{'rarescope.tryAgain' | translate}}
-                    </button>
-                </div>
-                
-                <div *ngIf="!isLoadingRarescope && !rarescopeError" class="rarescope-needs-container" cdkDropList (cdkDropListDropped)="onDropNeed($event)">
-                    <div class="need-wrapper">
-                        <div class="need-number-external">1</div>
-                        <div class="need-section-wrapper mb-2" cdkDrag [cdkDragDisabled]="false"
-                             [@slideOut]="deletingStates[0] ? 'out' : 'in'">
-                            <div class="need-section">
-                                <div class="controls-container-left">
-                                    <div class="drag-handle" cdkDragHandle [title]="'rarescope.dragToReorder' | translate">
-                                        <i class="fa fa-grip-vertical"></i>
-                                    </div>
-                                </div>
-                            <div class="need-content"
-                                 contenteditable="true" 
-                                 [attr.data-placeholder]="'rarescope.placeholderNeed' | translate"
-                                 spellcheck="false"
-                                 [innerText]="rarescopeNeeds[0]"
-                                 (blur)="onNeedBlur($event, 0)">
-                            </div>
-                            <div class="controls-container-right">
-                                <button class="delete-handle" (click)="deleteNeed(0)" title="Eliminar">
-                                    <i class="fa fa-trash"></i>
-                                </button>
-                            </div>
-                        </div>
-                        
-                        <!-- Preview personalizado para el drag -->
-                        <div *cdkDragPreview class="custom-drag-preview">
-                            <div class="need-section">
-                                <div class="need-content">{{ rarescopeNeeds[0] }}</div>
-                            </div>
-                        </div>
-                    </div>
-                    </div>
-                    
-                    <div *ngFor="let need of additionalNeeds; let i = index; trackBy: trackByIndex" class="need-wrapper">
-                        <div class="need-number-external">{{ i + 2 }}</div>
-                        <div class="need-section-wrapper mb-2" cdkDrag [cdkDragDisabled]="false"
-                             [@slideOut]="deletingStates[i + 1] ? 'out' : 'in'">
-                            <div class="need-section">
-                                <div class="controls-container-left">
-                                    <div class="drag-handle" cdkDragHandle [title]="'rarescope.dragToReorder' | translate">
-                                        <i class="fa fa-grip-vertical"></i>
-                                    </div>
-                                </div>
-                            <div class="need-content"
-                                 contenteditable="true"
-                                 [attr.data-placeholder]="'rarescope.placeholderNeed' | translate"
-                                 spellcheck="false"
-                                 [innerText]="additionalNeeds[i]"
-                                 (blur)="onNeedBlur($event, i + 1)">
-                            </div>
-                            <div class="controls-container-right">
-                                <button class="delete-handle" (click)="deleteNeed(i + 1)" title="Eliminar">
-                                    <i class="fa fa-trash"></i>
-                                </button>
-                            </div>
-                        </div>
-                        
-                        <!-- Preview personalizado para el drag -->
-                        <div *cdkDragPreview class="custom-drag-preview">
-                            <div class="need-section">
-                                <div class="need-content">{{ need }}</div>
-                            </div>
-                        </div>
-                    </div>
-                    </div>
-                    
-                    <div class="add-section-btn" (click)="addNewNeed()">
-                        <i class="fa fa-plus"></i>
-                    </div>
-                </div>
-            </div>
-        </div>
 
     </div>
 </ng-container>
@@ -2178,55 +2011,52 @@
     </div>
 </ng-template>
 <ng-template #contentviewSelectFile let-c="close" let-d="dismiss" appendTo="body">
-    <div class="modal-header" id="idHeader">
+    <div class="modal-header modern-modal-header" id="idHeader">
         <div class="content-header text-left">
-            <h4 class="mb-0">{{'demo.Add new document' | translate }}</h4>
+            <h4 class="mb-0 modern-modal-title">{{'demo.Add new document' | translate }}</h4>
         </div>
-        <button type="button" class="close" aria-label="Close" (click)="closeModal();">
+        <button type="button" class="close modern-close-btn" aria-label="Close" (click)="closeModal();">
             <span aria-hidden="true">&times;</span>
         </button>
     </div>
-    <div class="modal-body content-wrapper p-2" id="idBody">
-        <div class="p-1">
-            <div class="form-body">
-                <div class="center-elements pb-2 col-12" href="javascript:void(0)">
-                    <div class="row">
-                        <div class="col-md-4 mb-2" *ngIf="showCameraButton">
-                            <div class="col-md-12">
-                                <i class="fa fa-camera dark fa-3x pointer" aria-hidden="true"
-                                    (click)="entryOpt('opt1', contentPhoto)"></i>
-                            </div>
-                            <div><button class="btnblock btn btn-dark mt-2"
-                                    (click)="entryOpt('opt1', contentPhoto)">{{'demo.Take a photo' | translate
-                                    }}</button></div>
+    <div class="modal-body modern-modal-body" id="idBody">
+        <div class="add-document-options">
+            <div class="row g-3">
+                <div class="col-md-4" *ngIf="showCameraButton">
+                    <div class="document-option-card" (click)="entryOpt('opt1', contentPhoto)">
+                        <div class="option-icon-wrapper">
+                            <i class="fa fa-camera option-icon"></i>
                         </div>
-                        <div [ngClass]="{'col-md-4 mb-2': showCameraButton, 'col-6 mb-2': !showCameraButton}">
-                            <div class="col-md-12">
-                                <i class="fa fa-upload dark fa-3x pointer" aria-hidden="true"></i>
-                                <!--<img class="logo-img" [src]="icons[4].data" />-->
+                        <h5 class="option-title">{{'demo.Take a photo' | translate }}</h5>
+                        <p class="option-description">{{'demo.Take a photo description' | translate }}</p>
+                    </div>
+                </div>
+                <div [ngClass]="{'col-md-4': showCameraButton, 'col-6': !showCameraButton}">
+                    <div class="document-option-card upload-option">
+                        <input *ngIf="!isMobile" type="file" #fileDropRef id="fileDropRef" multiple
+                            style="display: none;" (change)="onFileChangeStep($event);"
+                            accept=".pdf, .docx, .jpg, .png, .jpeg, .txt" />
+                        <input *ngIf="isMobile" type="file" #fileDropRef id="fileDropRef" multiple
+                            style="display: none;" (change)="onFileChangeStep($event);" />
+                        <label for="fileDropRef" class="option-label">
+                            <div class="option-icon-wrapper">
+                                <i class="fa fa-upload option-icon"></i>
                             </div>
-                            <input *ngIf="!isMobile" type="file" #fileDropRef id="fileDropRef" multiple
-                                style="display: none;" (change)="onFileChangeStep($event);"
-                                accept=".pdf, .docx, .jpg, .png, .jpeg, .txt" />
-                            <input *ngIf="isMobile" type="file" #fileDropRef id="fileDropRef" multiple
-                                style="display: none;" (change)="onFileChangeStep($event);" />
-                            <label class="mb-1 mt-2 btn btn-dark mb-0"
-                                style="text-transform: none;letter-spacing: 0px;cursor: pointer;"
-                                for="fileDropRef">{{'generics.Upload' | translate }}
-                            </label>
-                            <span class="text-muted small d-block">{{'demo.Max. 5 documents' | translate }}</span>
-                            <span class="text-muted small d-block">{{'demo.You can upload more files later' | translate }}</span>
+                            <h5 class="option-title">{{'generics.Upload' | translate }}</h5>
+                            <p class="option-description">
+                                <span class="d-block">{{'demo.Max. 5 documents' | translate }}</span>
+                                <span class="d-block">{{'demo.You can upload more files later' | translate }}</span>
+                            </p>
+                        </label>
+                    </div>
+                </div>
+                <div [ngClass]="{'col-md-4': showCameraButton, 'col-6': !showCameraButton}">
+                    <div class="document-option-card" (click)="entryOpt('opt2', contentManual)">
+                        <div class="option-icon-wrapper">
+                            <i class="fa-solid fa-paste option-icon"></i>
                         </div>
-                        <div [ngClass]="{'col-md-4 mb-2': showCameraButton, 'col-6 mb-2': !showCameraButton}">
-                            <div class="col-md-12">
-                                <i class="fa-solid fa-paste dark fa-3x pointer" aria-hidden="true"
-                                    (click)="entryOpt('opt2', contentManual)"></i>
-                            </div>
-                            <div><button class="btnblock btn btn-dark mt-2"
-                                    (click)="entryOpt('opt2', contentManual)">{{'demo.Write text' | translate
-                                    }}</button></div>
-                        </div>
-
+                        <h5 class="option-title">{{'demo.Write text' | translate }}</h5>
+                        <p class="option-description">{{'demo.Write text description' | translate }}</p>
                     </div>
                 </div>
             </div>
@@ -2234,63 +2064,77 @@
     </div>
 </ng-template>
 <ng-template #contentManual id="contentManual" let-c="close" let-d="dismiss" appendTo="body">
-    <div class="modal-header" id="idHeader">
+    <div class="modal-header modern-modal-header" id="idHeader">
         <div class="content-header text-left">
-            <h4 class="mb-0">{{'demo.Create report' | translate }}</h4>
+            <h4 class="mb-0 modern-modal-title">{{'demo.Create report' | translate }}</h4>
         </div>
-        <button type="button" class="close" aria-label="Close" (click)="closeModal();">
+        <button type="button" class="close modern-close-btn" aria-label="Close" (click)="closeModal();">
             <span aria-hidden="true">&times;</span>
         </button>
     </div>
-    <div class="modal-body content-wrapper p-2" id="idBody">
-        <div class="p-1">
-            <div>
-                <!--<div class="voice-recorder" *ngIf="supported" style="margin-bottom: 20px;">
-                    <div class="card-body border round p-3 mic-icon pointer bg-white" (click)="toggleRecording()">
-                      <span *ngIf="!recording" class="d-block">{{'voice.Start Voice Recognition' | translate }}</span>
-                      <i class="mt-2 fa-2x fa fa-microphone" *ngIf="!recording"></i>
-                      <span *ngIf="recording" class="d-block">{{'voice.Stop Voice Recognition' | translate }}</span>
-                      <i class="mt-2 fa-2x fa fa-stop danger" *ngIf="recording"></i>
-                      <div *ngIf="recording" class="d-block recording-indicator">
-                        <i class="fa fa-circle record-icon"></i> {{'voice.Recording' | translate }}...
-                      </div>
-                      <div *ngIf="recording" class="d-block">
-                        <p>{{ timerDisplay }}</p>
-                      </div>
-                    </div>
-                    
-                  </div>-->
-                <div class="row">
-                    <div class="col-md-12 center-elements">
-                        <div class="d-flex align-items-center mb-3">
-                            <input type="text" class="form-control mt-0 mr-2" [(ngModel)]="tempFileName"
-                                placeholder="{{'voice.Enter file name' | translate }}" />
-
-                            <!-- Voice recorder button -->
-                            <button *ngIf="supported" class="btn btn-outline-primary d-flex align-items-center"
-                                (click)="toggleRecording()" [ngClass]="{'btn-danger': recording}"
-                                title="{{recording ? 'voice.Stop Voice Recognition' : 'voice.Start Voice Recognition' | translate}}">
-                                <i class="fa" [ngClass]="recording ? 'fa-stop' : 'fa-microphone'"></i>
-                                <span *ngIf="recording" class="ml-2">{{ timerDisplay }}</span>
-                            </button>
-                        </div>
-
-                        <textarea #inputTextArea class="form-control data-hj-allow" style="height:320px;"
-                            [(ngModel)]="medicalText" name="medicalText"
-                            placeholder="{{'generics.Create-paste a report' | translate }}"></textarea>
-
-                        <button type="button" class="mt-2 btn btn-sm btn-dark"
-                            [disabled]="callingSummary || recording || medicalText.length==0"
-                            title="{{'generics.Save' | translate }}" (click)="createFile();">
-                            <span>{{'generics.Save' | translate }}</span>
-                        </button>
-                    </div>
+    <div class="modal-body modern-modal-body create-report-modal" id="idBody">
+        <div class="create-report-form">
+            <!--<div class="voice-recorder" *ngIf="supported" style="margin-bottom: 20px;">
+                <div class="card-body border round p-3 mic-icon pointer bg-white" (click)="toggleRecording()">
+                  <span *ngIf="!recording" class="d-block">{{'voice.Start Voice Recognition' | translate }}</span>
+                  <i class="mt-2 fa-2x fa fa-microphone" *ngIf="!recording"></i>
+                  <span *ngIf="recording" class="d-block">{{'voice.Stop Voice Recognition' | translate }}</span>
+                  <i class="mt-2 fa-2x fa fa-stop danger" *ngIf="recording"></i>
+                  <div *ngIf="recording" class="d-block recording-indicator">
+                    <i class="fa fa-circle record-icon"></i> {{'voice.Recording' | translate }}...
+                  </div>
+                  <div *ngIf="recording" class="d-block">
+                    <p>{{ timerDisplay }}</p>
+                  </div>
                 </div>
+                
+              </div>-->
+            
+            <div class="form-group">
+                <label class="form-label">{{'voice.Enter file name' | translate }}</label>
+                <div class="input-with-button">
+                    <input type="text" class="form-control modern-input" [(ngModel)]="tempFileName"
+                        placeholder="{{'voice.Enter file name' | translate }}" />
+                    <button *ngIf="supported" class="btn btn-icon-only" 
+                        (click)="toggleRecording()" 
+                        [ngClass]="{'btn-recording': recording, 'btn-primary': !recording}"
+                        [title]="recording ? ('voice.Stop Voice Recognition' | translate) : ('voice.Start Voice Recognition' | translate)">
+                        <i class="fa" [ngClass]="recording ? 'fa-stop' : 'fa-microphone'"></i>
+                        <span *ngIf="recording" class="recording-timer">{{ timerDisplay }}</span>
+                    </button>
+                </div>
+            </div>
 
+            <div class="form-group">
+                <label class="form-label">{{'generics.Write or paste content' | translate }}</label>
+                <div class="textarea-with-button">
+                    <textarea #inputTextArea class="form-control modern-textarea data-hj-allow" 
+                        [(ngModel)]="medicalText" name="medicalText"
+                        placeholder="{{'generics.Write or paste content' | translate }}"></textarea>
+                    <button *ngIf="supported" class="btn btn-icon-only btn-voice-textarea" 
+                        (click)="toggleRecording()" 
+                        [ngClass]="{'btn-recording': recording, 'btn-primary': !recording}"
+                        [title]="recording ? ('voice.Stop Voice Recognition' | translate) : ('voice.Start Voice Recognition' | translate)">
+                        <i class="fa" [ngClass]="recording ? 'fa-stop' : 'fa-microphone'"></i>
+                        <span *ngIf="recording" class="recording-timer">{{ timerDisplay }}</span>
+                    </button>
+                </div>
+                <small *ngIf="!supported" class="voice-not-supported-message">
+                    <i class="fa fa-info-circle mr-1"></i>
+                    {{'voice.Not supported in this browser' | translate}}
+                </small>
+            </div>
 
+            <div class="form-actions">
+                <button type="button" class="btn btn-primary btn-save"
+                    [disabled]="callingSummary || recording || medicalText.length==0"
+                    [title]="'generics.Save' | translate" 
+                    (click)="createFile();">
+                    <i class="fa fa-save mr-2"></i>
+                    <span>{{'generics.Save' | translate }}</span>
+                </button>
             </div>
         </div>
-
     </div>
 </ng-template>
 <ng-template #PanelChangeDate let-c="close" let-d="dismiss" appendTo="body">
@@ -2399,5 +2243,488 @@
         <button type="button" class="btn btn-primary" (click)="saveNoteEdit()" [disabled]="savingNote">
             <em class="fa fa-check"></em> {{'generics.Save' | translate }}
         </button>
+    </div>
+</ng-template>
+
+<!-- Modal de DxGPT -->
+<ng-template #dxGptModal let-modal>
+    <div class="modal-header">
+        <h4 class="modal-title">{{'dxgpt.button' | translate}}</h4>
+        <button type="button" class="close" aria-label="Close" (click)="modal.dismiss('Cross click')">
+            <span aria-hidden="true">&times;</span>
+        </button>
+    </div>
+    <div class="modal-body dxgpt-modal-body">
+        <div class="dxgpt-content p-4">
+            <div class="text-center">
+                <img src="assets/img/logo-dxgpt.png" alt="DxGPT Logo" class="mt-6" style="width: 170px; height: 62px; object-fit: contain;" loading="eager" fetchpriority="high">
+
+                <!-- Loading state -->
+                <div *ngIf="isDxGptLoading" class="my-2">
+                    <div class="spinner-border text-primary mt-3" role="status">
+                        <span class="sr-only">{{ 'generics.Loading' | translate }}...</span>
+                    </div>
+                    <p class="mt-3 text-muted">{{ 'dxgpt.analyzing' | translate }}</p>
+                </div>
+
+                <!-- Button to fetch results (Initial state) -->
+                <div *ngIf="!isDxGptLoading && !dxGptResults" class="my-2">
+                    <p class="mt-3 mb-4" style="max-width: 600px; margin: 0 auto; text-align: center; font-size: 1.05rem; padding: 0 1rem;">{{ 'dxgpt.description' | translate }}</p>
+                    <button 
+                        type="button"
+                        class="btn btn-dark btn-lg" 
+                        (click)="fetchDxGptResults()" 
+                        [disabled]="!currentPatientId">
+                        <i class="fa fa-stethoscope mr-2"></i>
+                        {{ 'dxgpt.analyze' | translate }}
+                    </button>
+                    <p *ngIf="!currentPatientId" class="text-danger mt-2">
+                        {{ 'patients.No patient selected' | translate }}
+                    </p>
+                </div>
+
+                <!-- Results with existing styles -->
+                <div *ngIf="!isDxGptLoading && dxGptResults && dxGptResults.success && dxGptResults.analysis" 
+                     class="dxgpt-results text-left">
+                    
+                    <!-- Anonymized patient info -->
+                    <div class="patient-info-card mb-4 mt-4" *ngIf="dxGptResults.analysis.anonymization">
+                        <div class="patient-info-header">
+                            <i class="fa fa-user-shield"></i>
+                            <h5>{{ 'dxgpt.patientInfo' | translate }}</h5>
+                            <button class="btn btn-sm btn-link edit-patient-info-btn" 
+                                    *ngIf="!isEditingPatientInfo"
+                                    (click)="startEditingPatientInfo()">
+                                <i class="fa fa-pencil"></i>
+                            </button>
+                        </div>
+                        <div class="patient-info-text" *ngIf="!isEditingPatientInfo">
+                          <div class="patient-info-content" 
+                               [class.collapsed]="!isPatientInfoExpanded"
+                               [class.expanded]="isPatientInfoExpanded">
+                            <div *ngIf="dxGptResults.analysis.anonymization.anonymizedTextHtml" 
+                                 [innerHTML]="dxGptResults.analysis.anonymization.anonymizedTextHtml | safe: 'html'"></div>
+                            <div *ngIf="!dxGptResults.analysis.anonymization.anonymizedTextHtml" 
+                                 [style.white-space]="'pre-line'">{{ dxGptResults.analysis.anonymization.anonymizedText }}</div>
+                          </div>
+                          <button class="btn btn-sm btn-link patient-info-toggle" 
+                                  *ngIf="shouldShowPatientInfoToggle()"
+                                  (click)="togglePatientInfo()">
+                            <i class="fa" [ngClass]="isPatientInfoExpanded ? 'fa-chevron-up' : 'fa-chevron-down'"></i>
+                            {{ isPatientInfoExpanded ? ('generics.Read less' | translate) : ('generics.Read more' | translate) }}
+                          </button>
+                        </div>
+                        
+                        <!-- Edit mode -->
+                        <div *ngIf="isEditingPatientInfo" class="patient-info-edit">
+                            <textarea 
+                                class="form-control patient-info-textarea"
+                                [(ngModel)]="editedPatientInfo"
+                                rows="5"
+                                placeholder="{{ 'dxgpt.enterPatientDescription' | translate }}">
+                            </textarea>
+                            <div class="mt-2 text-right">
+                                <button class="btn btn-sm btn-secondary mr-2" (click)="cancelEditingPatientInfo()">
+                                    {{ 'generics.Cancel' | translate }}
+                                </button>
+                                <button class="btn btn-sm btn-danger" (click)="saveEditedPatientInfo()">
+                                    <i class="fa fa-save mr-1"></i>
+                                    {{ 'generics.Save' | translate }}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Diagnoses title and cards container -->
+                    <div class="diagnosis-cards-container">
+                        <h4 class="mb-4 text-left">{{ 'dxgpt.possibleDiagnoses' | translate }}</h4>
+                        <div *ngFor="let diagnosis of dxGptResults.analysis.data; let i = index" 
+                             class="mb-3">
+                            <div class="card diagnosis-card">
+                                <div class="card-body">
+                                    <!-- Diagnosis header -->
+                                    <div class="mb-3">
+                                        <!-- Primera fila: número + título + learn more -->
+                                        <div class="d-flex align-items-center justify-content-between mb-2">
+                                            <div class="d-flex align-items-center">
+                                                <span class="badge badge-danger mr-2" style="min-width: 2rem;">
+                                                    {{ i + 1 }}
+                                                </span>
+                                                <h5 class="diagnosis-name mb-0">
+                                                    {{ diagnosis.diagnosis }}
+                                                </h5>
+                                            </div>
+                                            <a href="javascript:void(0)" class="text-danger" style="font-size: 0.95rem; text-decoration: none;" (click)="toggleDiagnosisCard(i)">
+                                                {{ 'dxgpt.moreInfo' | translate }}
+                                            </a>
+                                        </div>
+                                        
+                                        <!-- Segunda fila: descripción -->
+                                        <p class="card-text text-dark mb-3">
+                                            {{ diagnosis.description }}
+                                        </p>
+                                    </div>
+                                    
+                                    <!-- Symptoms section -->
+                                    <div class="symptoms-section">
+                                        <div class="symptoms-columns">
+                                            <!-- Matching symptoms column -->
+                                            <div class="symptoms-column">
+                                                <h6 class="mb-3">{{ 'dxgpt.matchingSymptoms' | translate }}</h6>
+                                                <div *ngIf="diagnosis.symptoms_in_common && diagnosis.symptoms_in_common.length > 0">
+                                                    <div *ngFor="let symptom of diagnosis.symptoms_in_common" class="symptom-item">
+                                                        <span class="symptom-icon symptom-icon-match"></span>
+                                                        <span>{{ symptom }}</span>
+                                                    </div>
+                                                </div>
+                                                <div *ngIf="!diagnosis.symptoms_in_common || diagnosis.symptoms_in_common.length === 0" class="text-muted">
+                                                    <small>{{ 'dxgpt.noMatchingSymptoms' | translate }}</small>
+                                                </div>
+                                            </div>
+                                            
+                                            <!-- Additional symptoms column -->
+                                            <div class="symptoms-column">
+                                                <h6 class="mb-3">{{ 'dxgpt.additionalSymptoms' | translate }}</h6>
+                                                <div *ngIf="diagnosis.symptoms_not_in_common && diagnosis.symptoms_not_in_common.length > 0">
+                                                    <div *ngFor="let symptom of diagnosis.symptoms_not_in_common" class="symptom-item">
+                                                        <span class="symptom-icon symptom-icon-additional"></span>
+                                                        <span>{{ symptom }}</span>
+                                                    </div>
+                                                </div>
+                                                <div *ngIf="!diagnosis.symptoms_not_in_common || diagnosis.symptoms_not_in_common.length === 0" class="text-muted">
+                                                    <small>{{ 'dxgpt.noAdditionalSymptoms' | translate }}</small>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Nueva card expandible con secciones de preguntas -->
+                            <div class="card diagnosis-card mt-3" *ngIf="isDiagnosisCardExpanded(i)" [@slideDown]>
+                                <div class="card-body p-0">
+                                    <!-- Sección 1: Síntomas comunes -->
+                                    <div class="diagnosis-question-section">
+                                        <div class="diagnosis-question-row" 
+                                             [class.active]="isQuestionExpanded(i, 0)"
+                                             [class.visited]="isQuestionVisited(i, 0)"
+                                             (click)="toggleQuestion(i, 0)">
+                                            <p class="diagnosis-question mb-0">{{'dxgpt.commonSymptoms' | translate}}</p>
+                                        </div>
+                                        <div class="diagnosis-answer" *ngIf="isQuestionExpanded(i, 0)" [@slideDown]>
+                                            <div *ngIf="isQuestionLoading(i, 0)" class="text-center">
+                                                <i class="fa fa-spinner fa-pulse"></i> {{'generics.Loading' | translate}}...
+                                            </div>
+                                            <div *ngIf="!isQuestionLoading(i, 0)" [innerHTML]="getQuestionResponse(i, 0)"></div>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Sección 2: Información detallada -->
+                                    <div class="diagnosis-question-section">
+                                        <div class="diagnosis-question-row"
+                                             [class.active]="isQuestionExpanded(i, 1)"
+                                             [class.visited]="isQuestionVisited(i, 1)"
+                                             (click)="toggleQuestion(i, 1)">
+                                            <p class="diagnosis-question mb-0">{{'dxgpt.detailedInformation' | translate}}</p>
+                                        </div>
+                                        <div class="diagnosis-answer" *ngIf="isQuestionExpanded(i, 1)" [@slideDown]>
+                                            <div *ngIf="isQuestionLoading(i, 1)" class="text-center">
+                                                <i class="fa fa-spinner fa-pulse"></i> {{'generics.Loading' | translate}}...
+                                            </div>
+                                            <div *ngIf="!isQuestionLoading(i, 1)" [innerHTML]="getQuestionResponse(i, 1)"></div>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Sección 3: Pruebas diagnósticas -->
+                                    <div class="diagnosis-question-section">
+                                        <div class="diagnosis-question-row"
+                                             [class.active]="isQuestionExpanded(i, 2)"
+                                             [class.visited]="isQuestionVisited(i, 2)"
+                                             (click)="toggleQuestion(i, 2)">
+                                            <p class="diagnosis-question mb-0">{{'dxgpt.diagnosticTests' | translate}}</p>
+                                        </div>
+                                        <div class="diagnosis-answer" *ngIf="isQuestionExpanded(i, 2)" [@slideDown]>
+                                            <div *ngIf="isQuestionLoading(i, 2)" class="text-center">
+                                                <i class="fa fa-spinner fa-pulse"></i> {{'generics.Loading' | translate}}...
+                                            </div>
+                                            <div *ngIf="!isQuestionLoading(i, 2)" [innerHTML]="getQuestionResponse(i, 2)"></div>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Sección 4: Síntomas diferenciales -->
+                                    <div class="diagnosis-question-section">
+                                        <div class="diagnosis-question-row"
+                                             [class.active]="isQuestionExpanded(i, 3)"
+                                             [class.visited]="isQuestionVisited(i, 3)"
+                                             (click)="toggleQuestion(i, 3)">
+                                            <p class="diagnosis-question mb-0">{{'dxgpt.differentialSymptoms' | translate}}</p>
+                                        </div>
+                                        <div class="diagnosis-answer" *ngIf="isQuestionExpanded(i, 3)" [@slideDown]>
+                                            <div *ngIf="isQuestionLoading(i, 3)" class="text-center">
+                                                <i class="fa fa-spinner fa-pulse"></i> {{'generics.Loading' | translate}}...
+                                            </div>
+                                            <div *ngIf="!isQuestionLoading(i, 3)">
+                                                <!-- Custom symptom list with checkboxes -->
+                                                <div *ngIf="getQuestionResponse(i, 3) === 'custom-symptom-list'">
+                                                    <div *ngFor="let symptom of getSymptoms(i, 3); let j = index" class="custom-control custom-checkbox mb-2">
+                                                        <input type="checkbox" 
+                                                               class="custom-control-input" 
+                                                               [id]="'symptom-' + i + '-' + j"
+                                                               [(ngModel)]="symptom.checked">
+                                                        <label class="custom-control-label" [for]="'symptom-' + i + '-' + j">
+                                                            {{ symptom.name }}
+                                                        </label>
+                                                    </div>
+                                                    <button class="btn btn-danger btn-sm mt-3" (click)="reRunDiagnosis(i, 3)">
+                                                        <i class="fa fa-redo mr-1"></i>
+                                                        {{'dxgpt.reanalyzeWithSymptoms' | translate}}
+                                                    </button>
+                                                </div>
+                                                <!-- Normal HTML content -->
+                                                <div *ngIf="getQuestionResponse(i, 3) !== 'custom-symptom-list'" 
+                                                     [innerHTML]="getQuestionResponse(i, 3)">
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Sección 5: Coincidencias de síntomas -->
+                                    <div class="diagnosis-question-section">
+                                        <div class="diagnosis-question-row"
+                                             [class.active]="isQuestionExpanded(i, 4)"
+                                             [class.visited]="isQuestionVisited(i, 4)"
+                                             (click)="toggleQuestion(i, 4)">
+                                            <p class="diagnosis-question mb-0">{{'dxgpt.symptomMatches' | translate}}</p>
+                                        </div>
+                                        <div class="diagnosis-answer" *ngIf="isQuestionExpanded(i, 4)" [@slideDown]>
+                                            <div *ngIf="isQuestionLoading(i, 4)" class="text-center">
+                                                <i class="fa fa-spinner fa-pulse"></i> {{'generics.Loading' | translate}}...
+                                            </div>
+                                            <div *ngIf="!isQuestionLoading(i, 4)" [innerHTML]="getQuestionResponse(i, 4)"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Button to find more diagnoses -->
+                        <div class="text-center mt-4" *ngIf="!isSearchingMoreDiagnoses">
+                            <button class="btn btn-outline-danger" (click)="findMoreDiagnoses()">
+                                {{ 'dxgpt.findMoreDiagnoses' | translate }}
+                            </button>
+                        </div>
+                        <div class="text-center mt-4" *ngIf="isSearchingMoreDiagnoses">
+                            <p class="mt-2 text-muted">{{ 'dxgpt.searchingMoreDiagnoses' | translate }}</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Error state -->
+                <div *ngIf="!isDxGptLoading && dxGptResults && !dxGptResults.success" class="alert alert-danger mt-4">
+                    {{ dxGptResults.error || ('dxgpt.errorMessage' | translate) }}
+                </div>
+
+                <!-- Retry button -->
+                <div *ngIf="!isDxGptLoading && dxGptResults && !dxGptResults.success" class="text-center mt-3">
+                    <button class="btn btn-danger" (click)="fetchDxGptResults()">
+                        {{ 'dxgpt.tryAgain' | translate }}
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" (click)="modal.dismiss('Close click')">{{'generics.Close' | translate}}</button>
+    </div>
+</ng-template>
+
+<!-- Modal de Notas -->
+<ng-template #notesModal let-modal>
+    <div class="modal-header">
+        <h4 class="modal-title">{{'notes.title' | translate}}</h4>
+        <button type="button" class="close" aria-label="Close" (click)="modal.dismiss('Cross click')">
+            <span aria-hidden="true">&times;</span>
+        </button>
+    </div>
+    <div class="modal-body notes-modal-body">
+        <div class="notes-modal-content">
+            <div class="sidebar-header center-elements mb-3">
+                <button type="button" class="btn btn-dark" (click)="addNote(addNoteModal)"
+                    title="{{'notes.Add Note' | translate}}">
+                    <i class="white fa fa-plus mr-1"></i> {{'notes.Add Note' | translate}}
+                </button>                   
+            </div>
+            <div *ngIf="notes.length > 0" class="pb-3">
+                <ul class="notes-list">
+                    <li *ngFor="let note of notes; let i = index" class="mt-3 card bg-grey bg-lighten-4">
+                        <div class="note-content">
+                            <!-- Modo visualización -->
+                            <div *ngIf="!note.isEditing">
+                                <div *ngIf="truncateNoteContent(note.content, noteMaxLength).isTruncated; else fullContent">
+                                    <p [innerHTML]="truncateNoteContent(note.content, noteMaxLength).truncated | safe: 'html'"></p>
+                                    <button (click)="viewFullNote(note, noteFullModal)" class="btn btn-sm btn-link p-0 mt-1">
+                                        {{'notes.View more' | translate}}
+                                    </button>
+                                </div>
+                                <ng-template #fullContent>
+                                    <p [innerHTML]="note.content | safe: 'html'"></p>
+                                </ng-template>
+                                <small>{{note.date | date: 'longDate'}}</small>
+                                <div class="mt-2">
+                                    <div class="btn-group" role="group">
+                                        <button (click)="deleteNote(i)" class="btn btn-sm btn-danger" [disabled]="deletingNote" title="{{'generics.Delete' | translate }}">
+                                            <i class="fa fa-trash"></i>
+                                        </button>
+                                        <button (click)="copymsg(note.content)" class="btn btn-sm btn-white custom-white-button" title="{{'generics.Copy' | translate }}">
+                                            <i class="fa fa-copy"></i>
+                                        </button>
+                                        <button (click)="editNote(i, editNoteModal)" class="btn btn-sm btn-white custom-white-button" title="{{'generics.Edit' | translate }}">
+                                            <i class="fa fa-edit"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </li>
+                </ul>
+            </div>
+            <div *ngIf="notes.length === 0">
+                <div class="center-elements pt-3">
+                    <p>{{'notes.noNotes' | translate}}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" (click)="modal.dismiss('Close click')">{{'generics.Close' | translate}}</button>
+    </div>
+</ng-template>
+
+<!-- Modal de Rarescope (Mis Necesidades) -->
+<ng-template #rarescopeModal let-modal>
+    <div class="modal-header">
+        <h4 class="modal-title">{{'rarescope.My Needs' | translate}}</h4>
+        <button type="button" class="close" aria-label="Close" (click)="modal.dismiss('Cross click')">
+            <span aria-hidden="true">&times;</span>
+        </button>
+    </div>
+    <div class="modal-body rarescope-modal-body">
+        <div class="rarescope-content p-4">
+            <div class="rarescope-intro mb-3 mt-3 text-center">
+                <p>{{'rarescope.rarescopeAnalysis' | translate}}</p>
+                <button *ngIf="!isLoadingRarescope && !rarescopeError" 
+                        class="btn btn-sm btn-outline-secondary mt-2" 
+                        (click)="fetchRarescopeAnalysis()"
+                        title="Actualizar análisis con la información más reciente">
+                    <i class="fa fa-refresh mr-1"></i> {{'rarescope.updateAnalysis' | translate}}
+                </button>
+            </div>
+            
+            <!-- Loading state -->
+            <div *ngIf="isLoadingRarescope" class="text-center p-5">
+                <em class="fa fa-spinner fa-spin fa-3x fa-fw text-muted"></em>
+                <p class="mt-3 text-muted">{{'rarescope.analyzingInformation' | translate}}...</p>
+            </div>
+            
+            <!-- Error state -->
+            <div *ngIf="rarescopeError && !isLoadingRarescope" class="alert alert-danger mx-auto" style="max-width: 600px;">
+                <i class="fa fa-exclamation-triangle mr-2"></i>
+                {{ rarescopeError }}
+                <button class="btn btn-sm btn-danger ml-3" (click)="fetchRarescopeAnalysis()">
+                    <i class="fa fa-refresh mr-1"></i> {{'rarescope.tryAgain' | translate}}
+                </button>
+            </div>
+            
+            <div *ngIf="!isLoadingRarescope && !rarescopeError" class="rarescope-needs-container" cdkDropList (cdkDropListDropped)="onDropNeed($event)">
+                <div class="need-wrapper">
+                    <div class="need-number-external">1</div>
+                    <div class="need-section-wrapper mb-2" cdkDrag [cdkDragDisabled]="false"
+                         [@slideOut]="deletingStates[0] ? 'out' : 'in'">
+                        <div class="need-section">
+                            <div class="controls-container-left">
+                                <div class="drag-handle" cdkDragHandle [title]="'rarescope.dragToReorder' | translate">
+                                    <i class="fa fa-grip-vertical"></i>
+                                </div>
+                            </div>
+                        <div class="need-content"
+                             contenteditable="true" 
+                             [attr.data-placeholder]="'rarescope.placeholderNeed' | translate"
+                             spellcheck="false"
+                             [innerText]="rarescopeNeeds[0]"
+                             (blur)="onNeedBlur($event, 0)">
+                        </div>
+                        <div class="controls-container-right">
+                            <button class="delete-handle" (click)="deleteNeed(0)" title="Eliminar">
+                                <i class="fa fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Preview personalizado para el drag -->
+                    <div *cdkDragPreview class="custom-drag-preview">
+                        <div class="need-section">
+                            <div class="need-content">{{ rarescopeNeeds[0] }}</div>
+                        </div>
+                    </div>
+                </div>
+                </div>
+                
+                <div *ngFor="let need of additionalNeeds; let i = index; trackBy: trackByIndex" class="need-wrapper">
+                    <div class="need-number-external">{{ i + 2 }}</div>
+                    <div class="need-section-wrapper mb-2" cdkDrag [cdkDragDisabled]="false"
+                         [@slideOut]="deletingStates[i + 1] ? 'out' : 'in'">
+                        <div class="need-section">
+                            <div class="controls-container-left">
+                                <div class="drag-handle" cdkDragHandle [title]="'rarescope.dragToReorder' | translate">
+                                    <i class="fa fa-grip-vertical"></i>
+                                </div>
+                            </div>
+                        <div class="need-content"
+                             contenteditable="true"
+                             [attr.data-placeholder]="'rarescope.placeholderNeed' | translate"
+                             spellcheck="false"
+                             [innerText]="additionalNeeds[i]"
+                             (blur)="onNeedBlur($event, i + 1)">
+                        </div>
+                        <div class="controls-container-right">
+                            <button class="delete-handle" (click)="deleteNeed(i + 1)" title="Eliminar">
+                                <i class="fa fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Preview personalizado para el drag -->
+                    <div *cdkDragPreview class="custom-drag-preview">
+                        <div class="need-section">
+                            <div class="need-content">{{ need }}</div>
+                        </div>
+                    </div>
+                </div>
+                </div>
+                
+                <div class="add-section-btn" (click)="addNewNeed()">
+                    <i class="fa fa-plus"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" (click)="modal.dismiss('Close click')">{{'generics.Close' | translate}}</button>
+    </div>
+</ng-template>
+
+<!-- Modal de Diario -->
+<ng-template #diaryModal let-modal>
+    <div class="modal-header">
+        <h4 class="modal-title">{{'diary.title' | translate}}</h4>
+        <button type="button" class="close" aria-label="Close" (click)="modal.dismiss('Cross click')">
+            <span aria-hidden="true">&times;</span>
+        </button>
+    </div>
+    <div class="modal-body diary-modal-body">
+        <app-diary class="diary-in-modal"></app-diary>
+    </div>
+    <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" (click)="modal.dismiss('Close click')">{{'generics.Close' | translate}}</button>
     </div>
 </ng-template>

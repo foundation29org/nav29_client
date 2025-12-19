@@ -309,3 +309,412 @@
       padding: 0 !important;
     }
   }
+
+// Estilos modernos para la pantalla de configuración del nuevo paciente
+.wizard-main-title {
+  font-size: 1.75rem;
+  font-weight: 600;
+  color: #212529;
+  margin-bottom: 1rem;
+  padding: 0;
+}
+
+.wizard-subtitle {
+  font-size: 1.1rem;
+  color: #495057;
+  margin-bottom: 0;
+  line-height: 1.6;
+  max-width: 600px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.wizard-option-card {
+  background: white;
+  border: 2px solid #e9ecef;
+  border-radius: 12px;
+  padding: 2rem 1.5rem;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  min-height: 180px;
+  
+  &:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    border-color: #dee2e6;
+  }
+  
+  &.wizard-option-card-outline {
+    border-color: #dee2e6;
+    
+    &:hover {
+      border-color: #adb5bd;
+      background-color: #f8f9fa;
+    }
+  }
+  
+  .wizard-icon-wrapper {
+    width: 80px;
+    height: 80px;
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 1.25rem;
+    transition: all 0.3s ease;
+    
+    &.wizard-icon-primary {
+      background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+    }
+    
+    &.wizard-icon-secondary {
+      background: linear-gradient(135deg, #f3e5f5 0%, #e1bee7 100%);
+    }
+    
+    &.wizard-icon-outline {
+      background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+      border: 2px solid #dee2e6;
+    }
+  }
+  
+  .wizard-icon {
+    font-size: 2rem;
+    color: #495057;
+    transition: all 0.3s ease;
+  }
+  
+  .wizard-icon-wrapper.wizard-icon-primary .wizard-icon {
+    color: #1976d2;
+  }
+  
+  .wizard-icon-wrapper.wizard-icon-secondary .wizard-icon {
+    color: #7b1fa2;
+  }
+  
+  .wizard-option-title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #212529;
+    margin: 0;
+  }
+  
+  &:hover .wizard-icon-wrapper {
+    transform: scale(1.05);
+  }
+  
+  &:hover .wizard-icon {
+    transform: scale(1.1);
+  }
+  
+  @media (max-width: 768px) {
+    padding: 1.5rem 1rem;
+    min-height: 160px;
+    
+    .wizard-icon-wrapper {
+      width: 60px;
+      height: 60px;
+      margin-bottom: 1rem;
+    }
+    
+    .wizard-icon {
+      font-size: 1.5rem;
+    }
+    
+    .wizard-option-title {
+      font-size: 0.95rem;
+    }
+  }
+}
+
+// Estilos modernos para el modal de crear informe
+.modern-modal-header {
+  background-color: #f8f9fa;
+  border-bottom: 1px solid #e9ecef;
+  padding: 1.5rem;
+  
+  .modern-modal-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #212529;
+    margin: 0;
+  }
+  
+  .modern-close-btn {
+    opacity: 0.6;
+    transition: opacity 0.2s ease;
+    
+    &:hover {
+      opacity: 1;
+    }
+  }
+}
+
+.modern-modal-body {
+  padding: 2rem;
+  background-color: #f8f9fa;
+}
+
+.create-report-modal {
+  .create-report-form {
+    padding: 0.5rem;
+    
+    .form-group {
+      margin-bottom: 1.5rem;
+      
+      .form-label {
+        display: block;
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: #495057;
+        margin-bottom: 0.5rem;
+      }
+      
+      .input-with-button {
+        display: flex;
+        gap: 0.75rem;
+        align-items: flex-start;
+        
+        .modern-input {
+          flex: 1;
+          border: 1px solid #dee2e6;
+          border-radius: 8px;
+          padding: 0.75rem 1rem;
+          font-size: 0.95rem;
+          transition: all 0.2s ease;
+          
+          &:focus {
+            border-color: #4dabf7;
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(77, 171, 247, 0.1);
+          }
+        }
+        
+        .btn-icon-only {
+          width: 48px;
+          height: 48px;
+          padding: 0;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border-radius: 8px;
+          border: 1px solid #dee2e6;
+          background: white;
+          color: #495057;
+          transition: all 0.2s ease;
+          flex-shrink: 0;
+          position: relative;
+          
+          &:hover:not(:disabled) {
+            border-color: #4dabf7;
+            background: #e3f2fd;
+            color: #1976d2;
+          }
+          
+          &.btn-primary {
+            border-color: #4dabf7;
+            background: #e3f2fd;
+            color: #1976d2;
+          }
+          
+          &.btn-recording {
+            border-color: #dc3545;
+            background: #f8d7da;
+            color: #dc3545;
+            animation: pulse-recording 2s infinite;
+          }
+          
+          .recording-timer {
+            position: absolute;
+            top: -25px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 0.75rem;
+            color: #dc3545;
+            white-space: nowrap;
+            background: white;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+          }
+        }
+      }
+      
+      .modern-textarea {
+        width: 100%;
+        min-height: 320px;
+        border: 1px solid #dee2e6;
+        border-radius: 8px;
+        padding: 1rem;
+        font-size: 0.95rem;
+        font-family: inherit;
+        line-height: 1.6;
+        resize: vertical;
+        transition: all 0.2s ease;
+        
+        &:focus {
+          border-color: #4dabf7;
+          outline: none;
+          box-shadow: 0 0 0 3px rgba(77, 171, 247, 0.1);
+        }
+      }
+    }
+    
+    .form-actions {
+      display: flex;
+      justify-content: flex-end;
+      margin-top: 1.5rem;
+      padding-top: 1.5rem;
+      border-top: 1px solid #e9ecef;
+      
+      .btn-save {
+        padding: 0.75rem 1.5rem;
+        font-weight: 600;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        transition: all 0.2s ease;
+        
+        &:hover:not(:disabled) {
+          transform: translateY(-2px);
+          box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+        }
+        
+        &:disabled {
+          opacity: 0.6;
+          cursor: not-allowed;
+        }
+        
+        i {
+          font-size: 1rem;
+        }
+      }
+    }
+  }
+}
+
+@keyframes pulse-recording {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+// Estilos modernos para las opciones de documento
+.document-option-card {
+  background: white;
+  border: 1px solid #e9ecef;
+  border-radius: 12px;
+  padding: 2rem 1.5rem;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  
+  &:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    border-color: #dee2e6;
+  }
+  
+  .option-label {
+    cursor: pointer;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    margin: 0;
+  }
+  
+  .option-icon-wrapper {
+    width: 80px;
+    height: 80px;
+    border-radius: 16px;
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 1.25rem;
+    transition: all 0.3s ease;
+  }
+  
+  .option-icon {
+    font-size: 2rem;
+    color: #495057;
+    transition: all 0.3s ease;
+  }
+  
+  .option-title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #212529;
+    margin: 0 0 0.5rem 0;
+  }
+  
+  .option-description {
+    font-size: 0.875rem;
+    color: #6c757d;
+    margin: 0;
+    line-height: 1.5;
+  }
+  
+  &:hover .option-icon-wrapper {
+    background: linear-gradient(135deg, #e9ecef 0%, #dee2e6 100%);
+    transform: scale(1.05);
+  }
+  
+  &:hover .option-icon {
+    color: #212529;
+    transform: scale(1.1);
+  }
+  
+  &.upload-option {
+    .option-icon-wrapper {
+      background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+    }
+    
+    .option-icon {
+      color: #1976d2;
+    }
+    
+    &:hover .option-icon-wrapper {
+      background: linear-gradient(135deg, #bbdefb 0%, #90caf9 100%);
+    }
+  }
+  
+  @media (max-width: 768px) {
+    padding: 1.5rem 1rem;
+    
+    .option-icon-wrapper {
+      width: 60px;
+      height: 60px;
+      margin-bottom: 1rem;
+    }
+    
+    .option-icon {
+      font-size: 1.5rem;
+    }
+    
+    .option-title {
+      font-size: 0.95rem;
+    }
+    
+    .option-description {
+      font-size: 0.8rem;
+    }
+  }
+}
