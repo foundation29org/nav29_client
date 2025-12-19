@@ -210,6 +210,7 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
   @ViewChild('contentviewSummary', { static: false }) contentviewSummary: TemplateRef<any>;
   @ViewChild('contentviewDoc', { static: false }) contentviewDoc: TemplateRef<any>;
   @ViewChild('contentSummaryDoc', { static: false }) contentSummaryDoc: TemplateRef<any>;
+  @ViewChild('documentContextModal', { static: false }) documentContextModal: TemplateRef<any>;
   @ViewChild('contentviewProposedEvents', { static: false }) contentviewProposedEvents: TemplateRef<any>;
   @ViewChild('contentviewProposedAppointments', { static: false }) contentviewProposedAppointments: TemplateRef<any>;
   @ViewChild('shareCustom', { static: false }) contentshareCustom: TemplateRef<any>;
@@ -779,10 +780,15 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
       this.currentPatientId = patient.sub;
       this.initEnvironment();
       
-      // Limpiar resultados de DxGPT si cambias de paciente
-      if (this.currentView === 'dxgpt') {
-        this.dxGptResults = null;
-      }
+      // Limpiar resultados de DxGPT siempre cuando cambias de paciente
+      this.dxGptResults = null;
+      this.isDxGptLoading = false;
+      
+      // Limpiar datos de Rarescope (Mis Necesidades) cuando cambias de paciente
+      this.rarescopeNeeds = [''];
+      this.additionalNeeds = [];
+      this.rarescopeError = null;
+      this.isLoadingRarescope = false;
     } else {
       // No hay paciente
       this.currentPatientId = null;
@@ -1014,13 +1020,14 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
   }
   
   loadRarescopeData() {
-    if (!this.currentPatient?.sub) {
+    const currentPatient = this.authService.getCurrentPatient();
+    if (!currentPatient?.sub) {
       console.warn('No hay paciente seleccionado para cargar datos de Rarescope');
       return;
     }
 
     // Cargar desde la base de datos
-    this.http.get(environment.api + '/api/rarescope/load/'+this.authService.getCurrentPatient().sub)
+    this.http.get(environment.api + '/api/rarescope/load/'+currentPatient.sub)
       .subscribe({
         next: (response: any) => {
           if (response.success && response.data) {
@@ -1118,6 +1125,14 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
 
   handlePatientChanged(patient: any) {
     this.saveMessages(patient.sub);
+    
+    // Limpiar datos de las herramientas cuando cambia el paciente
+    this.dxGptResults = null;
+    this.isDxGptLoading = false;
+    this.rarescopeNeeds = [''];
+    this.additionalNeeds = [];
+    this.rarescopeError = null;
+    this.isLoadingRarescope = false;
   }
 
 
@@ -5093,6 +5108,142 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     this.selectAllDocuments = this.filteredDocs.every(doc => doc.selected);
   }
 
+  availableContextDocs: any[] = [];
+  documentContextModalRef: NgbModalRef;
+
+  openDocumentContextModal(documentContextModal?: TemplateRef<any>) {
+    // Filtrar solo los documentos que pueden ser usados como contexto
+    this.availableContextDocs = this.docs
+      .filter(doc => doc.status == 'finished' || doc.status == 'done' || doc.status == 'resumen ready')
+      .map(doc => ({ ...doc })); // Crear copia para no modificar directamente
+    
+    const modalTemplate = documentContextModal || this.documentContextModal;
+    if (!modalTemplate) {
+      console.error('Document context modal template not found');
+      return;
+    }
+    
+    let ngbModalOptions: NgbModalOptions = {
+      backdrop: 'static',
+      keyboard: false,
+      windowClass: 'ModalClass-lg'
+    };
+    this.documentContextModalRef = this.modalService.open(modalTemplate, ngbModalOptions);
+  }
+
+  closeDocumentContextModal() {
+    if (this.documentContextModalRef != undefined) {
+      this.documentContextModalRef.close();
+      this.documentContextModalRef = undefined;
+    }
+  }
+
+  selectAllContextDocuments() {
+    this.availableContextDocs.forEach(doc => doc.selected = true);
+  }
+
+  deselectAllContextDocuments() {
+    this.availableContextDocs.forEach(doc => doc.selected = false);
+  }
+
+  saveDocumentContextSelection() {
+    // Actualizar la selección en el array principal de documentos
+    this.availableContextDocs.forEach(modalDoc => {
+      const originalDoc = this.docs.find(d => d._id === modalDoc._id);
+      if (originalDoc) {
+        originalDoc.selected = modalDoc.selected;
+      }
+    });
+    
+    // Actualizar también filteredDocs
+    this.filteredDocs = this.filteredDocs.map(filteredDoc => {
+      const updatedDoc = this.availableContextDocs.find(d => d._id === filteredDoc._id);
+      if (updatedDoc) {
+        return { ...filteredDoc, selected: updatedDoc.selected };
+      }
+      return filteredDoc;
+    });
+    
+    this.updateDocumentSelection();
+    this.closeDocumentContextModal();
+  }
+
+  getAvailableDocumentsCount(): number {
+    return this.docs.filter(doc => 
+      doc.status == 'finished' || doc.status == 'done' || doc.status == 'resumen ready'
+    ).length;
+  }
+
+  getFileIconClass(fileName: string): string {
+    if (!fileName) return 'fa-file-o';
+    
+    const extension = fileName.toLowerCase().split('.').pop();
+    
+    switch (extension) {
+      case 'pdf':
+        return 'fa-file-pdf-o';
+      case 'docx':
+      case 'doc':
+        return 'fa-file-word-o';
+      case 'jpg':
+      case 'jpeg':
+      case 'png':
+      case 'gif':
+      case 'bmp':
+        return 'fa-file-image-o';
+      case 'txt':
+        return 'fa-file-text-o';
+      default:
+        return 'fa-file-o';
+    }
+  }
+
+  getFileIconColor(fileName: string): string {
+    if (!fileName) return '#5f6368';
+    
+    const extension = fileName.toLowerCase().split('.').pop();
+    
+    switch (extension) {
+      case 'pdf':
+        return '#ea4335'; // Rojo
+      case 'docx':
+      case 'doc':
+        return '#4285f4'; // Azul
+      case 'jpg':
+      case 'jpeg':
+      case 'png':
+      case 'gif':
+      case 'bmp':
+        return '#34a853'; // Verde
+      case 'txt':
+        return '#5f6368'; // Gris
+      default:
+        return '#5f6368'; // Gris por defecto
+    }
+  }
+
+  deleteDocumentFromModal(doc: any) {
+    // Usar la función existente deleteDoc que ya tiene confirmación
+    Swal.fire({
+      title: this.translate.instant("generics.Are you sure?"),
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#0CC27E',
+      cancelButtonColor: '#FF586B',
+      confirmButtonText: this.translate.instant("generics.Delete"),
+      cancelButtonText: this.translate.instant("generics.No, cancel"),
+      showLoaderOnConfirm: true,
+      allowOutsideClick: false
+    }).then((result) => {
+      if (result.value) {
+        // Remover del array del modal inmediatamente
+        this.availableContextDocs = this.availableContextDocs.filter(d => d._id !== doc._id);
+        // Llamar a la función de eliminación que actualiza la lista principal
+        this.confirmDeleteDoc(doc);
+      }
+    });
+  }
+
   @HostListener('window:resize', ['$event'])
   onResize(event) {
     if (!this.showNewCustom && this.listCustomShare.length > 0 && document.getElementById('panelCustomShare') != null) {
@@ -5175,8 +5326,16 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     }
     
     if (tool === 'dxgpt') {
+      // Limpiar resultados anteriores para asegurar que se carguen los datos del paciente actual
+      this.dxGptResults = null;
+      this.isDxGptLoading = false;
       this.modalReference = this.modalService.open(this.dxGptModal, ngbModalOptions);
     } else if (tool === 'rarescope') {
+      // Limpiar datos anteriores para asegurar que se carguen los datos del paciente actual
+      this.rarescopeNeeds = [''];
+      this.additionalNeeds = [];
+      this.rarescopeError = null;
+      this.isLoadingRarescope = false;
       // Cargar los datos de Rarescope (carga desde BD o hace análisis si no hay datos)
       this.loadRarescopeData();
       this.modalReference = this.modalService.open(this.rarescopeModal, ngbModalOptions);
@@ -5490,7 +5649,7 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     }
   }
 
-  truncateTitle(title: string, limit: number = 24): string {
+  truncateTitle(title: string, limit: number = 32): string {
     if (title.length <= limit) return title;
     return title.slice(0, limit) + '...';
   }

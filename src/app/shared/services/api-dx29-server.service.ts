@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from "@angular/common/http";
 import { environment } from 'environments/environment';
-import { catchError, map } from 'rxjs/operators';
+import { catchError, map, timeout } from 'rxjs/operators';
 import { throwError } from 'rxjs';
 import { InsightsService } from 'app/shared/services/azureInsights.service';
 
@@ -118,7 +118,9 @@ export class ApiDx29ServerService {
         body.diseases_list = excludeDiseases.join(',');
       }
       
+      // Timeout de 2 minutos (120000ms) para peticiones de IA
       return this.http.post(environment.api + '/api/ai/dxgpt/' + patientId, body).pipe(
+        timeout(120000), // 2 minutos
         map((res: any) => {
           return res;
         }),

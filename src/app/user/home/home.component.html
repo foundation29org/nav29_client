@@ -137,19 +137,16 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="select-all">
-                            <input type="checkbox" [(ngModel)]="selectAllDocuments" (change)="toggleAllDocuments()"
-                                [checked]="true">
-                            <span class="ml-1">{{'generics.Select all documents' | translate }}</span>
+                        <div class="mb-3 text-center" *ngIf="getAvailableDocumentsCount() > 0">
+                            <button type="button" class="btn btn-sm btn-white btn-block" (click)="openDocumentContextModal()">
+                                <em class="fa fa-cog mr-1"></em>
+                                {{'generics.Manage documents' | translate }}
+                            </button>
                         </div>
-                        <hr class="mt-0 mb-0">
                         <ul class="document-list">
                             <li *ngFor="let doc of filteredDocs">
-                                <div class="document-item-content">
-                                    <input
-                                        *ngIf="doc.status == 'finished' || doc.status == 'done' || doc.status == 'resumen ready'"
-                                        type="checkbox" [(ngModel)]="doc.selected" class="document-checkbox"
-                                        (change)="updateDocumentSelection()" [checked]="true">
+                                <div class="document-item-content" 
+                                    [ngClass]="{'document-not-selected': (doc.status == 'finished' || doc.status == 'done' || doc.status == 'resumen ready') && !doc.selected}">
                                     <span class="document-status-icon"
                                         *ngIf="doc.status != 'finished' && doc.status != 'done' && doc.status != 'resumen ready'">
                                         <em *ngIf="doc.status == 'pending' || doc.status == ''" class="fa fa-clock-o"></em>
@@ -164,6 +161,9 @@
                                         <div class="document-header">
                                             <ng-container
                                                 *ngIf="doc.status == 'finished' || doc.status == 'done' || doc.status == 'resumen ready'; else regularTitle">
+                                                <span class="document-file-icon" [style.color]="getFileIconColor(doc.title)" *ngIf="doc.status == 'finished' || doc.status == 'done' || doc.status == 'resumen ready'">
+                                                    <em [class]="'fa ' + getFileIconClass(doc.title)"></em>
+                                                </span>
                                                 <a href="javascript:void(0)" class="document-link"
                                                     (click)="openResults(doc, contentSummaryDoc)" [disabled]="openingResults"
                                                     [title]="doc.title">
@@ -171,6 +171,9 @@
                                                 </a>
                                             </ng-container>
                                             <ng-template #regularTitle>
+                                                <span class="document-file-icon" [style.color]="getFileIconColor(doc.title)">
+                                                    <em [class]="'fa ' + getFileIconClass(doc.title)"></em>
+                                                </span>
                                                 <span class="document-title" [title]="doc.title">{{truncateTitle(doc.title)}}</span>
                                             </ng-template>
                                             <span *ngIf="doc.status == 'failed' && doc.isOwner" class="document-delete">
@@ -2726,5 +2729,98 @@
     </div>
     <div class="modal-footer">
         <button type="button" class="btn btn-secondary" (click)="modal.dismiss('Close click')">{{'generics.Close' | translate}}</button>
+    </div>
+</ng-template>
+<ng-template #documentContextModal let-c="close" let-d="dismiss" appendTo="body">
+    <div class="modal-header premium-modal-header border-0">
+        <div class="w-100">
+            <div class="d-flex align-items-center justify-content-between">
+                <div>
+                    <h5 class="mb-1 premium-modal-title">{{'generics.Manage documents' | translate }}</h5>
+                    <p class="mb-0 premium-modal-subtitle">{{'generics.Documents context explanation' | translate }}</p>
+                </div>
+                <button type="button" class="close premium-close-btn" aria-label="Close" (click)="closeDocumentContextModal();">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+        </div>
+    </div>
+    <div class="modal-body premium-modal-body" style="max-height: 65vh; overflow-y: auto;">
+        <div class="premium-action-bar mb-4">
+            <div class="d-flex justify-content-between align-items-center">
+                <span class="premium-section-label">{{'generics.Select documents to include' | translate }}</span>
+                <div class="premium-action-buttons">
+                    <button type="button" class="btn-premium-link" (click)="selectAllContextDocuments()">
+                        {{'generics.Select all' | translate }}
+                    </button>
+                    <span class="premium-divider">|</span>
+                    <button type="button" class="btn-premium-link" (click)="deselectAllContextDocuments()">
+                        {{'generics.Deselect all' | translate }}
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="premium-documents-list">
+            <div *ngFor="let doc of availableContextDocs" 
+                 class="premium-document-item"
+                 [class.premium-selected]="doc.selected"
+                 [class.premium-unselected]="!doc.selected">
+                <div class="premium-document-checkbox-wrapper">
+                    <input type="checkbox" 
+                           [(ngModel)]="doc.selected" 
+                           class="premium-checkbox"
+                           [id]="'doc-' + doc._id">
+                    <label [for]="'doc-' + doc._id" class="premium-checkbox-label"></label>
+                </div>
+                <div class="premium-document-content">
+                    <div class="premium-document-header">
+                        <div class="premium-document-title-wrapper">
+                            <span class="premium-file-icon" [style.color]="getFileIconColor(doc.title)">
+                                <em [class]="'fa ' + getFileIconClass(doc.title)"></em>
+                            </span>
+                            <span class="premium-document-title">{{doc.title}}</span>
+                        </div>
+                        <button type="button" 
+                                class="premium-delete-btn" 
+                                (click)="deleteDocumentFromModal(doc)"
+                                [title]="'generics.Delete' | translate"
+                                *ngIf="doc.isOwner">
+                            <em class="fa fa-trash-o"></em>
+                        </button>
+                    </div>
+                    <div class="premium-document-meta">
+                        <span class="premium-meta-item" *ngIf="!isDateMissing(doc.originaldate)">
+                            <em class="fa fa-calendar"></em>
+                            <span>{{ doc.originaldate | date: 'mediumDate' }}</span>
+                        </span>
+                        <span class="premium-meta-item premium-warning" *ngIf="isDateMissing(doc.originaldate)">
+                            <em class="fa fa-exclamation-triangle"></em>
+                            <span>{{ 'generics.Missing date' | translate }}</span>
+                        </span>
+                        <span class="premium-category-badge" *ngIf="doc.categoryTag" [ngClass]="doc.badge">
+                            {{doc.categoryTag}}
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div *ngIf="availableContextDocs.length === 0" class="premium-empty-state">
+            <div class="premium-empty-icon">
+                <em class="fa fa-folder-open"></em>
+            </div>
+            <p class="premium-empty-text">{{'generics.No documents available' | translate }}</p>
+        </div>
+    </div>
+    <div class="modal-footer premium-modal-footer border-0">
+        <div class="w-100 d-flex justify-content-end">
+            <button type="button" class="btn-premium-secondary" (click)="closeDocumentContextModal();">
+                {{'generics.Cancel' | translate }}
+            </button>
+            <button type="button" class="btn-premium-primary" (click)="saveDocumentContextSelection();">
+                {{'generics.Save' | translate }}
+            </button>
+        </div>
     </div>
 </ng-template>
