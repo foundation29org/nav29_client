@@ -245,6 +245,18 @@
     "analysisError": "Error performing the new analysis. Please try again.",
     "analysisErrorWithDescription": "Error performing the new analysis. The description has been saved but the diagnoses were not updated.",
     "couldNotGetInfo": "Could not retrieve the requested information.",
+    "summary": {
+      "title": "Patient summary not available",
+      "message": "The patient does not have a generated summary. Would you like to create the summary now?<br><br><small>If you create the summary, you will receive a notification when it's ready and you can return here to run the analysis.</small>",
+      "create": "Create summary",
+      "continue": "Continue without summary",
+      "creating": "Creating summary...",
+      "notification": "The summary is being generated. You will receive a notification when it's ready.<br><br>You can return here later to run the differential diagnosis analysis."
+    },
+    "editInfo": {
+      "title": "Not satisfied with the results?",
+      "message": "You can edit the patient description by clicking the pencil icon (✏️) above. Add detailed information about symptoms, age, gender, and when symptoms started to get more accurate diagnoses."
+    },
     "errorLoadingInfo": "Error loading information. Please try again.",
     "errorMessage": "An error occurred while processing the analysis. Please try again.",
     "tryAgain": "Try again"

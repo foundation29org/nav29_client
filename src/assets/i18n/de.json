@@ -243,7 +243,19 @@
       "couldNotGetInfo": "Die angeforderte Information konnte nicht abgerufen werden.",
       "errorLoadingInfo": "Fehler beim Laden der Informationen. Bitte versuchen Sie es erneut.",
       "errorMessage": "Beim Verarbeiten der Analyse ist ein Fehler aufgetreten. Bitte versuchen Sie es erneut.",
-      "tryAgain": "Erneut versuchen"
+      "tryAgain": "Erneut versuchen",
+      "summary": {
+        "title": "Patientenzusammenfassung nicht verfügbar",
+        "message": "Der Patient hat keine generierte Zusammenfassung. Möchten Sie die Zusammenfassung jetzt erstellen?<br><br><small>Wenn Sie die Zusammenfassung erstellen, erhalten Sie eine Benachrichtigung, wenn sie fertig ist, und Sie können hierher zurückkehren, um die Analyse auszuführen.</small>",
+        "create": "Zusammenfassung erstellen",
+        "continue": "Ohne Zusammenfassung fortfahren",
+        "creating": "Zusammenfassung wird erstellt...",
+        "notification": "Die Zusammenfassung wird generiert. Sie erhalten eine Benachrichtigung, wenn sie fertig ist.<br><br>Sie können später hierher zurückkehren, um die Differentialdiagnose-Analyse auszuführen."
+      },
+      "editInfo": {
+        "title": "Sind Sie mit den Ergebnissen nicht zufrieden?",
+        "message": "Sie können die Patientenbescheibung bearbeiten, indem Sie auf das Stiftsymbol (✏️) oben klicken. Fügen Sie detaillierte Informationen über Symptome, Alter, Geschlecht und wann die Symptome begannen hinzu, um genauere Diagnosen zu erhalten."
+      }
   },
    "categoriesPatients":{
      "title": "Patients",

@@ -244,7 +244,19 @@
       "couldNotGetInfo": "Impossible d'obtenir les informations demandées.",
       "errorLoadingInfo": "Erreur lors du chargement des informations. Veuillez réessayer.",
       "errorMessage": "Une erreur s'est produite lors du traitement de l'analyse. Veuillez réessayer.",
-      "tryAgain": "Réessayer"
+      "tryAgain": "Réessayer",
+      "summary": {
+        "title": "Résumé du patient non disponible",
+        "message": "Le patient n'a pas de résumé généré. Souhaitez-vous créer le résumé maintenant ?<br><br><small>Si vous créez le résumé, vous recevrez une notification lorsqu'il sera prêt et vous pourrez revenir ici pour exécuter l'analyse.</small>",
+        "create": "Créer le résumé",
+        "continue": "Continuer sans résumé",
+        "creating": "Création du résumé...",
+        "notification": "Le résumé est en cours de génération. Vous recevrez une notification lorsqu'il sera prêt.<br><br>Vous pouvez revenir ici plus tard pour exécuter l'analyse de diagnostic différentiel."
+      },
+      "editInfo": {
+        "title": "Vous n'êtes pas satisfait des résultats ?",
+        "message": "Vous pouvez modifier la description du patient en cliquant sur l'icône de crayon (✏️) ci-dessus. Ajoutez des informations détaillées sur les symptômes, l'âge, le sexe et depuis quand les symptômes ont commencé pour obtenir des diagnostics plus précis."
+      }
   },
    "categoriesPatients":{
      "title": "Patients",

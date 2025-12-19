@@ -245,6 +245,18 @@
     "analysisError": "Error al realizar el nuevo análisis. Por favor, intente nuevamente.",
     "analysisErrorWithDescription": "Error al realizar el nuevo análisis. La descripción se ha guardado pero los diagnósticos no se actualizaron.",
     "couldNotGetInfo": "No se pudo obtener la información solicitada.",
+    "summary": {
+      "title": "Resumen del paciente no disponible",
+      "message": "El paciente no tiene un resumen generado. ¿Deseas crear el resumen ahora?<br><br><small>Si creas el resumen, recibirás una notificación cuando esté listo y podrás volver aquí para ejecutar el análisis.</small>",
+      "create": "Crear resumen",
+      "continue": "Continuar sin resumen",
+      "creating": "Creando resumen...",
+      "notification": "El resumen se está generando. Recibirás una notificación cuando esté listo.<br><br>Puedes volver aquí después para ejecutar el análisis de diagnóstico diferencial."
+    },
+    "editInfo": {
+      "title": "¿No estás satisfecho con los resultados?",
+      "message": "Puedes editar la descripción del paciente haciendo clic en el icono de lápiz (✏️) arriba. Añade información detallada sobre los síntomas, edad, género y desde cuándo comenzaron los síntomas para obtener diagnósticos más precisos."
+    },
     "errorLoadingInfo": "Error al cargar la información. Por favor, intente nuevamente.",
     "errorMessage": "Ocurrió un error al procesar el análisis. Por favor, intente nuevamente.",
     "tryAgain": "Reintentar"

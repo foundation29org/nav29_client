@@ -243,7 +243,19 @@
       "couldNotGetInfo": "Impossibile ottenere le informazioni richieste.",
       "errorLoadingInfo": "Errore nel caricamento delle informazioni. Riprova.",
       "errorMessage": "Si è verificato un errore durante l'elaborazione dell'analisi. Riprova.",
-      "tryAgain": "Riprova"
+      "tryAgain": "Riprova",
+      "summary": {
+        "title": "Riassunto del paziente non disponibile",
+        "message": "Il paziente non ha un riassunto generato. Vuoi creare il riassunto ora?<br><br><small>Se crei il riassunto, riceverai una notifica quando sarà pronto e potrai tornare qui per eseguire l'analisi.</small>",
+        "create": "Crea riassunto",
+        "continue": "Continua senza riassunto",
+        "creating": "Creazione del riassunto...",
+        "notification": "Il riassunto è in fase di generazione. Riceverai una notifica quando sarà pronto.<br><br>Puoi tornare qui più tardi per eseguire l'analisi di diagnosi differenziale."
+      },
+      "editInfo": {
+        "title": "Non sei soddisfatto dei risultati?",
+        "message": "Puoi modificare la descrizione del paziente cliccando sull'icona della matita (✏️) sopra. Aggiungi informazioni dettagliate su sintomi, età, genere e da quando sono iniziati i sintomi per ottenere diagnosi più accurate."
+      }
   },
    "categoriesPatients":{
      "title": "Patients",

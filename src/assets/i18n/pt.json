@@ -243,7 +243,19 @@
       "couldNotGetInfo": "Não foi possível obter as informações solicitadas.",
       "errorLoadingInfo": "Erro ao carregar as informações. Por favor, tente novamente.",
       "errorMessage": "Ocorreu um erro ao processar a análise. Por favor, tente novamente.",
-      "tryAgain": "Tentar novamente"
+      "tryAgain": "Tentar novamente",
+      "summary": {
+        "title": "Resumo do paciente não disponível",
+        "message": "O paciente não tem um resumo gerado. Deseja criar o resumo agora?<br><br><small>Se criar o resumo, receberá uma notificação quando estiver pronto e poderá voltar aqui para executar a análise.</small>",
+        "create": "Criar resumo",
+        "continue": "Continuar sem resumo",
+        "creating": "Criando resumo...",
+        "notification": "O resumo está sendo gerado. Você receberá uma notificação quando estiver pronto.<br><br>Você pode voltar aqui mais tarde para executar a análise de diagnóstico diferencial."
+      },
+      "editInfo": {
+        "title": "Não está satisfeito com os resultados?",
+        "message": "Você pode editar a descrição do paciente clicando no ícone de lápis (✏️) acima. Adicione informações detalhadas sobre sintomas, idade, gênero e quando os sintomas começaram para obter diagnósticos mais precisos."
+      }
   },
    "categoriesPatients":{
      "title": "Patients",

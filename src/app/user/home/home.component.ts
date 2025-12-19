@@ -5669,15 +5669,48 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     this.selectAllDocuments = this.filteredDocs.length > 0 && this.filteredDocs.every(doc => doc.selected);
   }
 
-  fetchDxGptResults() {
+  /**
+   * Verifica si el paciente tiene un resumen generado
+   */
+  async checkPatientSummary(): Promise<boolean> {
+    return new Promise((resolve) => {
+      if (!this.currentPatient) {
+        resolve(false);
+        return;
+      }
+      
+      const info = { 
+        "userId": this.authService.getIdUser(), 
+        "idWebpubsub": this.authService.getIdUser(), 
+        "regenerate": false 
+      };
+      
+      this.subscription.add(
+        this.http.post(environment.api + '/api/patient/summary/' + this.currentPatient, info)
+          .subscribe(
+            (res: any) => {
+              // Si summary es 'true', el resumen existe y está listo
+              resolve(res.summary === 'true');
+            },
+            (err) => {
+              console.warn('Error checking patient summary:', err);
+              // En caso de error, asumir que no existe
+              resolve(false);
+            }
+          )
+      );
+    });
+  }
+
+  /**
+   * Ejecuta fetchDxGptResults después de verificar/crear el resumen
+   */
+  private executeFetchDxGptResults() {
     console.log('=== FRONTEND DXGPT DEBUG START ===');
     console.log('1. Current patient ID:', this.currentPatientId);
     
     if (!this.currentPatientId) {
-      // Mostrar algún error o deshabilitar el botón si no hay paciente
-      // Esto es improbable si la UI se muestra correctamente, pero por si acaso.
       console.error("No patient selected to fetch DxGPT results.");
-      // Podrías usar Swal para notificar al usuario.
       this.dxGptResults = { success: false, analysis: this.translate.instant('patients.No patient selected') };
       return;
     }
@@ -5731,6 +5764,54 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
         this.isDxGptLoading = false;
       }
     });
+  }
+
+  /**
+   * Función principal que verifica el resumen antes de ejecutar DxGPT
+   */
+  async fetchDxGptResults() {
+    if (!this.currentPatientId) {
+      this.dxGptResults = { success: false, analysis: this.translate.instant('patients.No patient selected') };
+      return;
+    }
+
+    // Verificar si el paciente tiene un resumen generado
+    const hasSummary = await this.checkPatientSummary();
+    
+    if (hasSummary) {
+      // Si tiene resumen, ejecutar directamente
+      this.executeFetchDxGptResults();
+    } else {
+      // Si no tiene resumen, preguntar al usuario
+      const result = await Swal.fire({
+        title: this.translate.instant('dxgpt.summary.title') || 'Resumen del paciente no disponible',
+        html: this.translate.instant('dxgpt.summary.message') || 
+              'El paciente no tiene un resumen generado. ¿Deseas crear el resumen ahora?<br><br>' +
+              '<small>Si creas el resumen, recibirás una notificación cuando esté listo y podrás volver aquí para ejecutar el análisis.</small>',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: this.translate.instant('dxgpt.summary.create') || 'Crear resumen',
+        cancelButtonText: this.translate.instant('dxgpt.summary.continue') || 'Continuar sin resumen',
+        confirmButtonColor: '#3085d6',
+        cancelButtonColor: '#6c757d'
+      });
+
+      if (result.isConfirmed) {
+        // Usuario quiere crear el resumen
+        this.getPatientSummary(false);
+        Swal.fire({
+          title: this.translate.instant('dxgpt.summary.creating') || 'Creando resumen...',
+          html: this.translate.instant('dxgpt.summary.notification') || 
+                'El resumen se está generando. Recibirás una notificación cuando esté listo.<br><br>' +
+                'Puedes volver aquí después para ejecutar el análisis de diagnóstico diferencial.',
+          icon: 'info',
+          confirmButtonText: this.translate.instant('generics.OK') || 'OK'
+        });
+      } else {
+        // Usuario quiere continuar sin resumen (usará el flujo actual)
+        this.executeFetchDxGptResults();
+      }
+    }
   }
 
   openTimelineModal(timelineModal) {
