@@ -45,6 +45,7 @@ export class NewMedicalEventComponent implements OnInit {
     this.eventForm = this.formBuilder.group({
       name: ['', Validators.required],
       date: [new Date(), Validators.required],
+      dateEnd: [null],
       key: ['', Validators.required],
       notes: []
     });
@@ -62,6 +63,7 @@ export class NewMedicalEventComponent implements OnInit {
         docId: this.docId,
         status: 'true',
         date: this.eventForm.value.date,
+        dateEnd: this.eventForm.value.dateEnd || null,
         key: this.eventForm.value.key,
         notes: this.eventForm.value.notes
       };

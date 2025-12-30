@@ -9,10 +9,12 @@
     "How do you want to start?": "Try Nav29 with a medical report that you don't understand, we want to surprise you.",
     "startsubtitle": "It can be any type of report. You can take a photo in good light and making sure the text is legible, Nav29 will read it for you. You can also use a file, a PDF or a Word document are preferred.",
     "Take a photo": "Take a photo",
+    "Take a photo description": "Capture documents with your camera",
     "Use a file": "Use a file",
     "Max. 5 documents": "Max. 5 documents per batch",
     "You can upload more files later": "You can upload more files later",
     "Write text": "Write text",
+    "Write text description": "Write or paste content manually",
     "Drag and drop file here": "Drag and drop your reports here",
     "or": "or",
     "Browse for file": "Browse the files",
@@ -31,14 +33,50 @@
     "No documents to summarize": "There are no documents to summarize, or you have not finished extracting the text.",
     "Add new document": "How do you want to add documents?",
     "allowcamera": "You must allow the camera to continue. Please enable camera access in your browser settings and try again.",
-    "Repeat photo": "Repeat photo",
-    "Capture photo": "Capture photo",
-    "Photos taken": "Photos taken",
-    "Add another photo": "Add another photo",
+    "Repeat photo": "Repeat page",
+    "Repeat page": "Repeat page",
+    "Capture photo": "Capture page",
+      "Capture page": "Capture page",
+      "Capture document": "Capture document",
+      "Position the document in front of the camera": "Position the document in front of the camera",
+      "Photos taken": "Captured pages",
+    "Add another photo": "Add another page",
+    "Add another page": "Add another page",
+    "Captured pages": "Captured pages",
+    "page": "page",
+    "pages": "pages",
+    "Pages": "Pages",
+    "New document": "New document",
+    "unsaved": "unsaved",
+    "Finalize document": "Finalize document",
+    "You have captured": "You have captured",
+    "How do you want to save this document?": "How do you want to save this document?",
+    "Save as one document": "Save as one document",
+    "Save as one document description": "All pages will be combined into a single PDF document",
+    "Save as separate documents": "Save as separate documents",
+    "Save as separate documents description": "Each page will be uploaded as an individual document",
+    "Save document": "Save document",
+    "You can change it later": "You can change it later",
+    "Medical report": "Medical report",
+    "Test results": "Test results",
+    "Medical documentation": "Medical documentation",
+    "How do you want to upload the photos?": "How do you want to upload the photos?",
+    "You have taken": "You have taken",
+    "photo": "photo",
+    "photos": "photos",
+    "Photos": "Photos",
+    "Group into one document": "Group into one document",
+    "Upload as separate documents": "Upload as separate documents",
+    "Combining photos": "Combining photos",
+    "Combining": "Combining",
+    "into one document": "into one document",
+    "Enter document name": "Enter document name",
+    "Document name is required": "Document name is required",
+    "Error combining photos": "Error combining photos",
     "I like it": "I like it",
-    "Create report": "Create report",
-    "demot": "Do you have medical reports that you don't understand?",
-    "demot2": "Press the button to start understanding your medical data",
+    "Create report": "Text input",
+    "demot": "Nav29: your second health brain",
+    "demot2": "Your documents, conversations and tools in one place to take control of your health.",
     "Extracting the text from the documents": "Nav29 is analyzing the document and extracting the text.",
     "The summary is being generated": "Nav29 is generating the summary. The process may take up to a minute.",
     "This may take up to a minute": "Be patient, it may take up to a minute.",
@@ -48,19 +86,19 @@
     "My reports": "My reports",
     "While you wait": "While you wait, see everything you can get if you register as a user. There is no cost to register, it only has advantages.",
     "Advantages":{
-      "title": "Start taking control over your medical data!",
-       "t1": "Secure and Permanent Storage",
-      "d1": "Store and access your medical reports from a single place, always protected. Your data belongs to you and is backed by Fundación 29.",
+      "title": "Everything you can do with Nav29",
+      "t1": "Secure and Permanent Storage",
+      "d1": "Store and access all your medical reports from a single place, always protected. Your data belongs to you and is backed by Fundación 29.",
       "t2": "Smart Summaries",
-      "d2": "Turn complex medical reports into easy-to-understand summaries. Make informed decisions about your health.",
+      "d2": "Turn complex medical reports into easy-to-understand summaries. AI analyzes your documents and helps you make informed decisions about your health.",
       "t3": "Talk to Your Data",
-      "d3": "Ask questions and get clear answers from your medical reports through a simple conversational interface.",
-      "t4": "Health Explorer",
-      "d4": "Search for medications, clinical trials, and medical advancements. Your personal medical assistant is always at your service.",
+      "d3": "Ask questions and get clear answers from your medical reports through an AI conversational interface. Your medical assistant always available.",
+      "t4": "Advanced Analysis Tools",
+      "d4": "AI-assisted diagnostics, analysis of unmet needs, and exploration of drugs and clinical trials. New tools are added regularly.",
       "t5": "Share with Confidence",
-      "d5": "Share your medical reports securely with your healthcare team. You always retain control of your data.",
-      "t6": "A Health Diary",
-      "d6": "Record and organize your medical appointments and important events. Always carry your digital brain with you."
+      "d5": "Share your medical reports securely with your healthcare team. You have full control over who accesses your data and when.",
+      "t6": "Diary and Collaborative Tools",
+      "d6": "Record and organize your appointments, medical events and important notes. Collaborate with your care team and always carry your second digital brain with you."
     }
   },
   "feedback": {
@@ -102,11 +140,21 @@
     "Other": "Other",
    "There are no events": "There are no events",
    "Show filters": "Show filters",
-   "Hide filters": "Hide filters"
+   "Hide filters": "Hide filters",
+   "Export": "Export",
+   "Copy to clipboard": "Copy to clipboard",
+   "Export to CSV": "Export to CSV",
+   "Export to PDF": "Export to PDF",
+   "Timeline copied to clipboard": "Timeline copied to clipboard",
+   "Date": "Date",
+   "Exported on": "Exported on"
   },
   "voice":{
     "Start Voice Recognition": "Start Voice Recognition",
     "Stop Voice Recognition": "Stop Voice Recognition",
+    "Stop recording": "Stop recording",
+    "Start voice input": "Start voice input",
+    "Not supported in this browser": "Voice recognition is not available in this browser. Use Chrome, Edge, or Safari for this feature.",
     "Recording": "Recording",
     "Sorry, voice recognition is not supported in your browser.": "Sorry, voice recognition is not supported in your browser.",
     "We recommend that you use Google Chrome, Microsoft Edge, or Safari.": "We recommend that you use Google Chrome, Microsoft Edge, or Safari.",
@@ -127,10 +175,6 @@
     "p6": "Sign in",
     "p7": "Please enter your email address to request a password reset.",
     "p8": "Please check your email and click on the link to verify your email address."
-  },
-  "promts":{
-    "0": "Behave like an expert in detecting sentence intentions. A patient writes the following sentence: '{{value}}'. \nChoose only one of the following intentions the patient wants to make: \n1.$Data (When providing information about the patient) \n2.$Question (When asks something or send something with the question mark) \n3.$Share (He must to tell you the word 'share') \n4.$Take Quiz (When he want to make a questionnaire) \nIf it is none of this 4 intentions, returns: \n2.$Question",
-    "1": "Behave like a doctor. You have to give specific information and not general. Use only sources of medical information."
   },
   "summaryoptions": {
     "title": "Summaries",
@@ -174,7 +218,7 @@
   "dxgpt": {
     "description": "Automatically analyzes the clinical information you enter, including reports, notes and recorded events, and generates a structured list of possible diagnoses based on extracted symptom patterns.",
     "analyze": "Analyze",
-    "button": "Diagnoses",
+    "button": "Search diagnosis",
     "analyzing": "Analyzing",
     "patientInfo": "Patient Information",
     "possibleDiagnoses": "Possible Diagnoses",
@@ -201,7 +245,38 @@
     "analysisError": "Error performing the new analysis. Please try again.",
     "analysisErrorWithDescription": "Error performing the new analysis. The description has been saved but the diagnoses were not updated.",
     "couldNotGetInfo": "Could not retrieve the requested information.",
-    "errorLoadingInfo": "Error loading information. Please try again."
+    "summary": {
+      "title": "Patient summary not available",
+      "message": "The patient does not have a generated summary. Would you like to create the summary now?<br><br><small>If you create the summary, you will receive a notification when it's ready and you can return here to run the analysis.</small>",
+      "create": "Create summary",
+      "continue": "Continue without summary",
+      "creating": "Creating summary...",
+      "notification": "The summary is being generated. You will receive a notification when it's ready.<br><br>You can return here later to run the differential diagnosis analysis."
+    },
+    "editInfo": {
+      "title": "Not satisfied with the results?",
+      "message": "You can edit the patient description by clicking the pencil icon (✏️) above. Add detailed information about symptoms, age, gender, and when symptoms started to get more accurate diagnoses."
+    },
+    "chooseMethod": {
+      "title": "Choose analysis method",
+      "message": "The patient has a generated summary. How would you like to perform the analysis?<br><br><small><strong>Patient summary:</strong> Faster, includes structured and contextualized information.<br><strong>Events and documents:</strong> Includes more recent information that may not be in the summary.</small>",
+      "withSummary": "Analyze with patient summary",
+      "withEvents": "Analyze with events and documents"
+    },
+    "async": {
+      "processing": "Processing analysis",
+      "message": "The analysis is in process. You will receive a notification when it's ready.",
+      "timeMessage": "This process may take several minutes depending on the number of documents.",
+      "cancel": "Cancel",
+      "cancelled": "Processing cancelled",
+      "cancelledMessage": "The analysis has been cancelled. You can start it again whenever you want.",
+      "completed": "Analysis completed",
+      "success": "The differential diagnosis analysis has been completed successfully.",
+      "error": "Analysis error"
+    },
+    "errorLoadingInfo": "Error loading information. Please try again.",
+    "errorMessage": "An error occurred while processing the analysis. Please try again.",
+    "tryAgain": "Try again"
   },
   "categoriesPatients":{
     "title": "Patients",
@@ -714,6 +789,14 @@
      "msgError": "It is not available yet. Please try again in a few minutes. If the error persists after 10 minutes, delete the report and re-upload it.",
      "nofileexist": "The file does not exist",
      "errProcFile": "An error occurred while processing the file. Please, try again.",
+     "error": {
+       "docx": {
+         "convertToPdf": "The DOCX document could not be processed. Some DOCX documents with advanced changes or formats (complex tables, embedded images, macros) are not compatible with the analysis service. Please convert the document to PDF and upload it again. PDF files have better compatibility."
+       },
+       "document": {
+         "processingFailed": "Error processing the document. Please try with another document."
+       }
+     },
      "procesando intent": "Analysing your request to understand what you need...",
      "intent detectado": "We have understood your request, we are now looking for the appropriate information...",
      "generando respuesta": "We are generating a response based on the relevant information found...",
@@ -750,6 +833,7 @@
     "noNotes": "No notes yet. Add a note to get started!",
     "Add Note": "Add note",
     "Note Content": "Note content",
+    "Enter note content": "Enter note content...",
     "Save to notes": "Save to notes",
     "Edit Note": "Edit note",
     "Delete Note": "Delete note",
@@ -805,10 +889,19 @@
     "review_validate_events": "Review the events detected in your medical report. Indicate whether they are correct, present or past events.",
     "incorrect": "Incorrect",
     "present": "Present",
-    "past": "Past"
+    "past": "Past",
+    "originWizard": "Initial patient form",
+    "originAutomatic": "Automatic",
+    "Origin": "Origin",
+    "No events yet": "No events yet",
+    "Create first event": "Create first event",
+    "Sort by": "Sort by",
+    "Sort ascending": "Sort ascending",
+    "Sort descending": "Sort descending"
   },
   "menu":{
     "Dashboard": "Home",
+    "Go to Home": "Go to Home",
     "Dashboard Admin": "Dashboard admin",
     "Dashboard Super Admin": "Dashboard superAdmin",
     "User Profile": "User profile",
@@ -861,6 +954,7 @@
     "Foot": "Foot",
     "Delete account": "Delete account",
     "Language": "Language",
+    "Interface Language Explanation": "Select the language in which you want to see the menus, buttons, and texts of the application.",
     "No knowledge": "No knowledge",
     "Basic knowledge": "Basic knowledge",
     "Intermediate knowledge": "Intermediate knowledge",
@@ -956,6 +1050,8 @@
     "entervalidemail": "Please enter a valid email!",
     "Passwordlength": "Password length must be between 8 and 24",
     "required": "This field is required",
+    "selected": "selected",
+    "Show notes": "Show notes",
     "numeric": "Only numbers are allowed",
     "Passwordnomatch": "Password does not match",
     "fieldsRequired": "Fields marked with * are required",
@@ -1075,7 +1171,18 @@
     "generated by artificial intelligence": "Please note that this summary was generated by artificial intelligence and may contain inaccuracies or errors.",
     "Coming soon": "Coming soon",
     "Select all documents": "Select all documents",
-    "Create-paste a report": "Create/paste a report",
+    "Manage documents": "Manage documents",
+    "Manage documents context": "Manage documents for context",
+    "Documents context explanation": "Selected documents will be used as context in the conversation",
+    "Documents selected for context": "{{count}} of {{total}} documents selected for context",
+    "No documents selected for context": "No documents selected for context",
+    "Document included in context": "Document included in conversation context",
+    "Use document as context": "Use this document as context in the conversation",
+    "Select documents to include": "Select documents to include",
+    "Select all": "Select all",
+    "Deselect all": "Deselect all",
+    "No documents available": "No documents available",
+    "Write or paste content": "Write or paste content",
     "Write down any details": "Write down any details that could be important"
   },
   "lang":{
@@ -1118,6 +1225,11 @@
     "Female": "Female"
   },
   "patients":{
+    "Search by name or birth date": "Search by name or birth date",
+    "results found": "results found",
+    "No results found": "No results found",
+    "No patients match your search": "No patients match your search",
+    "No shared patients match your search": "No shared patients match your search",
     "My patients": "My patients",
     "Create new patient": "Create new patient",
     "View patient": "View patient",
@@ -1510,5 +1622,19 @@
     "tryAgain": "Try again",
     "placeholderNeed": "Write what you feel is missing that should be addressed",
     "dragToReorder": "Drag to reorder"
+  },
+  "tools": {
+    "title": "Tools",
+    "agents": "Agents",
+    "results": "Results",
+    "clickToView": "Click to view",
+    "noSummary": "No summary available",
+    "notesCount": "notes",
+    "noNotes": "No notes"
+  },
+  "trialgpt": {
+    "title": "TrialGPT - Coming Soon",
+    "button": "Search clinical trials",
+    "comingSoon": "Coming soon"
   }
 }

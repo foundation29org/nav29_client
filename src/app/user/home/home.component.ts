@@ -21,9 +21,11 @@ import { EventsService } from 'app/shared/services/events.service';
 import { WebPubSubService } from 'app/shared/services/web-pub-sub.service';
 import { jsPDFService } from 'app/shared/services/jsPDF.service'
 import { Clipboard } from "@angular/cdk/clipboard"
+import { jsPDF } from "jspdf";
 
 import { InsightsService } from 'app/shared/services/azureInsights.service';
 import { LangService } from 'app/shared/services/lang.service';
+import { SpeechRecognitionService } from 'app/shared/services/speech-recognition.service';
 import * as QRCode from 'qrcode';
 import { FeedbackSummaryPageComponent } from 'app/user/feedback-summary/feedback-summary-page.component';
 import { EditMedicalEventComponent } from 'app/user/edit-event-modal/edit-medical-event.component';
@@ -163,8 +165,11 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
   messages = [];
   message = '';
   callingOpenai: boolean = false;
+  chatRecording: boolean = false;
+  chatVoiceSupported: boolean = false;
+  private chatSpeechSubscription: Subscription;
+  lastProcessedAnswerId: string = ''; // Para evitar procesar respuestas duplicadas
 
-  valueProm: any = {};
   tempInput: string = '';
   detectedLang: string = 'en';
   preferredResponseLanguage: string = 'en';
@@ -205,10 +210,15 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
   @ViewChild('contentviewSummary', { static: false }) contentviewSummary: TemplateRef<any>;
   @ViewChild('contentviewDoc', { static: false }) contentviewDoc: TemplateRef<any>;
   @ViewChild('contentSummaryDoc', { static: false }) contentSummaryDoc: TemplateRef<any>;
+  @ViewChild('documentContextModal', { static: false }) documentContextModal: TemplateRef<any>;
   @ViewChild('contentviewProposedEvents', { static: false }) contentviewProposedEvents: TemplateRef<any>;
   @ViewChild('contentviewProposedAppointments', { static: false }) contentviewProposedAppointments: TemplateRef<any>;
   @ViewChild('shareCustom', { static: false }) contentshareCustom: TemplateRef<any>;
   @ViewChild('qrPanel', { static: false }) contentqrPanel: TemplateRef<any>;
+  @ViewChild('dxGptModal', { static: false }) dxGptModal: TemplateRef<any>;
+  @ViewChild('notesModal', { static: false }) notesModal: TemplateRef<any>;
+  @ViewChild('rarescopeModal', { static: false }) rarescopeModal: TemplateRef<any>;
+  @ViewChild('diaryModal', { static: false }) diaryModal: TemplateRef<any>;
   tasksUpload: any[] = [];
   taskAnonimize: any[] = [];
   translateYouCanAskInChat: string = '';
@@ -237,6 +247,7 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
   private questionSymptoms = new Map<string, any[]>();
   isEditingPatientInfo: boolean = false;
   editedPatientInfo: string = '';
+  isPatientInfoExpanded: boolean = false;
   isLoadingMoreDiagnoses: boolean = false;
   loadingDoc: boolean = false;
   summaryDate: Date = null;
@@ -300,11 +311,43 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
   selectedIndexTab: number = 0;
   sidebarOpen = false;
   notesSidebarOpen: boolean = false;
+  leftSidebarCollapsed: boolean = false;
+  rightSidebarCollapsed: boolean = false;
+  rightSidebarOpenMobile: boolean = false;
+  scrollToBottomVisible: boolean = false;
   notes: { _id: string, content: string, date: Date, isEditing?: boolean, editContent?: string }[] = [];
   newNoteContent: string = '';
   savingNote: boolean = false;
   editableDiv: ElementRef | null = null;
   deletingNote: boolean = false;
+  selectedNoteForModal: any = null;
+  noteMaxLength: number = 500; // Límite de caracteres para mostrar preview
+  editingNoteIndex: number | null = null; // Índice de la nota que se está editando en el modal
+  
+  // Quill Editor Configuration
+  quillConfig = {
+    toolbar: [
+      ['bold', 'italic', 'underline', 'strike'],        // toggled buttons
+      ['blockquote', 'code-block'],
+      [{ 'header': 1 }, { 'header': 2 }],               // custom button values
+      [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+      [{ 'script': 'sub'}, { 'script': 'super' }],      // superscript/subscript
+      [{ 'indent': '-1'}, { 'indent': '+1' }],          // outdent/indent
+      [{ 'direction': 'rtl' }],                         // text direction
+      [{ 'size': ['small', false, 'large', 'huge'] }],  // custom dropdown
+      [{ 'header': [1, 2, 3, 4, 5, 6, false] }],
+      [{ 'color': [] }, { 'background': [] }],          // dropdown with defaults from theme
+      [{ 'font': [] }],
+      [{ 'align': [] }],
+      ['clean'],                                         // remove formatting button
+      ['link', 'image']                                 // link and image, video
+    ]
+  };
+  
+  quillEditorStyles = {
+    height: '300px',
+    'min-height': '200px'
+  };
   selectAllDocuments: boolean = true;
   searchTerm: string = '';
   filteredDocs: any[] = [];
@@ -314,6 +357,8 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
   timer: number = 0;
   timerDisplay: string = '00:00';
   private interval: any;
+  private accumulatedText: string = '';
+  private speechSubscription: Subscription;
   tempFileName: string = '';
   showCameraButton: boolean = false;
   langs: any[] = [];
@@ -331,7 +376,7 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
   private isInitialLoad = true;
   currentPatientId: string | null = null;
 
-  constructor(private http: HttpClient, private authService: AuthService, public translate: TranslateService, private formBuilder: FormBuilder, private authGuard: AuthGuard, public toastr: ToastrService, private patientService: PatientService, private sortService: SortService, private modalService: NgbModal, private apiDx29ServerService: ApiDx29ServerService, private dateService: DateService, private eventsService: EventsService, private webPubSubService: WebPubSubService, private searchService: SearchService, public jsPDFService: jsPDFService, private clipboard: Clipboard, public trackEventsService: TrackEventsService, private route: ActivatedRoute, public insightsService: InsightsService, private cdr: ChangeDetectorRef, private router: Router, private langService: LangService, private highlightService: HighlightService, private activityService: ActivityService) {
+  constructor(private http: HttpClient, private authService: AuthService, public translate: TranslateService, private formBuilder: FormBuilder, private authGuard: AuthGuard, public toastr: ToastrService, private patientService: PatientService, private sortService: SortService, private modalService: NgbModal, private apiDx29ServerService: ApiDx29ServerService, private dateService: DateService, private eventsService: EventsService, private webPubSubService: WebPubSubService, private searchService: SearchService, public jsPDFService: jsPDFService, private clipboard: Clipboard, public trackEventsService: TrackEventsService, private route: ActivatedRoute, public insightsService: InsightsService, private cdr: ChangeDetectorRef, private router: Router, private langService: LangService, private highlightService: HighlightService, private activityService: ActivityService, private speechRecognitionService: SpeechRecognitionService) {
     this.screenWidth = window.innerWidth;
     this.categoriesPatients = [
       { "title": this.translate.instant('categoriesPatients.list.cat1'), "icon": "data:image/webp;base64,UklGRoAHAABXRUJQVlA4WAoAAAAwAAAAOwAAOwAASUNDUKACAAAAAAKgbGNtcwRAAABtbnRyUkdCIFhZWiAH5wALAB4AEQAdAClhY3NwTVNGVAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA9tYAAQAAAADTLWxjbXMAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA1kZXNjAAABIAAAAEBjcHJ0AAABYAAAADZ3dHB0AAABmAAAABRjaGFkAAABrAAAACxyWFlaAAAB2AAAABRiWFlaAAAB7AAAABRnWFlaAAACAAAAABRyVFJDAAACFAAAACBnVFJDAAACFAAAACBiVFJDAAACFAAAACBjaHJtAAACNAAAACRkbW5kAAACWAAAACRkbWRkAAACfAAAACRtbHVjAAAAAAAAAAEAAAAMZW5VUwAAACQAAAAcAEcASQBNAFAAIABiAHUAaQBsAHQALQBpAG4AIABzAFIARwBCbWx1YwAAAAAAAAABAAAADGVuVVMAAAAaAAAAHABQAHUAYgBsAGkAYwAgAEQAbwBtAGEAaQBuAABYWVogAAAAAAAA9tYAAQAAAADTLXNmMzIAAAAAAAEMQgAABd7///MlAAAHkwAA/ZD///uh///9ogAAA9wAAMBuWFlaIAAAAAAAAG+gAAA49QAAA5BYWVogAAAAAAAAJJ8AAA+EAAC2xFhZWiAAAAAAAABilwAAt4cAABjZcGFyYQAAAAAAAwAAAAJmZgAA8qcAAA1ZAAAT0AAACltjaHJtAAAAAAADAAAAAKPXAABUfAAATM0AAJmaAAAmZwAAD1xtbHVjAAAAAAAAAAEAAAAMZW5VUwAAAAgAAAAcAEcASQBNAFBtbHVjAAAAAAAAAAEAAAAMZW5VUwAAAAgAAAAcAHMAUgBHAEJBTFBISgEAAAGQQ22bIVm9RmibmW3U2plt27bt3ci8tm3btt03u6eCQddfex1FxAQw/8mr6+lo6+qpK6lr6+np6enqilJj1H0bE/ywJZwG2QFM/IoZmOwRDMi6QO3AoKwJTAoW+vvtG7cvvBQKHwcReSpckzNCyEU4jCB8sPBdCCHkyGEOohHuIcQ4h04eew6Yii8dDW3toTxuhU3tTafo2uKKhG+ia9WKQwtdRxDHJrquc+mgi+1srm4O4XGuriotPUUX33YeB8yRni4ex1/RkAdCyGWtvFm/devmw2uFLNj7keLIhITU+KTUtCnqtlrHj25a5n+ats3GuzBZdgNLgdU0JvzMI4OCMEz8lOlVuBvk8MBzoHYM/gYiBG4rhNQnsBgIpgnqrhSI7C0gfwZW9ylILgPok1PaMLQd4npzbk5OCqn9mMofeoQktaiUY/53BlZQOCBoAwAAkBQAnQEqPAA8AD4xGIlDoiGhFAQAIAMEsgBm/KCel/d+Oj5qM3evL8z9wHaA8S3pReYD9bv1g97T0YegB/XP5z1l/oX9KR+2/o4ZhzokvsdkwLwBnyf939oHxuf4H9V9AH0X7BH6hf73gVUtay9FSidNdcSqkfNA/8a/+Pr91rouwuB/SBa/ZK0+vGACxCB+AfAdCiFHQzODPVbL4hXPv4xAtz+elf8/6gQQ3UAA/v/zxTR//mhiT2bVfGwDXbPYafQJO/TOyb62/7sdR+bVJt/evdSuzij4TL9u+/sxjNRD+hHubZv7vqijVS/S6HEdDzl/36zviV7/ihSeG643QEmcS4YHqQDRJTdBC1ehGnh8P6cYFVuQ7FNaCjBixcB+f8CKsl30iwPvQ1+43VrGyx5ku4vwNmIVmjLV9FUfFsJB3yVkAERbsyi/zOXjdbg36lZMiCZBoPp13u4NOXNaLejqvQUeHnLTbw5KMR4M90TST1FS1zkujkt3I2sdr6xh2V/f/R6TKh7MNvQKMuKnVUJHUrYLR9sWNPU3x0gP8QB3mfFRAcxLNkbPxxeW1+JL6PpUyrnlTiFPvYS1IuDdf/OcyDmur7161W32ngHMcLpR+NUgJ+qQEDQRES0wf85U3NQlu8BXUinpJNCo3V2HwG7DKD9oMh91427yMUHXN6v3LmtQ3X1bk8rjpqkP4VALf//zPEHJsZgOCl99i2/0IVOVUJxLsWofdnwxA+akncXD+6dSVZiQ2u4UIPtNeZ0oH4UUICMPbCcqnxROp9Cu6xTASl3Iv/dEHWHEWdf+Nfjd2TfvwK9BSDyckfrAb2Kny5vUAH3Nu9/v0/SFYko0+XFfEUlzt2k/o7c+/e2V8yisqYo0xngw5QNePnu4KBmy39pd9XOEgZxQ0k+YIFIXqsOj5jhDWjOQoELXn/gWb10AXqA1beeSgh1EaOl6QgZJ4lyi36hiJSgKKOZMJ8B+Rc968ApfG3gjvdaP93AzZZW4f4O1RQ/HW2Z/6ctbyhwCsHg+nLp804tELkn6DYbRCbq5iJ6r8IRr4ZHFW/0akFMIPpwYITjgfqKSewTELtW+tYsYh+Er0XkEHnHA3ISHUMF7B9fyfWsmLL/sVMRXHe11hpCT9R5kO71YFfQ/ACkSeUSh3PyAAAA=", "idCat": "treatAndDrugs", "questions": [] },
@@ -571,6 +616,26 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
   get efappointment() { return this.appointmentsForm.controls; }
 
   async ngOnDestroy() {
+    // Detener reconocimiento de voz si está activo
+    if (this.recording) {
+      this.speechRecognitionService.stop();
+    }
+    
+    // Detener reconocimiento de voz del chat si está activo
+    if (this.chatRecording) {
+      this.speechRecognitionService.stop();
+    }
+    
+    // Limpiar suscripciones de reconocimiento de voz
+    if (this.speechSubscription) {
+      this.speechSubscription.unsubscribe();
+    }
+    
+    // Limpiar suscripciones de reconocimiento de voz del chat
+    if (this.chatSpeechSubscription) {
+      this.chatSpeechSubscription.unsubscribe();
+    }
+    
     //save this.messages in bbdd
     if (this.currentPatient) {
       await this.saveMessages(this.currentPatient);
@@ -687,7 +752,19 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
   }
 
   isDateMissing(date: any): boolean {
-    return date === null;
+    if (date === null || date === undefined) {
+      return true;
+    }
+    // También verificar si es una fecha inválida (como 1 de enero de 1970 que puede ser un valor por defecto)
+    const dateObj = new Date(date);
+    if (isNaN(dateObj.getTime())) {
+      return true;
+    }
+    // Si la fecha es 1 de enero de 1970 (epoch 0), considerarla como fecha faltante
+    if (dateObj.getTime() === 0) {
+      return true;
+    }
+    return false;
   }
 
   /**
@@ -703,10 +780,15 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
       this.currentPatientId = patient.sub;
       this.initEnvironment();
       
-      // Limpiar resultados de DxGPT si cambias de paciente
-      if (this.currentView === 'dxgpt') {
-        this.dxGptResults = null;
-      }
+      // Limpiar resultados de DxGPT siempre cuando cambias de paciente
+      this.dxGptResults = null;
+      this.isDxGptLoading = false;
+      
+      // Limpiar datos de Rarescope (Mis Necesidades) cuando cambias de paciente
+      this.rarescopeNeeds = [''];
+      this.additionalNeeds = [];
+      this.rarescopeError = null;
+      this.isLoadingRarescope = false;
     } else {
       // No hay paciente
       this.currentPatientId = null;
@@ -724,6 +806,60 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
   async ngOnInit() {
     this.showCameraButton = this.isMobileDevice();
 
+    // Inicializar soporte de voz para el chat
+    this.chatVoiceSupported = this.speechRecognitionService.isSupported();
+    
+    // Suscribirse a los resultados del reconocimiento de voz para el chat
+    if (this.chatVoiceSupported) {
+      let lastFinalText = '';
+      let lastInterimText = '';
+      this.chatSpeechSubscription = this.speechRecognitionService.results$.subscribe((result) => {
+        if (result && result.text && this.chatRecording) {
+          if (result.isFinal) {
+            // Para resultados finales, extraer solo el nuevo texto
+            const newText = result.text.replace(lastFinalText, '').trim();
+            if (newText) {
+              // Remover el último texto intermedio si existe
+              if (lastInterimText && this.message.endsWith(lastInterimText)) {
+                this.message = this.message.slice(0, -lastInterimText.length);
+              }
+              this.message = (this.message.trim() ? this.message.trim() + ' ' : '') + newText;
+            }
+            lastFinalText = result.text;
+            lastInterimText = '';
+          } else {
+            // Para resultados intermedios, reemplazar el último texto intermedio
+            if (lastInterimText && this.message.endsWith(lastInterimText)) {
+              this.message = this.message.slice(0, -lastInterimText.length) + result.text;
+            } else {
+              // Si no hay texto intermedio previo, añadir el nuevo
+              const baseMessage = this.message.trim();
+              this.message = (baseMessage ? baseMessage + ' ' : '') + result.text;
+            }
+            lastInterimText = result.text;
+          }
+          
+          // Forzar el redimensionamiento del textarea cuando se actualiza el mensaje por voz
+          setTimeout(() => {
+            const textarea = document.querySelector('#chat-container textarea') as HTMLTextAreaElement;
+            if (textarea) {
+              // Disparar evento input para que autoResize se ejecute
+              const event = new Event('input', { bubbles: true });
+              textarea.dispatchEvent(event);
+            }
+          }, 0);
+        }
+      });
+
+      // Suscribirse a errores del reconocimiento de voz del chat
+      this.speechRecognitionService.errors$.subscribe((error) => {
+        if (error && this.chatRecording) {
+          this.toastr.error('', error);
+          this.chatRecording = false;
+        }
+      });
+    }
+
     // Precargar imagen DxGPT
     const dxGptLogo = new Image();
     dxGptLogo.src = 'assets/img/logo-dxgpt.png';
@@ -738,7 +874,7 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     await this.updateSuggestions(currentLang);
     this.getTranslations();
     this.suggestions = this.getAllSuggestions(4);
-
+    
     this.messageSubscription = this.webPubSubService.getMessageObservable().subscribe(message => {
       this.handleMessage(message);
     });
@@ -757,8 +893,15 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
       this.currentView = 'chat';
   }
 
-  setView(view: string) {
+  async setView(view: string) {
     this.currentView = view;
+    
+    // Cerrar el sidebar móvil de herramientas cuando se cambia a cualquier vista
+    // (las herramientas no son una vista, solo un sidebar que se muestra sobre chat)
+    if (this.isSmallScreen() && this.rightSidebarOpenMobile) {
+      this.rightSidebarOpenMobile = false;
+    }
+    
     if(view === 'documents'){
       this.sidebarOpen = true;
       this.notesSidebarOpen = false;
@@ -768,6 +911,9 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     }else if(view === 'chat'){
       this.sidebarOpen = false;
       this.notesSidebarOpen = false;
+      //scroll to bottom
+      await this.delay(200);
+      this.scrollToBottom();
     }else if(view === 'notes'){
       this.sidebarOpen = false;
       this.notesSidebarOpen = true;
@@ -785,7 +931,7 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
       this.sidebarOpen = false;
       this.notesSidebarOpen = false;
     } 
-    this.scrollToTop();
+    //this.scrollToTop();
   }
 
   handleChangeView(view: string) {
@@ -874,13 +1020,14 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
   }
   
   loadRarescopeData() {
-    if (!this.currentPatient?.sub) {
+    const currentPatient = this.authService.getCurrentPatient();
+    if (!currentPatient?.sub) {
       console.warn('No hay paciente seleccionado para cargar datos de Rarescope');
       return;
     }
 
     // Cargar desde la base de datos
-    this.http.get(environment.api + '/api/rarescope/load/'+this.authService.getCurrentPatient().sub)
+    this.http.get(environment.api + '/api/rarescope/load/'+currentPatient.sub)
       .subscribe({
         next: (response: any) => {
           if (response.success && response.data) {
@@ -978,11 +1125,52 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
 
   handlePatientChanged(patient: any) {
     this.saveMessages(patient.sub);
+    
+    // Limpiar datos de las herramientas cuando cambia el paciente
+    this.dxGptResults = null;
+    this.isDxGptLoading = false;
+    this.rarescopeNeeds = [''];
+    this.additionalNeeds = [];
+    this.rarescopeError = null;
+    this.isLoadingRarescope = false;
   }
 
 
   private async handleMessage(message: any) {
     console.log('Message received in component:', message);
+    
+    // Verificar si el usuario está autenticado antes de procesar mensajes
+    if (!this.authService.isAuthenticated()) {
+      console.warn('⚠️ Mensaje WebPubSub recibido pero usuario no autenticado, ignorando:', message);
+      return;
+    }
+    
+    // Validar que el mensaje no sea demasiado antiguo (más de 5 minutos)
+    try {
+      const parsedData = JSON.parse(message.data);
+      
+      // Manejar mensajes de DxGPT (procesamiento asíncrono)
+      if (parsedData.type === 'dxgpt-processing' || parsedData.type === 'dxgpt-result') {
+        this.handleDxGptMessage(parsedData);
+        return;
+      }
+      
+      if (parsedData.time) {
+        const messageTime = new Date(parsedData.time).getTime();
+        const currentTime = Date.now();
+        const messageAge = currentTime - messageTime;
+        const maxAge = 5 * 60 * 1000; // 5 minutos en milisegundos
+        
+        if (messageAge > maxAge) {
+          console.warn(`⚠️ Mensaje WebPubSub demasiado antiguo (${Math.round(messageAge / 1000 / 60)} minutos), ignorando:`, parsedData);
+          return;
+        }
+      }
+    } catch (error) {
+      console.error('Error parsing message data:', error);
+      // Continuar con el procesamiento normal si hay error al parsear
+    }
+    
     this.actualStatus = '';
 
     const parsedData = JSON.parse(message.data);
@@ -1015,6 +1203,86 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
 
       }
       this.handleStep(parsedData);
+    }
+  }
+
+  /**
+   * Maneja mensajes de WebPubSub relacionados con DxGPT
+   */
+  private handleDxGptMessage(parsedData: any) {
+    console.log('📨 Mensaje DxGPT recibido:', parsedData);
+    console.log('📨 Current patient ID:', this.currentPatientId);
+    
+    // Validar que el mensaje sea para el paciente actual
+    if (parsedData.patientId && this.currentPatientId) {
+      // El servidor envía el patientId encriptado, comparar con el actual
+      const currentEncrypted = this.currentPatientId; // Ya viene encriptado desde el componente
+      console.log('📨 Comparando patientIds:');
+      console.log('  - Mensaje patientId:', parsedData.patientId);
+      console.log('  - Paciente actual:', currentEncrypted);
+      console.log('  - ¿Coinciden?', parsedData.patientId === currentEncrypted);
+      
+      if (parsedData.patientId !== currentEncrypted) {
+        console.log('⚠️ Mensaje DxGPT ignorado: no corresponde al paciente actual');
+        return;
+      }
+      console.log('✅ PatientId válido, procesando mensaje...');
+    } else {
+      console.log('⚠️ Mensaje DxGPT sin patientId o sin paciente actual seleccionado');
+      console.log('  - parsedData.patientId:', parsedData.patientId);
+      console.log('  - this.currentPatientId:', this.currentPatientId);
+      // Continuar de todas formas si no hay patientId (por compatibilidad)
+    }
+    
+    if (parsedData.type === 'dxgpt-processing') {
+      // Actualización de progreso
+      if (parsedData.message) {
+        const timeMessage = this.translate.instant('dxgpt.async.timeMessage') || 'Este proceso puede tardar varios minutos dependiendo del número de documentos.';
+        
+        // Actualizar el mensaje de SweetAlert si está abierto
+        Swal.update({
+          html: `<div style="text-align: left;">
+            <p><strong>${parsedData.message}</strong></p>
+            ${parsedData.progress ? `<div class="progress" style="margin-top: 10px; margin-bottom: 10px;">
+              <div class="progress-bar" role="progressbar" style="width: ${parsedData.progress}%">${parsedData.progress}%</div>
+            </div>` : ''}
+            <p style="font-size: 0.9em; color: #666; margin-top: 10px;"><em>${timeMessage}</em></p>
+          </div>`
+        });
+      }
+    } else if (parsedData.type === 'dxgpt-result') {
+      // Resultado final
+      Swal.close();
+      
+      if (parsedData.success && parsedData.analysis) {
+        this.dxGptResults = {
+          success: true,
+          analysis: parsedData.analysis
+        };
+        this.isDxGptLoading = false;
+        this.cdr.detectChanges();
+        
+        Swal.fire({
+          title: this.translate.instant('dxgpt.async.completed') || 'Análisis completado',
+          text: this.translate.instant('dxgpt.async.success') || 'El análisis de diagnóstico diferencial se ha completado correctamente.',
+          icon: 'success',
+          confirmButtonText: 'OK'
+        });
+      } else {
+        this.dxGptResults = {
+          success: false,
+          analysis: parsedData.error || this.translate.instant('dxgpt.errorMessage')
+        };
+        this.isDxGptLoading = false;
+        this.cdr.detectChanges();
+        
+        Swal.fire({
+          title: this.translate.instant('dxgpt.async.error') || 'Error en el análisis',
+          text: parsedData.error || this.translate.instant('dxgpt.errorMessage'),
+          icon: 'error',
+          confirmButtonText: 'OK'
+        });
+      }
     }
   }
 
@@ -1060,20 +1328,69 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
       const doc = { ...this.docs[docIndex] };
 
       if (parsedData.status === 'categoriria done') {
+        const oldOriginalDate = doc.originaldate;
         doc.badge = this.getBadgeClass(parsedData.value);
         doc.categoryTag = this.getTranslatedCategoryTag(parsedData.value);
         doc.originaldate = this.isValidDate(parsedData.date) ? new Date(parsedData.date) : null;
+        this.docs[docIndex] = doc;
+        
+        // Si cambió el originaldate (de null a fecha o viceversa), reordenar
+        const hadOriginalDate = !this.isDateMissing(oldOriginalDate);
+        const hasOriginalDate = !this.isDateMissing(doc.originaldate);
+        if (hadOriginalDate !== hasOriginalDate) {
+          this.reorderDocumentsByStatus();
+        }
       }
 
       if (!this.isDocStatusFinal(doc.status)) {
+        const oldStatus = doc.status;
         doc.status = this.getNewDocStatus(parsedData.status);
         this.docs[docIndex] = doc;
+        
+        // Si el estado cambió de 'inProcess' a otro, reordenar los documentos
+        if (oldStatus === 'inProcess' && doc.status !== 'inProcess') {
+          this.reorderDocumentsByStatus();
+        }
       }
     }
   }
 
-  private isValidDate(date: string): boolean {
-    return !isNaN(new Date(date).getTime());
+  // Ordena un array de documentos: procesando -> sin fecha original -> con fecha original
+  private sortDocumentsByStatus(documents: any[]): any[] {
+    // Separar en 3 grupos: procesando, sin fecha original, con fecha original
+    const processingDocs = documents.filter(doc => doc.status === 'inProcess');
+    const docsWithoutOriginalDate = documents.filter(doc => doc.status !== 'inProcess' && this.isDateMissing(doc.originaldate));
+    const docsWithOriginalDate = documents.filter(doc => doc.status !== 'inProcess' && !this.isDateMissing(doc.originaldate));
+    
+    // Ordenar documentos en procesamiento por fecha de subida (más recientes primero)
+    processingDocs.sort(this.sortService.DateSortInver("date"));
+    
+    // Ordenar documentos sin fecha original por fecha de subida (más recientes primero)
+    docsWithoutOriginalDate.sort(this.sortService.DateSortInver("date"));
+    
+    // Ordenar documentos con fecha original por originaldate (más recientes primero)
+    docsWithOriginalDate.sort((a, b) => {
+      const dateA = a.originaldate ? new Date(a.originaldate).getTime() : 0;
+      const dateB = b.originaldate ? new Date(b.originaldate).getTime() : 0;
+      return dateB - dateA; // Más recientes primero
+    });
+    
+    // Combinar: procesando -> sin fecha original -> con fecha original
+    return [...processingDocs, ...docsWithoutOriginalDate, ...docsWithOriginalDate];
+  }
+
+  // Reordena los documentos: procesando -> sin fecha original -> con fecha original
+  reorderDocumentsByStatus() {
+    this.docs = this.sortDocumentsByStatus(this.docs);
+    this.updateDocumentSelection();
+  }
+
+  private isValidDate(date: string | null | undefined): boolean {
+    if (date === null || date === undefined || date === '') {
+      return false;
+    }
+    const dateObj = new Date(date);
+    return !isNaN(dateObj.getTime());
   }
 
   private isDocStatusFinal(status: string): boolean {
@@ -1097,6 +1414,35 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     try {
       document.getElementById('chatContainer').scrollIntoView(true);
     } catch (err) { }
+  }
+
+  scrollToBottomPage(): void {
+    window.scroll({
+      top: document.body.scrollHeight,
+      left: 0,
+      behavior: 'smooth'
+    });
+  }
+
+  @HostListener("window:scroll", [])
+  onWindowScroll() {
+    // Solo detectar scroll cuando estamos en la vista de chat
+    if (this.currentView !== 'chat') {
+      this.scrollToBottomVisible = false;
+      return;
+    }
+
+    let number = window.pageYOffset || document.documentElement.scrollTop || document.body.scrollTop || 0;
+    const windowHeight = window.innerHeight;
+    const documentHeight = document.documentElement.scrollHeight;
+    
+    // Scroll to bottom button visibility
+    // Mostrar cuando estamos cerca del inicio y ocultar cuando nos acercamos al final
+    if (number < (documentHeight - windowHeight - 600)) {
+      this.scrollToBottomVisible = true;
+    } else {
+      this.scrollToBottomVisible = false;
+    }
   }
 
   addMessage(message: any) {
@@ -1266,6 +1612,14 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
   }
 
   private async processNavigatorAnswer(parsedData: any) {
+    // Protección contra respuestas duplicadas: usar timestamp + answer como ID único
+    const answerId = `${parsedData.time || Date.now()}_${parsedData.answer?.substring(0, 50) || ''}`;
+    if (this.lastProcessedAnswerId === answerId) {
+      console.warn('⚠️ Respuesta duplicada detectada, ignorando:', answerId);
+      return;
+    }
+    this.lastProcessedAnswerId = answerId;
+    
     // Limpiar el estado inmediatamente al recibir la respuesta
     this.callingOpenai = false;
     this.gettingSuggestions = false;
@@ -1627,8 +1981,9 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
       .subscribe((resDocs: any) => {
         console.log(resDocs)
         if (resDocs.length > 0) {
-          resDocs.sort(this.sortService.DateSortInver("date"));
-          this.docs = resDocs;
+          // Ordenar documentos: procesando -> sin fecha original -> con fecha original
+          this.docs = this.sortDocumentsByStatus(resDocs);
+          
           for (var i = 0; i < this.docs.length; i++) {
             const fileName = this.docs[i].url.split("/").pop();
             this.docs[i].title = fileName;
@@ -1642,7 +1997,12 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
           this.defaultDoc = this.docs[0];
         }
         this.loadedDocs = true;
-        this.assignFeedbackToDocs(this.docs);
+        //this.assignFeedbackToDocs(this.docs);
+        
+        // Hacer scroll después de que se carguen los documentos
+        setTimeout(() => {
+          this.scrollToBottom();
+        }, 300);
       }, (err) => {
         console.log(err);
         this.insightsService.trackException(err);
@@ -1716,7 +2076,7 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
       const eventsResponse: any = await this.http.get(environment.api + '/api/events/' + this.currentPatient).toPromise();
 
       if (!eventsResponse.message && eventsResponse.length > 0) {
-        eventsResponse.sort(this.sortService.DateSort("dateInput"));
+        eventsResponse.sort(this.sortService.DateSort("date"));
         if (!newEvent) {
           this.allTypesEvents = eventsResponse;
           this.allEvents = eventsResponse;
@@ -1724,17 +2084,29 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
         for (let i = 0; i < eventsResponse.length; i++) {
           eventsResponse[i].dateInput = new Date(eventsResponse[i].dateInput);
           let dateWithoutTime = '';
+          let dateEndWithoutTime = '';
           if (eventsResponse[i].date != undefined && eventsResponse[i].date.indexOf("T") != -1) {
             dateWithoutTime = eventsResponse[i].date.split("T")[0];
           }
+          if (eventsResponse[i].dateEnd != undefined && eventsResponse[i].dateEnd.indexOf("T") != -1) {
+            dateEndWithoutTime = eventsResponse[i].dateEnd.split("T")[0];
+          }
           if (eventsResponse[i].key != undefined) {
-            this.initialEvents.push({
+            const initialEvent: any = {
               "insight": eventsResponse[i].name,
               "date": dateWithoutTime,
               "key": eventsResponse[i].key
-            });
+            };
+            if (dateEndWithoutTime) {
+              initialEvent.dateEnd = dateEndWithoutTime;
+            }
+            this.initialEvents.push(initialEvent);
           }
-          this.metadata.push({ name: eventsResponse[i].name, date: dateWithoutTime });
+          const metadataItem: any = { name: eventsResponse[i].name, date: dateWithoutTime };
+          if (dateEndWithoutTime) {
+            metadataItem.dateEnd = dateEndWithoutTime;
+          }
+          this.metadata.push(metadataItem);
         }
         this.events = eventsResponse;
       }
@@ -1804,6 +2176,15 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
   openUpdateDocDate(doc, PanelChangeDate) {
     // create a copy on this.tempDoc
     this.tempDoc = JSON.parse(JSON.stringify(doc));
+    
+    // Si no hay originaldate, usar la fecha de subida (date) como valor por defecto
+    if (!this.tempDoc.originaldate) {
+      this.tempDoc.originaldate = this.tempDoc.date ? new Date(this.tempDoc.date) : new Date();
+    } else {
+      // Asegurar que originaldate sea un objeto Date si es una cadena
+      this.tempDoc.originaldate = new Date(this.tempDoc.originaldate);
+    }
+    
     if (this.modalReference2 != undefined) {
       this.modalReference2.close();
       this.modalReference2 = undefined;
@@ -1910,6 +2291,25 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
 
   async startEditing() {
     this.editingTitle = true;
+  }
+  
+  // Calcular el ancho del input basado en el contenido
+  getInputWidth(text: string): number {
+    if (!text) return 200; // Ancho mínimo
+    // Aproximadamente 8px por carácter (ajustable según la fuente)
+    const charWidth = 8;
+    const minWidth = 200;
+    const maxWidth = 600;
+    const calculatedWidth = text.length * charWidth + 40; // +40 para padding
+    return Math.max(minWidth, Math.min(calculatedWidth, maxWidth));
+  }
+  
+  // Ajustar el ancho del input mientras se escribe
+  adjustInputWidth(event: any) {
+    const input = event.target;
+    const text = input.value;
+    const newWidth = this.getInputWidth(text);
+    input.style.width = newWidth + 'px';
   }
 
   cancelEditing() {
@@ -2213,8 +2613,20 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     this.notallergy = value;
   }
 
+  onChatInputKeydown(event: KeyboardEvent) {
+    // Si se presiona Enter sin Shift, enviar el mensaje
+    if (event.key === 'Enter' && !event.shiftKey) {
+      event.preventDefault(); // Prevenir el salto de línea
+      this.sendMessage();
+    }
+    // Si se presiona Shift+Enter, permitir el salto de línea (comportamiento por defecto)
+  }
+
   sendMessage() {
-    if (!this.message) {
+    // Limpiar espacios en blanco y saltos de línea al inicio y final
+    const trimmedMessage = this.message ? this.message.trim() : '';
+    
+    if (!trimmedMessage) {
       Swal.fire(this.translate.instant("generics.Please write a message"), '', "warning");
       return;
     }
@@ -2223,12 +2635,19 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
       return;
     }
 
+    // Guardar el mensaje antes de limpiarlo
+    const messageToSend = trimmedMessage;
+    
     this.addMessage({
-      text: this.message,
+      text: messageToSend,
       isUser: true
     });
     this.suggestions = [];
-    this.detectIntent();
+    this.message = ''; // Limpiar el textarea después de enviar
+    
+    // Pasar el mensaje guardado a detectIntent
+    this.tempInput = messageToSend;
+    this.detectIntent(messageToSend);
   }
 
   selectCustomSuggestion(suggestion) {
@@ -2275,66 +2694,31 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     }
   }
 
-  detectIntent() {
+  detectIntent(msg?: string) {
+    // Protección adicional: evitar múltiples llamadas simultáneas
+    if (this.callingOpenai) {
+      console.warn('detectIntent: Ya hay una llamada en curso, ignorando esta solicitud');
+      return;
+    }
+    
+    // Usar el mensaje pasado como parámetro, o this.message como fallback
+    const messageToProcess = msg || this.message || this.tempInput;
+    
+    if (!messageToProcess || messageToProcess.trim() === '') {
+      console.error('detectIntent: No hay mensaje para procesar!');
+      return;
+    }
+    
     this.proposedEvents = [];
     this.proposedAppointments = [];
-    this.callingOpenai = true;
     this.actualStatus = 'procesando intent';
     this.statusChange();
-    var promIntent = this.translate.instant("promts.0", {
-      value: this.message,
-    });
-    this.valueProm = { value: promIntent };
-    this.tempInput = this.message;
-    var testLangText = this.message
-    if (testLangText.length > 0) {
-      this.subscription.add(this.apiDx29ServerService.getDetectLanguage(testLangText)
-        .subscribe((res: any) => {
-          if (res[0].language != 'en') {
-            const detectedLanguage = res[0].language;
-            const confidenceScore = res[0].score;
-            const confidenceThreshold = 0.7;
-            if (confidenceScore < confidenceThreshold) {
-              console.warn('Confianza baja en la detección del idioma, usando el idioma preferido del usuario.');
-              this.detectedLang = this.preferredResponseLanguage || 'en'; // Fallback a ingles si no hay preferencia
-            } else {
-              this.detectedLang = detectedLanguage; // Usa el idioma detectado
 
-            }
-
-            var info = [{ "Text": this.message }]
-            this.subscription.add(this.apiDx29ServerService.getTranslationDictionary(this.detectedLang, info)
-              .subscribe((res2: any) => {
-                var textToTA = this.message;
-                if (res2[0] != undefined) {
-                  if (res2[0].translations[0] != undefined) {
-                    textToTA = res2[0].translations[0].text;
-                    this.tempInput = res2[0].translations[0].text;
-                  }
-                }
-                promIntent = this.translate.instant("promts.0", {
-                  value: textToTA,
-                });
-                this.valueProm = { value: promIntent };
-                this.continueSendIntent(textToTA);
-              }, (err) => {
-                console.log(err);
-                this.insightsService.trackException(err);
-                this.continueSendIntent(this.message);
-              }));
-          } else {
-            this.detectedLang = 'en';
-            this.continueSendIntent(this.message);
-          }
-
-        }, (err) => {
-          console.log(err);
-          this.insightsService.trackException(err);
-          this.toastr.error('', this.translate.instant("generics.error try again"));
-        }));
-    } else {
-      this.continueSendIntent(this.message);
-    }
+    // La detección de idioma y traducción ahora se hace en el backend
+    // Simplemente llamar directamente a continueSendIntent con el mensaje original
+    // continueSendIntent establecerá callingOpenai = true
+    this.tempInput = messageToProcess;
+    this.continueSendIntent(messageToProcess);
   }
 
   private initializeContext() {
@@ -2347,6 +2731,31 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
   }
 
   continueSendIntent(msg) {
+    // Protección adicional: evitar múltiples llamadas simultáneas a callnavigator
+    // Usar verificación síncrona inmediata para evitar condiciones de carrera
+    if (this.callingOpenai) {
+      console.warn('continueSendIntent: Ya hay una llamada en curso, ignorando esta solicitud. Mensaje:', msg?.substring(0, 50));
+      return;
+    }
+    
+    // Verificar si ya hay una llamada pendiente con el mismo mensaje (protección contra duplicados)
+    const msgHash = msg ? msg.substring(0, 50).replace(/\s+/g, '') : '';
+    const lastCallKey = `lastCall_${msgHash}`;
+    const lastCallTime = (this as any)[lastCallKey];
+    const now = Date.now();
+    
+    if (lastCallTime && (now - lastCallTime) < 5000) { // 5 segundos de protección
+      console.warn(`continueSendIntent: Llamada duplicada detectada (última llamada hace ${Math.round((now - lastCallTime) / 1000)}s), ignorando. Mensaje:`, msg?.substring(0, 50));
+      return;
+    }
+    
+    // Guardar el tiempo de esta llamada
+    (this as any)[lastCallKey] = now;
+    
+    // Marcar que estamos haciendo una llamada INMEDIATAMENTE para evitar condiciones de carrera
+    this.callingOpenai = true;
+    console.log('continueSendIntent: Iniciando llamada a callnavigator. Mensaje:', msg?.substring(0, 50));
+    
     console.log('Context before call:', this.context);
     // Ensure context is not empty
     if (!this.context || this.context.length === 0) {
@@ -2356,13 +2765,25 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
 
     let docsSelected = this.docs.filter(doc => doc.selected && (doc.status == 'finished' || doc.status == 'done' || doc.status == 'resumen ready')).map(doc => doc.url);
     console.log(docsSelected)
+    
+    // Generar un ID único para esta llamada para rastrear llamadas duplicadas
+    const callId = `${Date.now()}_${Math.random().toString(36).substring(7)}`;
+    console.log(`[${callId}] continueSendIntent: Preparando llamada HTTP a callnavigator`);
+    
     var query = { "question": msg, "context": this.context, "containerName": this.containerName, "index": this.currentPatient, "userId": this.authService.getIdUser(), "docs": docsSelected };
     this.subscription.add(this.http.post(environment.api + '/api/callnavigator/'+this.authService.getCurrentPatient().sub, query)
       .subscribe(async (res: any) => {
+        console.log(`[${callId}] continueSendIntent: Respuesta HTTP recibida:`, res.action);
         if (res.action == 'Data') {
 
         } else if (res.action == 'Question') {
-
+          // Respuesta HTTP antigua - ignorar, la respuesta real viene por WebPubSub
+          // No hacer nada aquí para evitar respuestas duplicadas
+          console.warn(`[${callId}] continueSendIntent: Recibida respuesta HTTP antigua (Question), ignorando. La respuesta real viene por WebPubSub`);
+        } else if (res.action == 'Processing') {
+          // Respuesta HTTP indicando que se procesará por WebPubSub
+          // No hacer nada, esperar la respuesta por WebPubSub
+          console.log(`[${callId}] continueSendIntent: Respuesta HTTP Processing recibida, esperando respuesta por WebPubSub`);
         } else if (res.action == 'Share') {
           this.message = '';
           this.addMessage({
@@ -2402,8 +2823,16 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
 
       }, (err) => {
         this.callingOpenai = false;
-        console.log(err);
+        console.error(`[${callId}] Error en continueSendIntent:`, err);
         this.insightsService.trackException(err);
+        
+        // Si es un error CORS o de red, no mostrar mensaje de error al usuario
+        // ya que puede ser una llamada duplicada que se canceló
+        if (err.status === 0 || err.status === null) {
+          console.warn(`[${callId}] Error de red/CORS detectado, probablemente llamada duplicada cancelada. Ignorando.`);
+          return;
+        }
+        
         //this.message = '';
         this.addMessage({
           text: '<strong>' + this.translate.instant("generics.error try again") + '</strong>',
@@ -2672,6 +3101,7 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     this.eventsForm = this.formBuilder.group({
       name: ['', Validators.required],
       date: [new Date()],
+      dateEnd: [null],
       key: [''],
       notes: []
     });
@@ -2727,17 +3157,6 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     this.callingOpenai = false;
   }
 
-  dateGreaterThan(dateField: string): any {
-    return (control: any): { [key: string]: any } => {
-      const dateInput = control.value;
-      const dateFieldControl = control.root.get(dateField);
-      if (dateFieldControl && dateInput && dateFieldControl.value && dateInput <= dateFieldControl.value) {
-        return { 'dateGreaterThan': true };
-      }
-      return null;
-    };
-  }
-
   get date() {
     //return this.seizuresForm.get('date').value;
     let minDate = new Date(this.eventsForm.get('date').value);
@@ -2769,6 +3188,9 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
 
       if (this.eventsForm.value.date != null) {
         this.eventsForm.value.date = this.dateService.transformDate(this.eventsForm.value.date);
+      }
+      if (this.eventsForm.value.dateEnd != null) {
+        this.eventsForm.value.dateEnd = this.dateService.transformDate(this.eventsForm.value.dateEnd);
       }
 
       if (this.authGuard.testtoken()) {
@@ -2874,7 +3296,8 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
         this.summaryDoc = res;
         //this.resultText = res;
         let documentsToCheck = [this.actualDoc];
-        this.checkIfNeedFeedback(contentSummaryDoc, documentsToCheck, 'individual')
+        //this.checkIfNeedFeedback(contentSummaryDoc, documentsToCheck, 'individual')
+        this.showContent(contentSummaryDoc);
         this.loadEventFromDoc(doc);
       }, (err) => {
         this.openingResults = false;
@@ -2882,6 +3305,25 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
         this.insightsService.trackException(err);
         this.toastr.error('', this.translate.instant('messages.msgError'));
       }));
+  }
+
+  async showContent(contentSummaryDoc) {
+    let ngbModalOptions: NgbModalOptions = {
+      backdrop: 'static',
+      keyboard: false,
+      windowClass: 'ModalClass-lg' // xl, lg, sm
+    };
+    if (this.modalReference != undefined) {
+      this.modalReference.close();
+      this.modalReference = undefined;
+    }
+    this.selectedIndexTab = 0;
+    this.modalReference = this.modalService.open(contentSummaryDoc, ngbModalOptions);
+    await this.delay(200)
+    document.getElementById('contentHeader').scrollIntoView(true);
+
+    // CLOSE SWAL MSG
+    Swal.close();
   }
 
   checkIfNeedFeedback(contentSummaryDoc, documentsToCheck, type) {
@@ -3223,8 +3665,9 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
         // mostrar toast diciendo que ha refrescado los documentos
         this.toastr.info('', this.translate.instant("generics.Documents have been refreshed"));
         if (resDocs.length > 0) {
-          resDocs.sort(this.sortService.DateSortInver("date"));
-          this.docs = resDocs;
+          // Ordenar documentos: procesando -> sin fecha original -> con fecha original
+          this.docs = this.sortDocumentsByStatus(resDocs);
+          
           for (var i = 0; i < this.docs.length; i++) {
             const fileName = this.docs[i].url.split("/").pop();
             this.docs[i].title = fileName;
@@ -3235,7 +3678,7 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
 
           }
           this.docs.forEach(doc => doc.selected = true);
-          this.assignFeedbackToDocs(this.docs);
+          //this.assignFeedbackToDocs(this.docs);
         }
 
       }, (err) => {
@@ -3258,20 +3701,11 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
         const currentVersion = environment.version + ' - ' + environment.subversion;
         if (this.summaryJson.version == currentVersion) {
           let documentsToCheck = this.docs;
-          this.checkIfNeedFeedback(this.contentviewSummary, documentsToCheck, 'general')
+          this.showContent(this.contentviewSummary);
+          //this.checkIfNeedFeedback(this.contentviewSummary, documentsToCheck, 'general')
         } else {
           this.getPatientSummary(true);
         }
-        //this.resultText = res;
-        /*let ngbModalOptions: NgbModalOptions = {
-          keyboard: false,
-          windowClass: 'ModalClass-sm' // xl, lg, sm
-        };
-        if (this.modalReference != undefined) {
-          this.modalReference.close();
-          this.modalReference = undefined;
-        }
-        this.modalReference = this.modalService.open(this.contentviewSummary, ngbModalOptions);*/
 
       }, (err) => {
         console.log(err);
@@ -3459,6 +3893,7 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     this.eventsForm = this.formBuilder.group({
       name: ['', Validators.required],
       date: [new Date()],
+      dateEnd: [null],
       notes: [],
       key: []
     });
@@ -3466,6 +3901,9 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
       event.date = new Date(event.date);
     } else {
       event.date = new Date();
+    }
+    if (event.dateEnd != undefined) {
+      event.dateEnd = new Date(event.dateEnd);
     }
     event.name = event.insight;
     //info.date = this.dateService.transformDate(new Date());
@@ -3477,6 +3915,7 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     var info = {
       name: event.insight.toLowerCase(),
       date: event.date,
+      dateEnd: event.dateEnd || null,
       notes: '',
       data: event.data,
       key: event.key
@@ -3505,10 +3944,14 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
       this.eventsForm = this.formBuilder.group({
         name: ['', Validators.required],
         date: [new Date()],
+        dateEnd: [null],
         notes: [],
         key: []
       });
       event.date = new Date();
+      if (event.dateEnd) {
+        event.dateEnd = new Date(event.dateEnd);
+      }
       //info.date = this.dateService.transformDate(new Date());
       this.eventsForm.patchValue(event);
       savePromises.push(this.saveData(false, false));
@@ -3844,32 +4287,71 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
   }
 
   setupRecognition() {
-    if ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window) {
-      // El navegador soporta la funcionalidad
-      console.log('soporta')
-      this.recognition = new webkitSpeechRecognition();
-      let lang = localStorage.getItem('lang');
-      if (lang == 'en') {
-        this.recognition.lang = 'en-US';
-      } else if (lang == 'es') {
-        this.recognition.lang = 'es-ES';
-      } else if (lang == 'fr') {
-        this.recognition.lang = 'fr-FR';
-      } else if (lang == 'de') {
-        this.recognition.lang = 'de-DE';
-      } else if (lang == 'it') {
-        this.recognition.lang = 'it-IT';
-      } else if (lang == 'pt') {
-        this.recognition.lang = 'pt-PT';
-      }
-      this.recognition.continuous = true;
-      this.recognition.maxAlternatives = 3;
-      this.supported = true;
-    } else {
-      // El navegador no soporta la funcionalidad
-      this.supported = false;
-      console.log('no soporta')
+    // Usar el servicio de reconocimiento de voz que maneja Web Speech API y Azure
+    this.supported = this.speechRecognitionService.isSupported();
+    
+    // Limpiar suscripciones anteriores si existen
+    if (this.speechSubscription) {
+      this.speechSubscription.unsubscribe();
     }
+    
+    // Suscribirse a los resultados del reconocimiento
+    let lastFinalText = '';
+    let lastInterimText = '';
+    this.speechSubscription = this.speechRecognitionService.results$.subscribe((result) => {
+      if (result && result.text) {
+        if (result.isFinal) {
+          // Para resultados finales, extraer solo el nuevo texto
+          const newText = result.text.replace(lastFinalText, '').trim();
+          if (newText) {
+            // Remover el último texto intermedio si existe
+            if (lastInterimText && this.medicalText.endsWith(lastInterimText)) {
+              this.medicalText = this.medicalText.slice(0, -lastInterimText.length);
+            }
+            this.medicalText += (this.medicalText && !this.medicalText.endsWith('\n') ? '\n' : '') + newText;
+          }
+          lastFinalText = result.text;
+          lastInterimText = '';
+        } else {
+          // Para resultados intermedios, reemplazar el último texto intermedio
+          if (lastInterimText && this.medicalText.endsWith(lastInterimText)) {
+            this.medicalText = this.medicalText.slice(0, -lastInterimText.length) + result.text;
+          } else {
+            // Si no hay texto intermedio previo, añadir el nuevo
+            const currentText = this.medicalText.trim();
+            if (currentText && !currentText.endsWith('\n')) {
+              this.medicalText += '\n' + result.text;
+            } else {
+              this.medicalText += result.text;
+            }
+          }
+          lastInterimText = result.text;
+        }
+      }
+    });
+
+    // Suscribirse a errores
+    this.speechSubscription.add(
+      this.speechRecognitionService.errors$.subscribe((error) => {
+        this.toastr.error('', error);
+        if (this.recording) {
+          this.stopTimer();
+          this.recording = false;
+        }
+      })
+    );
+
+    // Suscribirse a cambios de estado
+    this.speechSubscription.add(
+      this.speechRecognitionService.status$.subscribe((status) => {
+        if (status === 'recording' && !this.recording) {
+          this.recording = true;
+        } else if (status === 'stopped' && this.recording) {
+          this.recording = false;
+          this.stopTimer();
+        }
+      })
+    );
   }
 
   startTimer(restartClock) {
@@ -3896,28 +4378,33 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
 
   toggleRecording() {
     if (this.recording) {
-      //mosstrar el swal durante dos segundos diciendo que es está procesando
+      // Mostrar el swal durante unos segundos diciendo que está procesando
       Swal.fire({
         title: this.translate.instant("voice.Processing audio..."),
         html: this.translate.instant("voice.Please wait a few seconds."),
         showCancelButton: false,
         showConfirmButton: false,
         allowOutsideClick: false
-      })
-      //esperar 4 segundos
-      console.log('esperando 4 segundos')
-      setTimeout(function () {
-        console.log('cerrando swal')
-        this.stopTimer();
-        this.recognition.stop();
+      });
+      
+      // Detener el reconocimiento
+      this.speechRecognitionService.stop();
+      this.stopTimer();
+      
+      // Obtener el texto acumulado y añadirlo al campo
+      const finalText = this.speechRecognitionService.getAccumulatedText();
+      if (finalText && !this.medicalText.includes(finalText)) {
+        this.medicalText += finalText;
+      }
+      
+      setTimeout(() => {
         Swal.close();
-      }.bind(this), 4000);
-
-      this.recording = !this.recording;
+        this.recording = false;
+      }, 2000);
 
     } else {
       if (this.medicalText.length > 0) {
-        //quiere continuar con la grabacion o empezar una nueva
+        // Quiere continuar con la grabación o empezar una nueva
         Swal.fire({
           title: this.translate.instant("voice.Do you want to continue recording?"),
           icon: 'warning',
@@ -3933,6 +4420,8 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
             this.continueRecording(false, true);
           } else {
             this.medicalText = '';
+            this.accumulatedText = '';
+            this.speechRecognitionService.clearAccumulatedText();
             this.continueRecording(true, true);
           }
         });
@@ -3940,43 +4429,60 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
         this.continueRecording(true, true);
       }
     }
-
   }
 
   continueRecording(restartClock, changeState) {
     this.startTimer(restartClock);
-    this.recognition.start();
-    this.recognition.onresult = (event) => {
-      console.log(event)
-      var transcript = event.results[event.resultIndex][0].transcript;
-      console.log(transcript); // Utilizar el texto aquí
-      this.medicalText += transcript + '\n';
-      /*this.ngZone.run(() => {
-        this.medicalText += transcript + '\n';
-      });*/
-      if (event.results[event.resultIndex].isFinal) {
-        console.log('ha terminado')
-      }
-    };
-
-    // this.recognition.onerror = function(event) {
-    this.recognition.onerror = (event) => {
-      if (event.error === 'no-speech') {
-        console.log('Reiniciando el reconocimiento de voz...');
-        this.restartRecognition(); // Llama a una función para reiniciar el reconocimiento
-      } else {
-        // Para otros tipos de errores, muestra un mensaje de error
-        this.toastr.error('', this.translate.instant("voice.Error in voice recognition."));
-      }
-    };
+    
+    if (restartClock) {
+      this.accumulatedText = '';
+      this.speechRecognitionService.clearAccumulatedText();
+    }
+    
+    // Usar el servicio de reconocimiento de voz
+    this.speechRecognitionService.start();
+    
     if (changeState) {
-      this.recording = !this.recording;
+      this.recording = true;
     }
   }
 
   restartRecognition() {
-    this.recognition.stop(); // Detiene el reconocimiento actual
-    setTimeout(() => this.continueRecording(false, false), 100); // Un breve retraso antes de reiniciar
+    // El servicio maneja automáticamente los reinicios
+    // Solo necesitamos detener y volver a iniciar si es necesario
+    if (this.recording) {
+      this.speechRecognitionService.stop();
+      setTimeout(() => {
+        if (this.recording) {
+          this.speechRecognitionService.start();
+        }
+      }, 100);
+    }
+  }
+
+  toggleChatRecording() {
+    if (this.chatRecording) {
+      // Detener el reconocimiento de voz
+      this.speechRecognitionService.stop();
+      this.chatRecording = false;
+      
+      // El texto ya debería estar en el mensaje gracias a la suscripción
+      // Limpiar el texto acumulado del servicio
+      this.speechRecognitionService.clearAccumulatedText();
+      
+      // Si hay mensaje, enviarlo automáticamente
+      if (this.message && this.message.trim()) {
+        // Pequeño delay para asegurar que el texto final se haya añadido
+        setTimeout(() => {
+          this.sendMessage();
+        }, 100);
+      }
+    } else {
+      // Iniciar el reconocimiento de voz
+      this.speechRecognitionService.clearAccumulatedText();
+      this.speechRecognitionService.start();
+      this.chatRecording = true;
+    }
   }
 
 
@@ -4088,67 +4594,264 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
       if (goprev) {
         this.prevCamera();
       } else {
-        if (this.modalReference != undefined) {
-          this.modalReference.close();
-          this.modalReference = undefined;
+        // Si hay más de 1 foto, preguntar si quiere agrupar
+        if (this.tempDocs.length > 1) {
+          this.askGroupPhotos();
+        } else {
+          // Si solo hay 1 foto, procesar directamente
+          if (this.modalReference != undefined) {
+            this.modalReference.close();
+            this.modalReference = undefined;
+          }
+          this.processFilesSequentially();
         }
-        this.processFilesSequentially();
       }
     }
+  }
+
+  askGroupPhotos() {
+    const pageCount = this.tempDocs.length;
+    const pageList = this.tempDocs.map((doc, index) => `${index + 1}. ${doc.dataFile.name}`).join('<br>');
+    
+    // Generar nombre por defecto inteligente
+    const defaultName = this.generateDefaultDocumentName();
+    
+    // Crear HTML con selector y campo de nombre condicional
+    let htmlContent = `
+      <p style="margin-bottom: 15px; font-size: 1.1em;">
+        ${this.translate.instant('demo.You have captured')} <strong>${pageCount}</strong> ${pageCount === 1 ? this.translate.instant('demo.page') : this.translate.instant('demo.pages')}.
+      </p>
+      <p style="margin-bottom: 10px;"><strong>${this.translate.instant('demo.Captured pages')}:</strong></p>
+      <div style="text-align: left; max-height: 120px; overflow-y: auto; margin: 10px 0; padding: 10px; background-color: #f8f9fa; border-radius: 4px; font-size: 0.9em;">${pageList}</div>
+      <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #dee2e6;">
+        <p style="margin-bottom: 15px; font-weight: 600;">${this.translate.instant('demo.How do you want to save this document?')}</p>
+        <div style="text-align: left;">
+          <label style="display: block; margin-bottom: 15px; cursor: pointer; padding: 10px; border: 2px solid #2F8BE6; border-radius: 6px; background-color: #f0f7ff;">
+            <input type="radio" name="saveOption" value="group" checked style="margin-right: 10px; cursor: pointer; width: 18px; height: 18px; accent-color: #2F8BE6;">
+            <span style="font-weight: 600; color: #2F8BE6;">${this.translate.instant('demo.Save as one document')}</span>
+            <span style="display: block; margin-left: 28px; margin-top: 5px; font-size: 0.9em; color: #666;">${this.translate.instant('demo.Save as one document description')}</span>
+          </label>
+          <label style="display: block; margin-bottom: 10px; cursor: pointer; padding: 10px; border: 2px solid #dee2e6; border-radius: 6px; background-color: #fff;">
+            <input type="radio" name="saveOption" value="separate" style="margin-right: 10px; cursor: pointer; width: 18px; height: 18px; accent-color: #2F8BE6;">
+            <span style="font-weight: 600;">${this.translate.instant('demo.Save as separate documents')}</span>
+            <span style="display: block; margin-left: 28px; margin-top: 5px; font-size: 0.9em; color: #666;">${this.translate.instant('demo.Save as separate documents description')}</span>
+          </label>
+        </div>
+        <div id="documentNameContainer" style="margin-top: 20px; padding-top: 15px; border-top: 1px solid #dee2e6;">
+          <label style="display: block; margin-bottom: 8px; font-weight: 600;">${this.translate.instant('demo.Document name')}</label>
+          <input type="text" id="documentNameInput" value="${defaultName}" style="width: 100%; padding: 8px; border: 1px solid #ced4da; border-radius: 4px; font-size: 1em;" placeholder="${this.translate.instant('demo.Enter document name')}">
+          <p style="margin-top: 5px; font-size: 0.85em; color: #666; font-style: italic;">${this.translate.instant('demo.You can change it later')}</p>
+        </div>
+      </div>
+    `;
+    
+    Swal.fire({
+      title: this.translate.instant('demo.Finalize document'),
+      html: htmlContent,
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonText: this.translate.instant('demo.Save document'),
+      cancelButtonText: this.translate.instant('generics.Cancel'),
+      confirmButtonColor: '#2F8BE6',
+      cancelButtonColor: '#B0B6BB',
+      reverseButtons: true,
+      didOpen: () => {
+        // Manejar cambio de opción y actualizar estilos visuales
+        const container = Swal.getHtmlContainer();
+        const radioButtons = container?.querySelectorAll('input[name="saveOption"]') as NodeListOf<HTMLInputElement>;
+        const nameContainer = container?.querySelector('#documentNameContainer') as HTMLElement;
+        const labels = container?.querySelectorAll('label') as NodeListOf<HTMLLabelElement>;
+        
+        // Función para actualizar estilos visuales de los labels
+        const updateLabelStyles = () => {
+          radioButtons?.forEach((radio, index) => {
+            const label = labels?.[index];
+            if (label && radio.checked) {
+              label.style.borderColor = '#2F8BE6';
+              label.style.backgroundColor = '#f0f7ff';
+            } else if (label) {
+              label.style.borderColor = '#dee2e6';
+              label.style.backgroundColor = '#fff';
+            }
+          });
+        };
+        
+        // Actualizar estilos iniciales
+        updateLabelStyles();
+        
+        radioButtons?.forEach(radio => {
+          radio.addEventListener('change', () => {
+            updateLabelStyles();
+            if (radio.value === 'group' && nameContainer) {
+              nameContainer.style.display = 'block';
+            } else if (radio.value === 'separate' && nameContainer) {
+              nameContainer.style.display = 'none';
+            }
+          });
+        });
+      },
+      preConfirm: () => {
+        const container = Swal.getHtmlContainer();
+        const selectedOption = (container?.querySelector('input[name="saveOption"]:checked') as HTMLInputElement)?.value;
+        const nameInput = container?.querySelector('#documentNameInput') as HTMLInputElement;
+        
+        if (selectedOption === 'group') {
+          const documentName = nameInput?.value?.trim();
+          if (!documentName) {
+            Swal.showValidationMessage(this.translate.instant('demo.Document name is required'));
+            return false;
+          }
+          return { option: 'group', name: documentName };
+        } else {
+          return { option: 'separate', name: null };
+        }
+      }
+    }).then((result) => {
+      if (this.modalReference != undefined) {
+        this.modalReference.close();
+        this.modalReference = undefined;
+      }
+      
+      if (result.isConfirmed && result.value) {
+        if (result.value.option === 'group') {
+          // Agrupar en un solo PDF con el nombre proporcionado
+          this.groupPhotosIntoPDF(result.value.name);
+        } else {
+          // Subir como documentos separados
+          this.processFilesSequentially();
+        }
+      }
+    });
+  }
+
+  generateDefaultDocumentName(): string {
+    // Generar nombre inteligente basado en fecha y contexto
+    const now = new Date();
+    const dateStr = now.toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' });
+    
+    // Opciones de nombres sugeridos
+    const suggestions = [
+      this.translate.instant('demo.Medical report'),
+      this.translate.instant('demo.Test results'),
+      this.translate.instant('demo.Medical documentation')
+    ];
+    
+    // Usar el nombre de la cámara si existe y tiene sentido, sino usar sugerencia
+    if (this.nameFileCamera && this.nameFileCamera !== '' && !this.nameFileCamera.startsWith('photo-')) {
+      return this.nameFileCamera.replace('.png', '');
+    }
+    
+    // Usar primera sugerencia con fecha
+    return `${suggestions[0]} – ${dateStr}`;
+  }
+
+  async groupPhotosIntoPDF(documentName: string) {
+    try {
+      // Mostrar mensaje de carga
+      Swal.fire({
+        title: this.translate.instant('demo.Combining photos'),
+        html: `<p>${this.translate.instant('demo.Combining')} ${this.tempDocs.length} ${this.tempDocs.length === 1 ? this.translate.instant('demo.photo') : this.translate.instant('demo.photos')} ${this.translate.instant('demo.into one document')}...</p>
+               <p style="font-size: 0.9em; color: #666; margin-top: 10px;">${this.translate.instant('demo.Please wait')}</p>`,
+        allowOutsideClick: false,
+        didOpen: () => {
+          Swal.showLoading();
+        }
+      });
+
+      // Crear PDF con jsPDF
+      const doc = new jsPDF();
+      const pdfWidth = doc.internal.pageSize.getWidth();
+      const pdfHeight = doc.internal.pageSize.getHeight();
+      const margin = 10;
+      const maxWidth = pdfWidth - (margin * 2);
+      const maxHeight = pdfHeight - (margin * 2);
+
+      // Procesar cada foto y añadirla al PDF
+      for (let i = 0; i < this.tempDocs.length; i++) {
+        const photoData = this.tempDocs[i].dataFile;
+        const imageDataUrl = await this.fileToDataURL(photoData.event);
+        
+        // Crear imagen para obtener dimensiones
+        const img = new Image();
+        await new Promise((resolve) => {
+          img.onload = () => {
+            // Calcular dimensiones manteniendo proporción
+            let imgWidth = img.width;
+            let imgHeight = img.height;
+            const ratio = Math.min(maxWidth / imgWidth, maxHeight / imgHeight);
+            imgWidth = imgWidth * ratio;
+            imgHeight = imgHeight * ratio;
+
+            // Centrar imagen en la página
+            const x = (pdfWidth - imgWidth) / 2;
+            const y = (pdfHeight - imgHeight) / 2;
+
+            // Añadir nueva página si no es la primera foto
+            if (i > 0) {
+              doc.addPage();
+            }
+
+            // Añadir imagen al PDF
+            doc.addImage(imageDataUrl, 'PNG', x, y, imgWidth, imgHeight);
+            resolve(null);
+          };
+          img.src = imageDataUrl;
+        });
+      }
+
+      // Generar blob del PDF
+      const pdfBlob = doc.output('blob');
+      
+      // Crear File desde el blob usando el nombre proporcionado por el usuario
+      // Asegurarse de que el nombre no tenga extensión .pdf ya
+      let cleanName = documentName.trim();
+      if (cleanName.toLowerCase().endsWith('.pdf')) {
+        cleanName = cleanName.slice(0, -4);
+      }
+      const pdfFileName = cleanName + '.pdf';
+      const pdfFile = new File([pdfBlob], pdfFileName, { type: 'application/pdf' });
+
+      // Preparar para subir
+      var uniqueFileName = this.getUniqueFileName();
+      var filename = 'raitofile/' + uniqueFileName + '/' + pdfFileName;
+      
+      // Limpiar tempDocs y añadir el PDF
+      this.tempDocs = [];
+      let dataFile = { event: pdfFile, url: filename, name: pdfFileName };
+      this.tempDocs.push({ dataFile: dataFile, state: 'false' });
+
+      // Cerrar mensaje de carga
+      Swal.close();
+
+      // Subir el PDF
+      this.processFilesSequentially();
+    } catch (error) {
+      console.error('Error combining photos:', error);
+      this.insightsService.trackException(error);
+      Swal.fire({
+        icon: 'error',
+        title: this.translate.instant('generics.error try again'),
+        text: this.translate.instant('demo.Error combining photos')
+      });
+      // Si falla, intentar subir como documentos separados
+      this.processFilesSequentially();
+    }
+  }
+
+  fileToDataURL(file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => resolve(e.target?.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
   }
 
   deletephoto(index) {
     this.tempDocs.splice(index, 1);
   }
 
-  finishPhoto() {
-    if (this.modalReference != undefined) {
-      this.modalReference.close();
-      this.modalReference = undefined;
-    }
-    let filePromises: Promise<void>[] = [];
-    if (this.nameFileCamera == '') {
-      this.nameFileCamera = 'photo-' + this.getUniqueFileName();
-    }
-    let filePromise = new Promise<void>((resolve, reject) => {
-      this.nameFileCamera = this.nameFileCamera + '.png';
-      let file = this.dataURLtoFile(this.capturedImage, this.nameFileCamera);
-      var reader = new FileReader();
-      reader.readAsDataURL(file); // read file as data url
-      reader.onload = (event2: any) => { // called once readAsDataURL is completed
-        var filename = (file).name;
-        var extension = filename.substr(filename.lastIndexOf('.'));
-        var pos = (filename).lastIndexOf('.')
-        pos = pos - 4;
-        if (pos > 0 && extension == '.gz') {
-          extension = (filename).substr(pos);
-        }
-        filename = filename.split(extension)[0];
-        if (extension == '.jpg' || extension == '.png' || extension == '.jpeg' || file.type == 'application/pdf' || extension == '.docx' || file.type == 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' || file.type == 'text/plain' || extension == '.txt') {
-          var uniqueFileName = this.getUniqueFileName();
-          filename = 'raitofile/' + uniqueFileName + '/' + filename + extension;
-          let dataFile = { event: file, url: filename, name: file.name }
-          this.tempDocs.push({ dataFile: dataFile, state: 'false' });
-          resolve();
-          /*let index = this.tempDocs.length - 1;
-          this.prepareFile(index);*/
-        } else {
-          Swal.fire(this.translate.instant("dashboardpatient.error extension"), '', "warning");
-          this.insightsService.trackEvent('Invalid file extension', { extension: extension });
-          reject();
-        }
-      }
-    });
-    filePromises.push(filePromise);
-
-    Promise.all(filePromises).then(() => {
-      this.processFilesSequentially();
-    }).catch(() => {
-      console.log("One or more files had invalid extensions. Stopping the process.");
-    });
-
-
-  }
+ 
 
   getUniqueFileCamera() {
     var now = new Date();
@@ -4282,9 +4985,23 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     const startDate = this.startDate ? new Date(this.startDate) : null;
     const endDate = this.endDate ? new Date(this.endDate) : null;
     const filtered = this.originalEvents.filter(event => {
-      const eventDate = new Date(event.date);
-      const isAfterStartDate = !startDate || eventDate >= startDate;
-      const isBeforeEndDate = !endDate || eventDate <= endDate;
+      const eventStart = event.date ? new Date(event.date) : null;
+      const eventEnd = event.dateEnd ? new Date(event.dateEnd) : eventStart;
+      
+      // Si el evento tiene un rango (dateEnd), verificar si se solapa con el rango de filtrado
+      let isAfterStartDate = true;
+      let isBeforeEndDate = true;
+      
+      if (startDate) {
+        // El evento debe terminar después del inicio del filtro (o no tener fin)
+        isAfterStartDate = !eventEnd || eventEnd >= startDate;
+      }
+      
+      if (endDate) {
+        // El evento debe empezar antes del fin del filtro
+        isBeforeEndDate = !eventStart || eventStart <= endDate;
+      }
+      
       const isEventTypeMatch = !this.selectedEventType || this.selectedEventType == 'null' || !event.key || event.key === this.selectedEventType;
       return isAfterStartDate && isBeforeEndDate && isEventTypeMatch;
     });
@@ -4478,13 +5195,167 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     this.selectAllDocuments = this.filteredDocs.every(doc => doc.selected);
   }
 
+  availableContextDocs: any[] = [];
+  documentContextModalRef: NgbModalRef;
+
+  openDocumentContextModal(documentContextModal?: TemplateRef<any>) {
+    // Filtrar solo los documentos que pueden ser usados como contexto
+    this.availableContextDocs = this.docs
+      .filter(doc => doc.status == 'finished' || doc.status == 'done' || doc.status == 'resumen ready')
+      .map(doc => ({ ...doc })); // Crear copia para no modificar directamente
+    
+    const modalTemplate = documentContextModal || this.documentContextModal;
+    if (!modalTemplate) {
+      console.error('Document context modal template not found');
+      return;
+    }
+    
+    let ngbModalOptions: NgbModalOptions = {
+      backdrop: 'static',
+      keyboard: false,
+      windowClass: 'ModalClass-lg'
+    };
+    this.documentContextModalRef = this.modalService.open(modalTemplate, ngbModalOptions);
+  }
+
+  closeDocumentContextModal() {
+    if (this.documentContextModalRef != undefined) {
+      this.documentContextModalRef.close();
+      this.documentContextModalRef = undefined;
+    }
+  }
+
+  selectAllContextDocuments() {
+    this.availableContextDocs.forEach(doc => doc.selected = true);
+  }
+
+  deselectAllContextDocuments() {
+    this.availableContextDocs.forEach(doc => doc.selected = false);
+  }
+
+  saveDocumentContextSelection() {
+    // Actualizar la selección en el array principal de documentos
+    this.availableContextDocs.forEach(modalDoc => {
+      const originalDoc = this.docs.find(d => d._id === modalDoc._id);
+      if (originalDoc) {
+        originalDoc.selected = modalDoc.selected;
+      }
+    });
+    
+    // Actualizar también filteredDocs
+    this.filteredDocs = this.filteredDocs.map(filteredDoc => {
+      const updatedDoc = this.availableContextDocs.find(d => d._id === filteredDoc._id);
+      if (updatedDoc) {
+        return { ...filteredDoc, selected: updatedDoc.selected };
+      }
+      return filteredDoc;
+    });
+    
+    this.updateDocumentSelection();
+    this.closeDocumentContextModal();
+  }
+
+  getAvailableDocumentsCount(): number {
+    return this.docs.filter(doc => 
+      doc.status == 'finished' || doc.status == 'done' || doc.status == 'resumen ready'
+    ).length;
+  }
+
+  getFileIconClass(fileName: string): string {
+    if (!fileName) return 'fa-file-o';
+    
+    const extension = fileName.toLowerCase().split('.').pop();
+    
+    switch (extension) {
+      case 'pdf':
+        return 'fa-file-pdf-o';
+      case 'docx':
+      case 'doc':
+        return 'fa-file-word-o';
+      case 'jpg':
+      case 'jpeg':
+      case 'png':
+      case 'gif':
+      case 'bmp':
+        return 'fa-file-image-o';
+      case 'txt':
+        return 'fa-file-text-o';
+      default:
+        return 'fa-file-o';
+    }
+  }
+
+  getFileIconColor(fileName: string): string {
+    if (!fileName) return '#5f6368';
+    
+    const extension = fileName.toLowerCase().split('.').pop();
+    
+    switch (extension) {
+      case 'pdf':
+        return '#ea4335'; // Rojo
+      case 'docx':
+      case 'doc':
+        return '#4285f4'; // Azul
+      case 'jpg':
+      case 'jpeg':
+      case 'png':
+      case 'gif':
+      case 'bmp':
+        return '#34a853'; // Verde
+      case 'txt':
+        return '#5f6368'; // Gris
+      default:
+        return '#5f6368'; // Gris por defecto
+    }
+  }
+
+  deleteDocumentFromModal(doc: any) {
+    // Usar la función existente deleteDoc que ya tiene confirmación
+    Swal.fire({
+      title: this.translate.instant("generics.Are you sure?"),
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#0CC27E',
+      cancelButtonColor: '#FF586B',
+      confirmButtonText: this.translate.instant("generics.Delete"),
+      cancelButtonText: this.translate.instant("generics.No, cancel"),
+      showLoaderOnConfirm: true,
+      allowOutsideClick: false
+    }).then((result) => {
+      if (result.value) {
+        // Remover del array del modal inmediatamente
+        this.availableContextDocs = this.availableContextDocs.filter(d => d._id !== doc._id);
+        // Llamar a la función de eliminación que actualiza la lista principal
+        this.confirmDeleteDoc(doc);
+      }
+    });
+  }
+
   @HostListener('window:resize', ['$event'])
   onResize(event) {
     if (!this.showNewCustom && this.listCustomShare.length > 0 && document.getElementById('panelCustomShare') != null) {
       this.widthPanelCustomShare = document.getElementById('panelCustomShare').offsetWidth;
     }
+    const previousScreenWidth = this.screenWidth;
     this.screenWidth = window.innerWidth;
-    if(this.screenWidth > 991 && this.currentView == 'documents'){
+    
+    // Si cambiamos de pantalla grande a pequeña
+    // Solo hacer esto si realmente hubo un cambio de tamaño (previousScreenWidth > 0)
+    // para evitar abrir el sidebar al cargar la página por primera vez
+    if (previousScreenWidth > 0 && previousScreenWidth >= 1199 && this.screenWidth < 1199) {
+      // No abrir automáticamente el sidebar móvil al cambiar de tamaño
+      // El usuario debe abrirlo manualmente desde el menú inferior
+      this.rightSidebarOpenMobile = false;
+      // Resetear el estado de colapsado en móvil (no aplica en pantallas pequeñas)
+      this.rightSidebarCollapsed = false;
+    }
+    
+    // Si cambiamos de pantalla pequeña a grande, cerrar el sidebar móvil
+    if (previousScreenWidth < 1199 && this.screenWidth >= 1199) {
+      this.rightSidebarOpenMobile = false;
+    }
+    
+    if(this.screenWidth > 1199 && this.currentView == 'documents'){
       this.setView('chat');
     }
   }
@@ -4495,11 +5366,11 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
   }
 
   isSmallScreen(): boolean {
-    return this.screenWidth < 991; // Bootstrap's breakpoint for small screen
+    return this.screenWidth < 1199; // Bootstrap's breakpoint for small screen
   }
 
   isXSScreen(): boolean {
-    return this.screenWidth < 650; // Bootstrap's breakpoint for small screen
+    return this.screenWidth < 1199; //650; // Bootstrap's breakpoint for small screen
   }
 
 
@@ -4508,6 +5379,84 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     if (this.isSmallScreen && this.sidebarOpen) {
       this.sidebarOpen = false;
     }
+  }
+
+  toggleLeftSidebar() {
+    this.leftSidebarCollapsed = !this.leftSidebarCollapsed;
+  }
+
+  toggleRightSidebar() {
+    this.rightSidebarCollapsed = !this.rightSidebarCollapsed;
+  }
+
+  openRightSidebarMobile() {
+    // Si estamos en documentos u otra vista, cambiar a chat para mostrar el sidebar de herramientas
+    if (this.currentView !== 'chat') {
+      this.currentView = 'chat';
+    }
+    this.rightSidebarOpenMobile = true;
+  }
+
+  closeRightSidebarMobile() {
+    this.rightSidebarOpenMobile = false;
+  }
+
+  openToolModal(tool: string) {
+    let ngbModalOptions: NgbModalOptions = {
+      backdrop: 'static',
+      keyboard: false,
+      windowClass: 'ModalClass-xl' // xl para modales grandes
+    };
+    
+    if (this.modalReference != undefined) {
+      this.modalReference.close();
+    }
+    
+    if (tool === 'dxgpt') {
+      // Limpiar resultados anteriores para asegurar que se carguen los datos del paciente actual
+      this.dxGptResults = null;
+      this.isDxGptLoading = false;
+      this.modalReference = this.modalService.open(this.dxGptModal, ngbModalOptions);
+    } else if (tool === 'rarescope') {
+      // Limpiar datos anteriores para asegurar que se carguen los datos del paciente actual
+      this.rarescopeNeeds = [''];
+      this.additionalNeeds = [];
+      this.rarescopeError = null;
+      this.isLoadingRarescope = false;
+      // Cargar los datos de Rarescope (carga desde BD o hace análisis si no hay datos)
+      this.loadRarescopeData();
+      this.modalReference = this.modalService.open(this.rarescopeModal, ngbModalOptions);
+    }
+    // Aquí se pueden añadir más herramientas cuando las implementemos
+  }
+
+  openNotesModal() {
+    // Cargar las notas antes de abrir el modal
+    this.getNotes();
+    
+    let ngbModalOptions: NgbModalOptions = {
+      backdrop: 'static',
+      keyboard: false,
+      windowClass: 'ModalClass-lg' // lg para el modal de notas
+    };
+    
+    if (this.modalReference != undefined) {
+      this.modalReference.close();
+    }
+    this.modalReference = this.modalService.open(this.notesModal, ngbModalOptions);
+  }
+
+  openDiaryModal() {
+    let ngbModalOptions: NgbModalOptions = {
+      backdrop: 'static',
+      keyboard: false,
+      windowClass: 'ModalClass-xl' // xl para el modal del diario
+    };
+    
+    if (this.modalReference != undefined) {
+      this.modalReference.close();
+    }
+    this.modalReference = this.modalService.open(this.diaryModal, ngbModalOptions);
   }
 
   getNotes() {
@@ -4528,17 +5477,47 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
       this.modalReference.close();
       this.modalReference = undefined;
     }
+    // Inicializar el contenido vacío
+    this.newNoteContent = '';
     let ngbModalOptions: NgbModalOptions = {
       backdrop: 'static',
       keyboard: false,
-      windowClass: 'ModalClass-xs'// xl, lg, sm
+      windowClass: 'ModalClass-lg'// xl, lg, sm
     };
     this.modalReference = this.modalService.open(addNoteModal, ngbModalOptions);
   }
 
+  onNewNoteContentChange(event: any) {
+    // Actualizar el contenido cuando cambia en el editor de nueva nota
+    if (event) {
+      const content = typeof event === 'string' ? event : (event.html || event);
+      this.newNoteContent = content;
+    }
+  }
+
+  onNewNoteEditorCreated(editor: any) {
+    // El editor se inicializa vacío, no necesitamos establecer contenido
+    // Pero podemos usarlo para limpiar si es necesario
+  }
+
   saveNote() {
-    if (this.newNoteContent.trim()) {
-      this.addNoteWithMessage(this.newNoteContent);
+    // Obtener el texto plano para validar que no esté vacío
+    const plainText = this.getPlainText(this.newNoteContent || '');
+    if (plainText.trim()) {
+      this.savingNote = true;
+      this.patientService.savePatientNote(this.currentPatient, { content: this.newNoteContent, date: new Date() }).subscribe((res: any) => {
+        if (res.message == 'Notes saved') {
+          Swal.fire('', this.translate.instant("notes.Note saved"), "success");
+          this.notes.unshift({ content: this.newNoteContent, date: new Date(), _id: res.noteId });
+          this.notesSidebarOpen = true;
+          if (this.isSmallScreen && this.sidebarOpen) {
+            this.sidebarOpen = false;
+          }
+          // Cerrar el modal de agregar nota
+          this.cancelEdit();
+        }
+        this.savingNote = false;
+      });
     }
   }
 
@@ -4552,7 +5531,8 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
         if (this.isSmallScreen && this.sidebarOpen) {
           this.sidebarOpen = false;
         }
-        this.modalService.dismissAll();
+        // No cerramos modales aquí para no afectar otros modales abiertos (como el resumen del paciente)
+       //this.modalService.dismissAll();
       }
       this.savingNote = false;
     });
@@ -4598,28 +5578,33 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     });
   }
 
-  editNote(index: number) {
-    this.notes[index].isEditing = true;
-
-    // Dar tiempo al DOM para actualizarse
-    setTimeout(() => {
-      const editableElement = document.getElementById('editableNote' + index);
-      if (editableElement) {
-        this.editableDiv = new ElementRef(editableElement);
-        editableElement.focus();
-      }
-    });
+  editNote(index: number, editNoteModal: TemplateRef<any>) {
+    const note = this.notes[index];
+    // Inicializar el contenido de edición con el contenido actual
+    note.editContent = note.content || '';
+    this.editingNoteIndex = index;
+    
+    // Abrir modal de edición
+    const ngbModalOptions: NgbModalOptions = {
+      backdrop: 'static',
+      keyboard: false,
+      windowClass: 'ModalClass-lg'
+    };
+    this.modalReference = this.modalService.open(editNoteModal, ngbModalOptions);
   }
 
-  saveNoteEdit(index: number) {
-    if (!this.editableDiv) return;
-
+  saveNoteEdit() {
+    if (this.editingNoteIndex === null || this.editingNoteIndex === undefined) return;
+    
     this.savingNote = true;
-    const note = this.notes[index];
+    const note = this.notes[this.editingNoteIndex];
+
+    // Usar editContent que contiene el HTML del editor Quill
+    const content = note.editContent || '';
 
     const updatedNote = {
       _id: note._id,
-      content: this.editableDiv.nativeElement.innerHTML,
+      content: content,
       date: new Date()
     };
 
@@ -4631,11 +5616,11 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
         .subscribe({
           next: (res: any) => {
             if(res.message == 'Note updated'){
-              this.notes[index] = {
+              this.notes[this.editingNoteIndex] = {
                 ...updatedNote,
-                isEditing: false
+                editContent: undefined
               };
-              this.editableDiv = null;
+              this.closeEditNoteModal();
               this.toastr.success('', this.translate.instant("generics.Updated successfully"));
             }else{
               this.toastr.error('', this.translate.instant("generics.error try again"));
@@ -4651,12 +5636,107 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     );
   }
 
-  cancelNoteEdit(index: number) {
-    this.notes[index].isEditing = false;
-    this.editableDiv = null;
+  cancelNoteEdit() {
+    if (this.editingNoteIndex !== null && this.editingNoteIndex !== undefined) {
+      const note = this.notes[this.editingNoteIndex];
+      note.editContent = undefined;
+    }
+    this.closeEditNoteModal();
   }
 
-  truncateTitle(title: string, limit: number = 24): string {
+  closeEditNoteModal() {
+    if (this.modalReference) {
+      this.modalReference.close();
+    }
+    this.editingNoteIndex = null;
+  }
+
+  onNoteContentChange(event: any) {
+    // Actualizar el contenido cuando cambia en el modal
+    if (event && this.editingNoteIndex !== null && this.editingNoteIndex !== undefined) {
+      const content = typeof event === 'string' ? event : (event.html || event);
+      this.notes[this.editingNoteIndex].editContent = content;
+    }
+  }
+
+  onEditorCreated(editor: any) {
+    // Establecer el contenido cuando el editor esté listo en el modal
+    if (editor && this.editingNoteIndex !== null && this.editingNoteIndex !== undefined) {
+      const note = this.notes[this.editingNoteIndex];
+      const content = note.editContent || note.content || '';
+      if (content && editor.root) {
+        // Usar setTimeout para asegurar que el editor esté completamente inicializado
+        setTimeout(() => {
+          try {
+            // Convertir HTML a Delta de Quill y establecerlo
+            if (editor.clipboard && typeof editor.clipboard.convert === 'function') {
+              const delta = editor.clipboard.convert(content);
+              editor.setContents(delta, 'silent');
+              this.notes[this.editingNoteIndex].editContent = editor.root.innerHTML;
+            } else {
+              editor.root.innerHTML = content;
+              this.notes[this.editingNoteIndex].editContent = content;
+            }
+            this.cdr.detectChanges();
+          } catch (e) {
+            console.error('Error setting content in editor:', e);
+            if (editor.root) {
+              editor.root.innerHTML = content;
+              this.notes[this.editingNoteIndex].editContent = content;
+              this.cdr.detectChanges();
+            }
+          }
+        }, 100);
+      }
+    }
+  }
+
+
+
+  // Función para obtener el texto plano de HTML (sin etiquetas)
+  getPlainText(html: string): string {
+    if (!html) return '';
+    const tmp = document.createElement('DIV');
+    tmp.innerHTML = html;
+    return tmp.textContent || tmp.innerText || '';
+  }
+
+  // Función para truncar contenido HTML manteniendo el formato
+  truncateNoteContent(content: string, maxLength: number = 500): { truncated: string, isTruncated: boolean } {
+    if (!content) return { truncated: '', isTruncated: false };
+    
+    const plainText = this.getPlainText(content);
+    if (plainText.length <= maxLength) {
+      return { truncated: content, isTruncated: false };
+    }
+
+    // Truncar el texto plano
+    const truncatedText = plainText.substring(0, maxLength);
+    // Intentar mantener el formato HTML truncando de manera simple
+    // Por simplicidad, truncamos el HTML directamente en una posición segura
+    const truncatedHtml = content.substring(0, Math.min(content.length, maxLength * 2));
+    
+    return { truncated: truncatedHtml + '...', isTruncated: true };
+  }
+
+  // Abrir modal con contenido completo de la nota
+  viewFullNote(note: any, noteModal: TemplateRef<any>) {
+    const ngbModalOptions: NgbModalOptions = {
+      backdrop: 'static',
+      keyboard: false,
+      windowClass: 'ModalClass-lg'
+    };
+    this.selectedNoteForModal = note;
+    this.modalReference = this.modalService.open(noteModal, ngbModalOptions);
+  }
+
+  closeNoteModal() {
+    if (this.modalReference) {
+      this.modalReference.close();
+    }
+  }
+
+  truncateTitle(title: string, limit: number = 32): string {
     if (title.length <= limit) return title;
     return title.slice(0, limit) + '...';
   }
@@ -4676,15 +5756,49 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     this.selectAllDocuments = this.filteredDocs.length > 0 && this.filteredDocs.every(doc => doc.selected);
   }
 
-  fetchDxGptResults() {
+  /**
+   * Verifica si el paciente tiene un resumen generado
+   */
+  async checkPatientSummary(): Promise<boolean> {
+    return new Promise((resolve) => {
+      if (!this.currentPatient) {
+        resolve(false);
+        return;
+      }
+      
+      const info = { 
+        "userId": this.authService.getIdUser(), 
+        "idWebpubsub": this.authService.getIdUser(), 
+        "regenerate": false 
+      };
+      
+      this.subscription.add(
+        this.http.post(environment.api + '/api/patient/summary/' + this.currentPatient, info)
+          .subscribe(
+            (res: any) => {
+              // Si summary es 'true', el resumen existe y está listo
+              resolve(res.summary === 'true');
+            },
+            (err) => {
+              console.warn('Error checking patient summary:', err);
+              // En caso de error, asumir que no existe
+              resolve(false);
+            }
+          )
+      );
+    });
+  }
+
+  /**
+   * Ejecuta fetchDxGptResults después de verificar/crear el resumen
+   * @param useEventsAndDocuments - Si true, usa eventos/documentos en lugar del resumen
+   */
+  private executeFetchDxGptResults(useEventsAndDocuments: boolean = false) {
     console.log('=== FRONTEND DXGPT DEBUG START ===');
     console.log('1. Current patient ID:', this.currentPatientId);
     
     if (!this.currentPatientId) {
-      // Mostrar algún error o deshabilitar el botón si no hay paciente
-      // Esto es improbable si la UI se muestra correctamente, pero por si acaso.
       console.error("No patient selected to fetch DxGPT results.");
-      // Podrías usar Swal para notificar al usuario.
       this.dxGptResults = { success: false, analysis: this.translate.instant('patients.No patient selected') };
       return;
     }
@@ -4697,11 +5811,55 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     // Get current language from localStorage
     const currentLang = localStorage.getItem('lang') || 'en';
     // Call the DxGPT API to get initial diagnosis
-    this.apiDx29ServerService.getDifferentialDiagnosis(this.currentPatientId, currentLang, null).subscribe({
+    this.apiDx29ServerService.getDifferentialDiagnosis(this.currentPatientId, currentLang, null, undefined, useEventsAndDocuments).subscribe({
       next: (res: any) => {
         console.log('4. API Response received:', res);
         console.log('4.1. res.success:', res.success);
         console.log('4.2. res.analysis exists:', !!res.analysis);
+        console.log('4.3. res.async exists:', res.async);
+        
+        // Si el procesamiento es asíncrono, esperar notificaciones de WebPubSub
+        if (res.async === true) {
+          console.log('5. Procesamiento asíncrono iniciado, esperando notificaciones...');
+          // El estado de carga se mantendrá hasta recibir el resultado por WebPubSub
+          // Mostrar mensaje informativo con botón de cancelar
+          const message = res.message || this.translate.instant('dxgpt.async.message') || 'El análisis está en proceso. Recibirás una notificación cuando esté listo.';
+          const timeMessage = this.translate.instant('dxgpt.async.timeMessage') || 'Este proceso puede tardar varios minutos dependiendo del número de documentos.';
+          
+          Swal.fire({
+            title: this.translate.instant('dxgpt.async.processing') || 'Procesando...',
+            html: `<div style="text-align: left;">
+              <p><strong>${message}</strong></p>
+              <p style="font-size: 0.9em; color: #666; margin-top: 10px;"><em>${timeMessage}</em></p>
+            </div>`,
+            icon: 'info',
+            allowOutsideClick: false,
+            allowEscapeKey: true,
+            showConfirmButton: false,
+            showCancelButton: true,
+            cancelButtonText: this.translate.instant('dxgpt.async.cancel') || 'Cancelar',
+            cancelButtonColor: '#6c757d',
+            didOpen: () => {
+              Swal.showLoading();
+            }
+          }).then((result) => {
+            if (result.dismiss === Swal.DismissReason.cancel || result.dismiss === Swal.DismissReason.esc || result.dismiss === Swal.DismissReason.backdrop) {
+              // Usuario canceló
+              console.log('Usuario canceló el procesamiento de DxGPT');
+              this.isDxGptLoading = false;
+              this.dxGptResults = null;
+              this.cdr.detectChanges();
+              
+              Swal.fire({
+                title: this.translate.instant('dxgpt.async.cancelled') || 'Procesamiento cancelado',
+                text: this.translate.instant('dxgpt.async.cancelledMessage') || 'El análisis ha sido cancelado. Puedes iniciarlo nuevamente cuando lo desees.',
+                icon: 'info',
+                confirmButtonText: 'OK'
+              });
+            }
+          });
+          return; // No cambiar el estado de carga todavía
+        }
         
         if (res && res.analysis) {
            // El backend siempre manda success: true si llega al controller
@@ -4738,6 +5896,75 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
         this.isDxGptLoading = false;
       }
     });
+  }
+
+  /**
+   * Función principal que verifica el resumen antes de ejecutar DxGPT
+   */
+  async fetchDxGptResults() {
+    if (!this.currentPatientId) {
+      this.dxGptResults = { success: false, analysis: this.translate.instant('patients.No patient selected') };
+      return;
+    }
+
+    // Verificar si el paciente tiene un resumen generado
+    const hasSummary = await this.checkPatientSummary();
+    
+    if (hasSummary) {
+      // Si tiene resumen, preguntar al usuario qué método quiere usar
+      const result = await Swal.fire({
+        title: this.translate.instant('dxgpt.chooseMethod.title') || 'Elegir método de análisis',
+        html: this.translate.instant('dxgpt.chooseMethod.message') || 
+              'El paciente tiene un resumen generado. ¿Cómo deseas realizar el análisis?<br><br>' +
+              '<small><strong>Resumen del paciente:</strong> Más rápido, incluye información estructurada y contextualizada.<br>' +
+              '<strong>Eventos y documentos:</strong> Incluye información más reciente que pueda no estar en el resumen.</small>',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: this.translate.instant('dxgpt.chooseMethod.withSummary') || 'Analizar con resumen del paciente',
+        cancelButtonText: this.translate.instant('dxgpt.chooseMethod.withEvents') || 'Analizar con eventos y documentos',
+        confirmButtonColor: '#3085d6',
+        cancelButtonColor: '#6c757d',
+        reverseButtons: true
+      });
+
+      if (result.isConfirmed) {
+        // Usuario quiere usar el resumen
+        this.executeFetchDxGptResults(false);
+      } else if (result.dismiss === Swal.DismissReason.cancel) {
+        // Usuario quiere usar eventos y documentos
+        this.executeFetchDxGptResults(true);
+      }
+    } else {
+      // Si no tiene resumen, preguntar al usuario
+      const result = await Swal.fire({
+        title: this.translate.instant('dxgpt.summary.title') || 'Resumen del paciente no disponible',
+        html: this.translate.instant('dxgpt.summary.message') || 
+              'El paciente no tiene un resumen generado. ¿Deseas crear el resumen ahora?<br><br>' +
+              '<small>Si creas el resumen, recibirás una notificación cuando esté listo y podrás volver aquí para ejecutar el análisis.</small>',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: this.translate.instant('dxgpt.summary.create') || 'Crear resumen',
+        cancelButtonText: this.translate.instant('dxgpt.summary.continue') || 'Continuar sin resumen',
+        confirmButtonColor: '#3085d6',
+        cancelButtonColor: '#6c757d'
+      });
+
+      if (result.isConfirmed) {
+        // Usuario quiere crear el resumen
+        this.getPatientSummary(false);
+        Swal.fire({
+          title: this.translate.instant('dxgpt.summary.creating') || 'Creando resumen...',
+          html: this.translate.instant('dxgpt.summary.notification') || 
+                'El resumen se está generando. Recibirás una notificación cuando esté listo.<br><br>' +
+                'Puedes volver aquí después para ejecutar el análisis de diagnóstico diferencial.',
+          icon: 'info',
+          confirmButtonText: 'OK'
+        });
+      } else {
+        // Usuario quiere continuar sin resumen (usará el flujo actual)
+        this.executeFetchDxGptResults();
+      }
+    }
   }
 
   openTimelineModal(timelineModal) {
@@ -4794,6 +6021,255 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
       // Modal dismissed
       console.log('Modal dismissed');
     });
+  }
+
+  copyTimelineToClipboard() {
+    if (this.groupedEvents.length === 0) {
+      Swal.fire({
+        icon: 'info',
+        title: this.translate.instant('generics.Info'),
+        html: this.translate.instant('timeline.There are no events')
+      });
+      return;
+    }
+
+    const lang = localStorage.getItem('lang') || this.translate.currentLang || 'es';
+    let text = this.translate.instant('timeline.Timeline') + '\n';
+    text += '='.repeat(50) + '\n\n';
+
+    this.groupedEvents.forEach(group => {
+      const monthYear = new Date(group.monthYear).toLocaleDateString(lang, { 
+        year: 'numeric', 
+        month: 'long' 
+      });
+      text += monthYear.toUpperCase() + '\n';
+      text += '-'.repeat(50) + '\n';
+
+      group.events.forEach(event => {
+        const eventType = this.getEventTypeDisplay(event.key) || event.key || '';
+        const eventDate = event.date ? new Date(event.date).toLocaleDateString(lang) : '';
+        const eventDateEnd = event.dateEnd ? new Date(event.dateEnd).toLocaleDateString(lang) : '';
+        
+        text += `${this.getEventTypeIcon(event.key)} ${event.name || ''}\n`;
+        text += `   ${eventType}\n`;
+        if (eventDateEnd) {
+          text += `   ${this.translate.instant('timeline.Start date')}: ${eventDate} - ${this.translate.instant('timeline.End date')}: ${eventDateEnd}\n`;
+        } else {
+          text += `   ${eventDate}\n`;
+        }
+        if (event.notes) {
+          text += `   ${this.translate.instant('generics.Notes')}: ${event.notes}\n`;
+        }
+        text += '\n';
+      });
+      text += '\n';
+    });
+
+    this.clipboard.copy(text);
+    Swal.fire({
+      icon: 'success',
+      title: this.translate.instant('generics.Success'),
+      html: this.translate.instant('timeline.Timeline copied to clipboard')
+    });
+  }
+
+  exportTimelineToCSV() {
+    if (this.groupedEvents.length === 0) {
+      Swal.fire({
+        icon: 'info',
+        title: this.translate.instant('generics.Info'),
+        html: this.translate.instant('timeline.There are no events')
+      });
+      return;
+    }
+
+    const lang = localStorage.getItem('lang') || this.translate.currentLang || 'es';
+    // Encabezados CSV
+    const headers = [
+      this.translate.instant('timeline.Date'),
+      this.translate.instant('timeline.End date'),
+      this.translate.instant('timeline.Event type'),
+      this.translate.instant('generics.Name'),
+      this.translate.instant('generics.Notes')
+    ];
+
+    let csvContent = headers.join(',') + '\n';
+
+    // Datos
+    this.groupedEvents.forEach(group => {
+      group.events.forEach(event => {
+        const eventDate = event.date ? new Date(event.date).toLocaleDateString(lang) : '';
+        const eventDateEnd = event.dateEnd ? new Date(event.dateEnd).toLocaleDateString(lang) : '';
+        const eventType = this.getEventTypeDisplay(event.key) || event.key || '';
+        const eventName = (event.name || '').replace(/"/g, '""'); // Escapar comillas
+        const eventNotes = (event.notes || '').replace(/"/g, '""'); // Escapar comillas
+
+        const row = [
+          `"${eventDate}"`,
+          `"${eventDateEnd}"`,
+          `"${eventType}"`,
+          `"${eventName}"`,
+          `"${eventNotes}"`
+        ];
+        csvContent += row.join(',') + '\n';
+      });
+    });
+
+    // Crear blob y descargar
+    const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `timeline_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+
+  getEventTypeDisplayWithoutEmoji(type: string): string {
+    const types = {
+      'diagnosis': this.translate.instant('timeline.Diagnoses'),
+      'treatment': this.translate.instant('timeline.Treatment'),
+      'test': this.translate.instant('timeline.Tests'),
+      'appointment': this.translate.instant('events.appointment'),
+      'symptom': this.translate.instant('timeline.Symptoms'),
+      'medication': this.translate.instant('timeline.Medications'),
+      'other': this.translate.instant('timeline.Other')
+    };
+    return types[type] || type || '';
+  }
+
+  exportTimelineToPDF() {
+    if (this.groupedEvents.length === 0) {
+      Swal.fire({
+        icon: 'info',
+        title: this.translate.instant('generics.Info'),
+        html: this.translate.instant('timeline.There are no events')
+      });
+      return;
+    }
+
+    const lang = localStorage.getItem('lang') || this.translate.currentLang || 'es';
+    const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const margin = 20;
+    let yPosition = margin;
+    const lineHeight = 6;
+    const maxWidth = pageWidth - (margin * 2);
+
+    // Título principal
+    doc.setFontSize(20);
+    doc.setTextColor(0, 0, 0);
+    doc.setFont(undefined, 'bold');
+    const title = this.translate.instant('timeline.Timeline');
+    doc.text(title, margin, yPosition);
+    yPosition += lineHeight * 2.5;
+
+    // Fecha de exportación
+    doc.setFontSize(10);
+    doc.setTextColor(100, 100, 100);
+    doc.setFont(undefined, 'normal');
+    const exportDate = new Date().toLocaleDateString(lang, {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+    doc.text(`${this.translate.instant('timeline.Exported on')}: ${exportDate}`, margin, yPosition);
+    yPosition += lineHeight * 2;
+
+    // Eventos agrupados por mes
+    this.groupedEvents.forEach((group, groupIndex) => {
+      // Verificar si necesitamos una nueva página (dejar espacio para el título del mes y al menos un evento)
+      if (yPosition > pageHeight - 60) {
+        doc.addPage();
+        yPosition = margin;
+      }
+
+      // Título del mes y año
+      doc.setFontSize(16);
+      doc.setTextColor(0, 0, 0);
+      doc.setFont(undefined, 'bold');
+      const monthYear = new Date(group.monthYear).toLocaleDateString(lang, {
+        year: 'numeric',
+        month: 'long'
+      });
+      doc.text(monthYear.toUpperCase(), margin, yPosition);
+      yPosition += lineHeight * 1.8;
+
+      // Línea separadora debajo del mes
+      doc.setDrawColor(180, 180, 180);
+      doc.setLineWidth(0.5);
+      doc.line(margin, yPosition, pageWidth - margin, yPosition);
+      yPosition += lineHeight * 1.5;
+
+      // Eventos del mes
+      group.events.forEach((event, eventIndex) => {
+        // Verificar si necesitamos una nueva página
+        if (yPosition > pageHeight - 40) {
+          doc.addPage();
+          yPosition = margin;
+        }
+
+        // Nombre del evento (sin emoji)
+        doc.setFontSize(11);
+        doc.setTextColor(0, 0, 0);
+        doc.setFont(undefined, 'normal');
+        const eventName = (event.name || '').trim();
+        
+        if (eventName) {
+          // Dividir texto si es muy largo
+          const splitText = doc.splitTextToSize(eventName, maxWidth);
+          doc.text(splitText, margin + 3, yPosition);
+          yPosition += lineHeight * splitText.length;
+        }
+
+        // Tipo de evento (sin emoji)
+        doc.setFontSize(9);
+        doc.setTextColor(120, 120, 120);
+        const eventType = this.getEventTypeDisplayWithoutEmoji(event.key);
+        if (eventType) {
+          doc.text(eventType, margin + 3, yPosition);
+          yPosition += lineHeight * 1.2;
+        }
+
+        // Fechas
+        doc.setFontSize(9);
+        doc.setTextColor(100, 100, 100);
+        const eventDate = event.date ? new Date(event.date).toLocaleDateString(lang) : '';
+        const eventDateEnd = event.dateEnd ? new Date(event.dateEnd).toLocaleDateString(lang) : '';
+        
+        if (eventDateEnd && eventDateEnd !== eventDate) {
+          const dateText = `${this.translate.instant('timeline.Start date')}: ${eventDate} - ${this.translate.instant('timeline.End date')}: ${eventDateEnd}`;
+          const splitDate = doc.splitTextToSize(dateText, maxWidth - 6);
+          doc.text(splitDate, margin + 3, yPosition);
+          yPosition += lineHeight * splitDate.length;
+        } else if (eventDate) {
+          doc.text(eventDate, margin + 3, yPosition);
+          yPosition += lineHeight * 1.2;
+        }
+
+        // Notas si existen
+        if (event.notes && event.notes.trim()) {
+          doc.setFontSize(9);
+          doc.setTextColor(80, 80, 80);
+          const notesLabel = this.translate.instant('generics.Notes');
+          const notesText = `${notesLabel}: ${event.notes.trim()}`;
+          const splitNotes = doc.splitTextToSize(notesText, maxWidth - 6);
+          doc.text(splitNotes, margin + 3, yPosition);
+          yPosition += lineHeight * splitNotes.length;
+        }
+
+        yPosition += lineHeight * 1.2; // Espacio entre eventos
+      });
+
+      yPosition += lineHeight * 0.8; // Espacio adicional entre grupos de meses
+    });
+
+    // Guardar PDF
+    const fileName = `timeline_${new Date().toISOString().split('T')[0]}.pdf`;
+    doc.save(fileName);
   }
 
   toggleDiagnosisCard(index: number): void {
@@ -5058,6 +6534,23 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
   cancelEditingPatientInfo(): void {
     this.isEditingPatientInfo = false;
     this.editedPatientInfo = '';
+  }
+
+  togglePatientInfo(): void {
+    this.isPatientInfoExpanded = !this.isPatientInfoExpanded;
+  }
+
+  shouldShowPatientInfoToggle(): boolean {
+    if (!this.dxGptResults || !this.dxGptResults.analysis || !this.dxGptResults.analysis.anonymization) {
+      return false;
+    }
+    
+    const text = this.dxGptResults.analysis.anonymization.anonymizedText || '';
+    const textHtml = this.dxGptResults.analysis.anonymization.anonymizedTextHtml || '';
+    
+    // Mostrar el botón si el texto es más largo que aproximadamente 500 caracteres
+    // o si hay HTML y parece ser largo
+    return text.length > 500 || (textHtml.length > 500 && textHtml.includes('<p>'));
   }
 
   saveEditedPatientInfo(): void {

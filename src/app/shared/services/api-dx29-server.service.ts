@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from "@angular/common/http";
 import { environment } from 'environments/environment';
-import { catchError, map } from 'rxjs/operators';
+import { catchError, map, timeout } from 'rxjs/operators';
 import { throwError } from 'rxjs';
 import { InsightsService } from 'app/shared/services/azureInsights.service';
 
@@ -21,26 +21,6 @@ export class ApiDx29ServerService {
       this.insightsService.trackException(err);
       return throwError(() => err);
     };
-
-    getDetectLanguage(text) {
-      var jsonText = [{ "text": text }];
-      return this.http.post(environment.api + '/api/getDetectLanguage', jsonText).pipe(
-        map((res: any) => {
-          return res;
-        }),
-        catchError(this.handleError)
-      );
-    }
-
-    getTranslationDictionary(lang, info) {
-      var body = { lang: lang, info: info }
-      return this.http.post(environment.api + '/api/translation', body).pipe(
-        map((res: any) => {
-          return res;
-        }),
-        catchError(this.handleError)
-      );
-    }
 
     getTranslationInvert(lang, info) {
       var body = { lang: lang, info: info }
@@ -71,16 +51,6 @@ export class ApiDx29ServerService {
         catchError(this.handleError)
       );
     }
-
-    getTranslationSegmentsInvert(lang,segments){
-      var body = {lang:lang, segments: segments}
-        return this.http.post(environment.api+'/api/translation/segments', body).pipe(
-          map((res: any) => {
-            return res;
-          }),
-          catchError(this.handleError)
-        );
-      }
 
     getAzureBlobSasToken(containerName){
       return this.http.get(environment.api+'/api/getAzureBlobSasTokenWithContainer/'+containerName).pipe(
@@ -135,7 +105,7 @@ export class ApiDx29ServerService {
       );
     }
 
-    getDifferentialDiagnosis(patientId: string, lang: string = 'en', excludeDiseases?: string[], customMedicalDescription?: string) {
+    getDifferentialDiagnosis(patientId: string, lang: string = 'en', excludeDiseases?: string[], customMedicalDescription?: string, useEventsAndDocuments?: boolean) {
       const body: any = { lang: lang };
       
       // Add custom medical description if provided
@@ -148,7 +118,15 @@ export class ApiDx29ServerService {
         body.diseases_list = excludeDiseases.join(',');
       }
       
+      // Add useEventsAndDocuments flag if provided
+      if (useEventsAndDocuments === true) {
+        body.useEventsAndDocuments = true;
+      }
+      
+      // Timeout de 30 segundos para peticiones asíncronas (el servidor responde inmediatamente)
+      // Si es asíncrono, el servidor responde rápido con async: true
       return this.http.post(environment.api + '/api/ai/dxgpt/' + patientId, body).pipe(
+        timeout(120000), // 2 minutos
         map((res: any) => {
           return res;
         }),

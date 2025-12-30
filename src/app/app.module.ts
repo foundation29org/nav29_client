@@ -63,6 +63,7 @@ import { InsightsService } from 'app/shared/services/azureInsights.service';
 import { AuthInterceptor } from './shared/auth/auth.interceptor';
 import { AuthServiceFirebase } from "./shared/services/auth.service.firebase";
 import { WebPubSubService } from 'app/shared/services/web-pub-sub.service';
+import { QuillModule } from 'ngx-quill';
 
 
 const DEFAULT_PERFECT_SCROLLBAR_CONFIG: PerfectScrollbarConfigInterface = {
@@ -100,6 +101,7 @@ export function createTranslateLoader(http: HttpClient) {
     AngularFirestoreModule,
     AngularFireStorageModule,
     AngularFireDatabaseModule,
+    QuillModule.forRoot(),
   ],
   providers: [
     TokenService,

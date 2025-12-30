@@ -24,6 +24,19 @@
       </div>
     </div>
     <div class="form-group">
+      <label class="mb-0">{{ 'events.End Date' | translate }} <small class="text-muted">({{'generics.Optional' | translate}})</small></label>
+      <div class="">
+        <mat-form-field class="mr-sm-24" fxFlex>
+          <input matInput class="grey" readonly [matDatepicker]="pickerEnd" autocomplete="off" name="dateEnd" formControlName="dateEnd" [min]="eventForm.value.date">
+          <button *ngIf="eventForm.value.dateEnd!=null" matSuffix mat-icon-button aria-label="Clear" (click)="eventForm.controls['dateEnd'].setValue(null)" style="position: absolute; left: 30px;">
+            <em class="fa fa-trash danger"></em>
+          </button>
+          <mat-datepicker-toggle matSuffix [for]="pickerEnd"></mat-datepicker-toggle>
+          <mat-datepicker touchUi="true" #pickerEnd></mat-datepicker>
+        </mat-form-field>
+      </div>
+    </div>
+    <div class="form-group">
       <label for="key">{{ 'events.Type' | translate }}</label>
       <select class="form-control" id="key" formControlName="key" required>
         <option value="">{{ 'generics.Select type' | translate }}</option>

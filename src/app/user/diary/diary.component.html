@@ -1,122 +1,120 @@
-<div class="diary-header">
-	<div class="row">
-		<div class="col-sm-12">
-			<div class="sidebar-header">
-				<div class="header-content mt-1">
-					<p class="content-sub-header" *ngIf="!showSearch">
-						{{'diary.subtitle' | translate }}
-					</p>
-					<button class="btn btn-icon" (click)="toggleSearch()" *ngIf="!showSearch">
-						<i class="fa fa-search"></i>
-					</button>
-					<div class="search-input w-100" *ngIf="showSearch">
-						<div class="input-group">
-							<div class="input-group-prepend">
-								<span class="input-group-text border-0">
-									<i class="fa fa-search"></i>
-								</span>
-							</div>
-							<input type="text" class="form-control border-0" [(ngModel)]="searchTerm" 
-								(input)="filterEvents()"
-								[placeholder]="'diary.Search by date, user or content' | translate">
-							<div class="input-group-append">
-								<button class="btn btn-link border-0" (click)="toggleSearch()">
-									<i class="fa fa-times"></i>
-								</button>
-							</div>
+<div class="row">
+	<div class="col-sm-12">
+		<div class="sidebar-header">
+			<div class="header-content mt-1">
+				<p class="content-sub-header" *ngIf="!showSearch">
+					{{'diary.subtitle' | translate }}
+				</p>
+				<button class="btn btn-icon" (click)="toggleSearch()" *ngIf="!showSearch">
+					<i class="fa fa-search"></i>
+				</button>
+				<div class="search-input w-100" *ngIf="showSearch">
+					<div class="input-group">
+						<div class="input-group-prepend">
+							<span class="input-group-text border-0">
+								<i class="fa fa-search"></i>
+							</span>
+						</div>
+						<input type="text" class="form-control border-0" [(ngModel)]="searchTerm" 
+							(input)="filterEvents()"
+							[placeholder]="'diary.Search by date, user or content' | translate">
+						<div class="input-group-append">
+							<button class="btn btn-link border-0" (click)="toggleSearch()">
+								<i class="fa fa-times"></i>
+							</button>
 						</div>
 					</div>
 				</div>
 			</div>
 		</div>
 	</div>
+</div>
 
-	<!-- Contenedor principal con referencia para el scroll -->
-	<div class="chat-timeline-container" #messagesContainer *ngIf="!loading">
-		<!-- Barra de búsqueda -->
-		
+<!-- Contenedor principal con referencia para el scroll -->
+<div class="chat-timeline-container" #messagesContainer *ngIf="!loading">
+	<!-- Barra de búsqueda -->
+	
 
-		<!-- Timeline de mensajes -->
-		<div class="chat-timeline">
-			<ng-container *ngFor="let group of groupedEvents">
-				<div class="date-separator">
-					<span class="date-label">{{ getDateLabel(group.date) }}</span>
-				</div>
-				
-				<div *ngFor="let event of group.events" class="chat-item"
-					[ngClass]="{'chat-right': event.addedBy?._id === userId, 'chat-left': event.addedBy?._id !== userId}">
-					<div class="chat-bubble">
-						<div class="chat-content">
-							
-							<span *ngIf="event.addedBy?._id !== userId" class="text-muted" style="position: relative;">
-								<strong *ngIf="event.addedBy?._id !== userId">{{event.addedBy?.userName || 'Unknown'}}</strong>
-								<i class="ml-1 fa fa-info-circle" 
-								   style="cursor: pointer;"
-								   #p="ngbPopover"
-								   [ngbPopover]="userInfoContent"
-								   placement="right"
-								   container="body"
-								   [autoClose]="true"></i>
-								<ng-template #userInfoContent>
+	<!-- Timeline de mensajes -->
+	<div class="chat-timeline">
+		<ng-container *ngFor="let group of groupedEvents">
+			<div class="date-separator">
+				<span class="date-label">{{ getDateLabel(group.date) }}</span>
+			</div>
+			
+			<div *ngFor="let event of group.events" class="chat-item"
+				[ngClass]="{'chat-right': event.addedBy?._id === userId, 'chat-left': event.addedBy?._id !== userId}">
+				<div class="chat-bubble">
+					<div class="chat-content">
+						
+						<span *ngIf="event.addedBy?._id !== userId" class="text-muted" style="position: relative;">
+							<strong *ngIf="event.addedBy?._id !== userId">{{event.addedBy?.userName || 'Unknown'}}</strong>
+							<i class="ml-1 fa fa-info-circle" 
+							   style="cursor: pointer;"
+							   #p="ngbPopover"
+							   [ngbPopover]="userInfoContent"
+							   placement="right"
+							   container="body"
+							   [autoClose]="true"></i>
+							<ng-template #userInfoContent>
 
-									<div>
-										<div>{{event.addedBy?.email}}</div>
-									</div>
-								</ng-template>
-							</span>
-							<p>{{event.notes}}</p>
-						</div>
-						<div class="chat-footer">
-							<span *ngIf="event.addedBy?._id === userId" class="action-buttons mt-2">
-								<button class="btn btn-sm p-0 mr-1" title="{{'generics.Edit' | translate}}" (click)="editEvent(event)">
-									<i class="fa fa-edit"></i>
-								</button>
-								<button class="btn btn-sm p-0 mr-2" title="{{'generics.Delete' | translate}}" (click)="confirmDeleteEvent(event)">
-									<i class="fa fa-trash"></i>
-								</button>
-							</span>
+								<div>
+									<div>{{event.addedBy?.email}}</div>
+								</div>
+							</ng-template>
+						</span>
+						<p>{{event.notes}}</p>
+					</div>
+					<div class="chat-footer">
+						<span *ngIf="event.addedBy?._id === userId" class="action-buttons mt-2">
+							<button class="btn btn-sm p-0 mr-1" title="{{'generics.Edit' | translate}}" (click)="editEvent(event)">
+								<i class="fa fa-edit"></i>
+							</button>
+							<button class="btn btn-sm p-0 mr-2" title="{{'generics.Delete' | translate}}" (click)="confirmDeleteEvent(event)">
+								<i class="fa fa-trash"></i>
+							</button>
+						</span>
 
-							<small class="text-muted">
-								{{event.date | date:'HH:mm'}} 
-							</small>							
-						</div>
+						<small class="text-muted">
+							{{event.date | date:'HH:mm'}} 
+						</small>							
 					</div>
 				</div>
+			</div>
+		</ng-container>
+
+		<!-- Mensaje cuando no hay eventos -->
+		<div *ngIf="filteredEvents?.length === 0" class="no-events">
+			<ng-container *ngIf="searchTerm; else noEvents">
+				{{'diary.No results found' | translate}}
 			</ng-container>
-
-			<!-- Mensaje cuando no hay eventos -->
-			<div *ngIf="filteredEvents?.length === 0" class="no-events">
-				<ng-container *ngIf="searchTerm; else noEvents">
-					{{'diary.No results found' | translate}}
-				</ng-container>
-				<ng-template #noEvents>
-					{{'diary.No messages' | translate}}
-				</ng-template>
-			</div>
-		</div>
-
-		<!-- Input para nuevo mensaje -->
-		<div class="new-message-container">
-			<div class="input-group">
-				<textarea class="form-control" 
-					[(ngModel)]="newMessage" 
-					(keyup.enter)="onEnter($event)"
-					placeholder="{{'diary.Type your message...' | translate}}"
-					rows="1"></textarea>
-				<div class="input-group-append">
-					<button class="btn btn-send" [disabled]="!newMessage?.trim()" (click)="sendMessage()">
-						<i class="fa fa-paper-plane"></i>
-					</button>
-				</div>
-			</div>
+			<ng-template #noEvents>
+				{{'diary.No messages' | translate}}
+			</ng-template>
 		</div>
 	</div>
 
-	<!-- Spinner de carga -->
-	<div class="center-elements" *ngIf="loading">
-		<div class="spinner-border text-primary" role="status">
-			<span class="sr-only">{{'generics.Loading' | translate}}</span>
+	<!-- Input para nuevo mensaje -->
+	<div class="new-message-container">
+		<div class="input-group">
+			<textarea class="form-control" 
+				[(ngModel)]="newMessage" 
+				(keyup.enter)="onEnter($event)"
+				placeholder="{{'diary.Type your message...' | translate}}"
+				rows="1"></textarea>
+			<div class="input-group-append">
+				<button class="btn btn-send" [disabled]="!newMessage?.trim()" (click)="sendMessage()">
+					<i class="fa fa-paper-plane"></i>
+				</button>
+			</div>
 		</div>
+	</div>
+</div>
+
+<!-- Spinner de carga -->
+<div class="center-elements" *ngIf="loading">
+	<div class="spinner-border text-primary" role="status">
+		<span class="sr-only">{{'generics.Loading' | translate}}</span>
 	</div>
 </div>
 

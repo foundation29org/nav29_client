@@ -34,7 +34,8 @@ export class WebPubSubService {
       }
       const url = environment.api + '/api/gettoken/' + IdUser;
       const cacheBuster = Date.now().toString();
-      this.http.get(url, {params: {_cb: cacheBuster}})
+      // Usar withCredentials para enviar cookies de autenticación
+      this.http.get(url, {params: {_cb: cacheBuster}, withCredentials: true})
         .subscribe((res: any) => {
           resolve(res.url);
         }, (err) => {
@@ -49,28 +50,14 @@ export class WebPubSubService {
     return this.client;
   }
 
-  /*async connect(token: string): Promise<WebPubSubClient> {
-    this.client = new WebPubSubClient({
-      getClientAccessUrl: token
-    });
-
-    await this.client.start();
-    this.listenMessage();
-
-
-    return this.client;
-  }*/
-
   async connect(token: string): Promise<WebPubSubClient> {
     return new Promise(async (resolve, reject) => {
       try {
         this.client = new WebPubSubClient({
           getClientAccessUrl: token
         }, {autoReconnect: false, reconnectRetryOptions: {maxRetries: 5, retryDelayInMs: 5000}});
-  
         await this.client.start();
         this.listenMessage();
-        
         resolve(this.client);
       } catch (error) {
         console.error("An error occurred while connecting:", error);
@@ -156,7 +143,6 @@ export class WebPubSubService {
     try {
       const token = await this.getToken(userId);
       await this.connect(token);
-      //this.startConnectionMonitoring();
       return true;
     } catch (error) {
       this.insightsService.trackException(error);
@@ -192,11 +178,8 @@ export class WebPubSubService {
         }
 
         try {
-          const userId = this.getStoredUserId();
-          if (userId) {
-            const token = await this.getToken(userId);
-            await this.connect(token);
-          }
+          const token = await this.getToken('');
+          await this.connect(token);
         } catch (error) {
           console.log("Reconnection attempt failed:", error);
           this.reconnectAttempts++;
@@ -205,15 +188,4 @@ export class WebPubSubService {
       }, 5000);
     }
   }
-
-  private getStoredUserId(): string {
-    // Get the user ID from wherever you store it (localStorage, service, etc.)
-    const token = localStorage.getItem('token');
-    if (token) {
-      const tokenPayload = decode(token);
-      return tokenPayload.sub;
-    }
-    return null;
-  }
-
 }

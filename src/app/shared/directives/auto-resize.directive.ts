@@ -22,9 +22,31 @@ export class AutoResizeDirective implements AfterViewInit {
 
   private adjustHeight(): void {
     const textarea = this.el.nativeElement;
-    textarea.style.overflow = 'hidden';
+    const maxHeight = parseInt(getComputedStyle(textarea).maxHeight) || 200;
+    const minHeight = parseInt(getComputedStyle(textarea).minHeight) || 24;
+    
+    // Reset height to auto para calcular el scrollHeight correcto
     textarea.style.height = 'auto';
-    //textarea.style.height = `${textarea.scrollHeight}px`;
-    textarea.style.height = `${textarea.scrollHeight + 20}px`;
+    const scrollHeight = textarea.scrollHeight;
+    
+    // Calcular la altura deseada (scrollHeight + padding si es necesario)
+    let desiredHeight = scrollHeight;
+    
+    // Aplicar límites
+    if (desiredHeight < minHeight) {
+      desiredHeight = minHeight;
+    } else if (desiredHeight > maxHeight) {
+      desiredHeight = maxHeight;
+      textarea.style.overflowY = 'auto';
+    } else {
+      textarea.style.overflowY = 'hidden';
+    }
+    
+    textarea.style.height = `${desiredHeight}px`;
+    
+    // Mantener el scroll al final cuando se está escribiendo
+    if (textarea.scrollHeight > textarea.clientHeight) {
+      textarea.scrollTop = textarea.scrollHeight;
+    }
   }
 }

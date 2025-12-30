@@ -23,13 +23,16 @@ export class PatientsComponent implements OnInit, OnDestroy {
   private subscription: Subscription = new Subscription();
   private subscription2: Subscription = new Subscription();
   patients: any = [];
+  filteredPatients: any = [];
   sharedPatients: any = [];
+  filteredSharedPatients: any = [];
   currentPatient : any = null;
   mode = 'Custom';
   modalReference: NgbModalRef;
   @ViewChild('shareCustom', { static: false }) contentshareCustom: TemplateRef<any>;
   loaded = false;
   role: string;
+  searchTerm: string = '';
 
   constructor(private router: Router, private http: HttpClient, private authService: AuthService, public toastr: ToastrService, public translate: TranslateService, public insightsService: InsightsService, private patientService: PatientService,private modalService: NgbModal
   ) {
@@ -54,10 +57,12 @@ export class PatientsComponent implements OnInit, OnDestroy {
       this.patients = this.authService.getPatientList();
       console.log(this.patients)
       this.currentPatient = this.authService.getCurrentPatient();
+      this.filteredPatients = [...this.patients];
       this.subscription2 = this.authService.patientListSubject.subscribe(
         (patientList) => {
           patientList.sort((a, b) => a.patientName.localeCompare(b.patientName));
           this.patients = patientList;
+          this.filterPatients();
         }
       );
     }
@@ -67,11 +72,151 @@ export class PatientsComponent implements OnInit, OnDestroy {
         .subscribe((res: any) => {
           console.log(res)
           this.sharedPatients = res;
+          this.filteredSharedPatients = [...this.sharedPatients];
         }, (err) => {
           console.log(err);
           this.insightsService.trackException(err);
         }));
     
+    }
+
+    filterPatients() {
+      if (!this.searchTerm || this.searchTerm.trim() === '') {
+        this.filteredPatients = [...this.patients];
+      } else {
+        const search = this.searchTerm.toLowerCase().trim();
+        this.filteredPatients = this.patients.filter((patient: any) => {
+          // Buscar por nombre
+          const nameMatch = patient.patientName?.toLowerCase().includes(search);
+          
+          // Buscar por fecha de nacimiento
+          let dateMatch = false;
+          if (patient.birthDate) {
+            const birthDate = new Date(patient.birthDate);
+            const day = birthDate.getDate();
+            const month = birthDate.getMonth() + 1;
+            const year = birthDate.getFullYear();
+            
+            // Nombres de mes en español
+            const monthNames = [
+              'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+              'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'
+            ];
+            const monthNamesShort = [
+              'ene', 'feb', 'mar', 'abr', 'may', 'jun',
+              'jul', 'ago', 'sep', 'oct', 'nov', 'dic'
+            ];
+            
+            const monthName = monthNames[month - 1];
+            const monthNameShort = monthNamesShort[month - 1];
+            
+            // Generar todas las variaciones posibles de formato
+            const dateVariations = [
+              // Formato largo: "6 de abril de 1953"
+              `${day} de ${monthName} de ${year}`,
+              `${day} de ${monthName}`,
+              // Formato corto: "6 abr 1953", "6 abr.", "6 abr"
+              `${day} ${monthNameShort} ${year}`,
+              `${day} ${monthNameShort}. ${year}`,
+              `${day} ${monthNameShort}`,
+              `${day} ${monthNameShort}.`,
+              // Formato numérico: "6/4/1953", "06/04/1953"
+              `${day}/${month}/${year}`,
+              `${day.toString().padStart(2, '0')}/${month.toString().padStart(2, '0')}/${year}`,
+              // Solo día y mes: "6/4", "06/04"
+              `${day}/${month}`,
+              `${day.toString().padStart(2, '0')}/${month.toString().padStart(2, '0')}`,
+              // Solo año
+              year.toString(),
+              // Solo mes
+              monthName,
+              monthNameShort,
+              // Formato ISO: "1953-04-06"
+              `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`
+            ];
+            
+            // Buscar en todas las variaciones
+            dateMatch = dateVariations.some(format => format.toLowerCase().includes(search));
+          }
+          
+          return nameMatch || dateMatch;
+        });
+      }
+    }
+
+    filterSharedPatients() {
+      if (!this.searchTerm || this.searchTerm.trim() === '') {
+        this.filteredSharedPatients = [...this.sharedPatients];
+      } else {
+        const search = this.searchTerm.toLowerCase().trim();
+        this.filteredSharedPatients = this.sharedPatients.filter((patient: any) => {
+          // Buscar por nombre
+          const nameMatch = patient.patientName?.toLowerCase().includes(search);
+          
+          // Buscar por fecha de nacimiento
+          let dateMatch = false;
+          if (patient.birthDate) {
+            const birthDate = new Date(patient.birthDate);
+            const day = birthDate.getDate();
+            const month = birthDate.getMonth() + 1;
+            const year = birthDate.getFullYear();
+            
+            // Nombres de mes en español
+            const monthNames = [
+              'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+              'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'
+            ];
+            const monthNamesShort = [
+              'ene', 'feb', 'mar', 'abr', 'may', 'jun',
+              'jul', 'ago', 'sep', 'oct', 'nov', 'dic'
+            ];
+            
+            const monthName = monthNames[month - 1];
+            const monthNameShort = monthNamesShort[month - 1];
+            
+            // Generar todas las variaciones posibles de formato
+            const dateVariations = [
+              // Formato largo: "6 de abril de 1953"
+              `${day} de ${monthName} de ${year}`,
+              `${day} de ${monthName}`,
+              // Formato corto: "6 abr 1953", "6 abr.", "6 abr"
+              `${day} ${monthNameShort} ${year}`,
+              `${day} ${monthNameShort}. ${year}`,
+              `${day} ${monthNameShort}`,
+              `${day} ${monthNameShort}.`,
+              // Formato numérico: "6/4/1953", "06/04/1953"
+              `${day}/${month}/${year}`,
+              `${day.toString().padStart(2, '0')}/${month.toString().padStart(2, '0')}/${year}`,
+              // Solo día y mes: "6/4", "06/04"
+              `${day}/${month}`,
+              `${day.toString().padStart(2, '0')}/${month.toString().padStart(2, '0')}`,
+              // Solo año
+              year.toString(),
+              // Solo mes
+              monthName,
+              monthNameShort,
+              // Formato ISO: "1953-04-06"
+              `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`
+            ];
+            
+            // Buscar en todas las variaciones
+            dateMatch = dateVariations.some(format => format.toLowerCase().includes(search));
+          }
+          
+          return nameMatch || dateMatch;
+        });
+      }
+    }
+
+    onSearchChange() {
+      this.filterPatients();
+      this.filterSharedPatients();
+    }
+
+    clearSearch() {
+      this.searchTerm = '';
+      this.filterPatients();
+      this.filterSharedPatients();
     }
 
     ngOnDestroy() {

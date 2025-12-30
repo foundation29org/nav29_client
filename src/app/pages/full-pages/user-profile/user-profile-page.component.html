@@ -24,6 +24,7 @@
 		  <i class="fa fa-language"></i>
 		</div>
 		<h3>{{'profile.Language' | translate}}</h3>
+		<p class="text-muted">{{'profile.Interface Language Explanation' | translate}}</p>
 		<select id="lang" name="lang" class="form-control" [(ngModel)]="user.lang" #langselected (ngModelChange)="onChangeLang($event)">
 		  <option *ngFor="let lang of langs" [ngValue]="lang.code">{{lang.name}}</option>
 		</select>

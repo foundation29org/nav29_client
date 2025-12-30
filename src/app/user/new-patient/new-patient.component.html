@@ -14,28 +14,42 @@
 
       <div class="bg-white round heightpanelsm">
         <div class="row m-0 mb-4">
-        <div class="text-center">
-          <h1 class="card-title text-bold-500">
-            {{'wizard.p2.0' | translate }}
-          </h1>
-            <h1 class="card-title text-bold-500">
-              {{'wizard.p2.1' | translate }}
-            <hr class="hr-custom">
+          <div class="text-center w-100">
+            <h1 class="wizard-main-title">
+              {{'wizard.p2.0' | translate }}
             </h1>
-            <div class="row mt-4">
-            <div class="col-md-4">
-                <button class="btn btn-dark text-bold-700 mt-2" (click)="changeStartOpt('doc')">{{'wizard.p2.2' | translate }}</button>
+            <p class="wizard-subtitle">
+              {{'wizard.p2.1' | translate }}
+            </p>
+            <div class="row mt-5 g-3">
+              <div class="col-md-4">
+                <div class="wizard-option-card" (click)="changeStartOpt('doc')">
+                  <div class="wizard-icon-wrapper wizard-icon-primary">
+                    <i class="fa fa-file-medical wizard-icon"></i>
+                  </div>
+                  <h5 class="wizard-option-title">{{'wizard.p2.2' | translate }}</h5>
+                </div>
+              </div>
+              <div class="col-md-4">
+                <div class="wizard-option-card" (click)="changeStartOpt('form')">
+                  <div class="wizard-icon-wrapper wizard-icon-secondary">
+                    <i class="fa fa-edit wizard-icon"></i>
+                  </div>
+                  <h5 class="wizard-option-title">{{'wizard.p2.3' | translate }}</h5>
+                </div>
+              </div>
+              <div class="col-md-4">
+                <div class="wizard-option-card wizard-option-card-outline" (click)="goToPatients()">
+                  <div class="wizard-icon-wrapper wizard-icon-outline">
+                    <i class="fa fa-times wizard-icon"></i>
+                  </div>
+                  <h5 class="wizard-option-title">{{'wizard.p2.4' | translate }}</h5>
+                </div>
+              </div>
             </div>
-            <div class="col-md-4">
-                <button class="btn btn-dark text-bold-700 mt-2" (click)="changeStartOpt('form')">{{'wizard.p2.3' | translate }}</button>
-            </div>
-            <div class="col-md-4">
-              <button class="btn btn-dark text-bold-700 mt-2" (click)="goToPatients()">{{'wizard.p2.4' | translate }}</button>
-            </div>
+          </div>
         </div>
-        </div>
-        </div>
-    </div>
+      </div>
     </div>
 
     <div class="text-center" *ngIf="startOpt!=''">
@@ -48,33 +62,42 @@
                 <p class="">{{'wizard.p3.1' | translate }}</p>
                 <hr class="hr-custom mb-5">
                 
-                <div class="mb-4 row">
+                <div class="mb-4 row g-3">
                     <div [ngClass]="{'col-md-4': showCameraButton, 'col-6': !showCameraButton}" *ngIf="showCameraButton">
-                        <div class="col-md-12">
-                            <i class="fa fa-camera dark fa-3x pointer" aria-hidden="true" (click)="entryOpt('opt1', contentPhoto)"></i>
-                        </div>
-                        <button class="btn btn-dark btn-sm text-bold-700 mt-2" (click)="entryOpt('opt1', contentPhoto)">{{'demo.Take a photo' | translate }}</button>
-                        
-                        
-                    </div>
-                    <div [ngClass]="{'col-md-4': showCameraButton, 'col-6': !showCameraButton}">
-                        <div class="col-md-12">
-                            <i class="fa fa-upload dark fa-3x pointer" aria-hidden="true"></i>
-                            <!--<img class="logo-img" [src]="icons[4].data" />-->
-                        </div>
-                        <div class="container-custom2">
-                            <input class="pointer" aria-label="new file" type="file" #fileDropRef id="fileDropRef" multiple (change)="onFileChangePDF($event);"
-                            accept=".pdf, .docx, .jpg, .png, .jpeg, .bmp, .tiff, .heif, .pptx, .txt" />
-                            <label for="fileDropRef" class="btn btn-dark btn-sm text-bold-700 mt-2" style="z-index:2;position: relative;" (change)="onFileChangePDF($event);">{{'generics.Upload' | translate }}</label>
-                            <span class="text-muted small d-block">{{'demo.Max. 5 documents' | translate }}</span>
-                            <span class="text-muted small d-block">{{'demo.You can upload more files later' | translate }}</span>
+                        <div class="document-option-card" (click)="entryOpt('opt1', contentPhoto)">
+                            <div class="option-icon-wrapper">
+                                <i class="fa fa-camera option-icon"></i>
+                            </div>
+                            <h5 class="option-title">{{'demo.Take a photo' | translate }}</h5>
+                            <p class="option-description">{{'demo.Take a photo description' | translate }}</p>
                         </div>
                     </div>
                     <div [ngClass]="{'col-md-4': showCameraButton, 'col-6': !showCameraButton}">
-                      <div class="col-md-12">
-                        <i class="fa-solid fa-paste dark fa-3x pointer" aria-hidden="true" (click)="entryOpt('opt2', contentManual)"></i>
-                      </div>
-                      <button class="btn btn-dark btn-sm text-bold-700 mt-2" (click)="entryOpt('opt2', contentManual)">{{'demo.Write text' | translate }}</button>
+                        <div class="document-option-card upload-option">
+                            <input class="pointer" aria-label="new file" type="file" #fileDropRef id="fileDropRef" multiple 
+                                (change)="onFileChangePDF($event);"
+                                accept=".pdf, .docx, .jpg, .png, .jpeg, .bmp, .tiff, .heif, .pptx, .txt" 
+                                style="display: none;" />
+                            <label for="fileDropRef" class="option-label">
+                                <div class="option-icon-wrapper">
+                                    <i class="fa fa-upload option-icon"></i>
+                                </div>
+                                <h5 class="option-title">{{'generics.Upload' | translate }}</h5>
+                                <p class="option-description">
+                                    <span class="d-block">{{'demo.Max. 5 documents' | translate }}</span>
+                                    <span class="d-block">{{'demo.You can upload more files later' | translate }}</span>
+                                </p>
+                            </label>
+                        </div>
+                    </div>
+                    <div [ngClass]="{'col-md-4': showCameraButton, 'col-6': !showCameraButton}">
+                        <div class="document-option-card" (click)="entryOpt('opt2', contentManual)">
+                            <div class="option-icon-wrapper">
+                                <i class="fa-solid fa-paste option-icon"></i>
+                            </div>
+                            <h5 class="option-title">{{'demo.Write text' | translate }}</h5>
+                            <p class="option-description">{{'demo.Write text description' | translate }}</p>
+                        </div>
                     </div>
                 </div>
                 <span type="button" class="float-left" (click)="resetStartOpt();">< {{'generics.Back' | translate }}</span>
@@ -612,11 +635,29 @@
     </div>
 </div>
 <ng-template #contentPhoto let-c="close" let-d="dismiss" appendTo="body">
-    <div class="modal-header" id="idHeader">
-        <button type="button" class="close" aria-label="Close" (click)="closeModal();">
-          <span aria-hidden="true">&times;</span>
+    <div class="modal-header" id="idHeader" style="display: flex; justify-content: space-between; align-items: center; padding: 15px 20px;">
+        <div style="flex: 1;">
+            <h5 class="modal-title mb-0" style="font-weight: 600; font-size: 1.1em;">
+                {{'demo.Capture document' | translate }}
+            </h5>
+            <div *ngIf="stepPhoto==1" style="font-size: 0.85em; color: #666; margin-top: 4px; font-weight: 400;">
+                {{'demo.Position the document in front of the camera' | translate }}
+            </div>
+            <div *ngIf="stepPhoto==2" style="font-size: 0.85em; color: #666; margin-top: 4px;">
+                <span style="font-style: italic;">{{'demo.New document' | translate }} ({{'demo.unsaved' | translate }})</span>
+                <span style="margin-left: 8px; font-weight: 500;">
+                    {{'demo.Pages' | translate }}: 
+                    <span *ngFor="let doc of tempDocs; let i = index">
+                        <strong>{{i + 1}}</strong><span *ngIf="i < tempDocs.length - 1 || capturedImage"> · </span>
+                    </span>
+                    <strong *ngIf="capturedImage">{{tempDocs.length + 1}}</strong>
+                </span>
+            </div>
+        </div>
+        <button type="button" class="close" aria-label="Close" (click)="closeModal();" style="margin-left: 15px;">
+            <span aria-hidden="true">&times;</span>
         </button>
-      </div>
+    </div>
     <div class="modal-body">
       <div class="row text-left">
         <div class="card-body col-md-12">
@@ -625,83 +666,92 @@
                 <video #videoElement id="videoElement" class="w-100" autoplay></video>
             </div>
             <div class="col-sm-12" *ngIf="stepPhoto==2">
-              <div class="mb-3">
-                <label for="nameFileCamera" class=""><strong>{{'demo.Document name' | translate }}</strong></label>
-                <input type="text" class="mt-0 form-control" [(ngModel)]="nameFileCamera" placeholder="{{'demo.Document name' | translate }}">
-            </div>
-                <img *ngIf="capturedImage" class="w-100" [src]="capturedImage" />
-                <div class="center-elements">
-                  <button type="button" class="mt-2 btn btn-primary btn-sm" (click)="prevCamera();">{{'demo.Repeat photo' | translate }}</button>
+                <div style="position: relative; display: inline-block; width: 100%;">
+                    <img *ngIf="capturedImage" class="w-100" style="border: 1px solid #dee2e6; border-radius: 4px; display: block;" [src]="capturedImage" />
+                    <button type="button" class="btn btn-outline-light" 
+                        style="position: absolute; top: 10px; right: 10px; border-radius: 50%; width: 45px; height: 45px; padding: 0; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 8px rgba(0,0,0,0.3); background-color: rgba(255,255,255,0.9); border: 2px solid #fff;"
+                        (click)="prevCamera();" 
+                        title="{{'demo.Repeat page' | translate}}">
+                        <i class="fa fa-redo" style="font-size: 1.2em; color: #333;"></i>
+                    </button>
                 </div>
-                
-                
             </div>
           </div>
         </div>
       </div>
-      <div *ngIf="docs.length>0">
-          <strong>{{'demo.Photos taken' | translate }}:</strong>
-          <p *ngFor="let doc of docs; let i = index" class="mb-0">
-            <span>{{doc.dataFile.name}} <em class="ml-1 danger fa fa-trash pointer" (click)="deletephoto(i)"></em></span>
+      <div *ngIf="tempDocs.length>0" style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #dee2e6;">
+          <strong>{{'demo.Captured pages' | translate }}: {{tempDocs.length}}</strong>
+          <p *ngFor="let doc of tempDocs; let i = index" class="mb-1 mt-2" style="font-size: 0.9em;">
+            <span>{{i + 1}}. {{doc.dataFile.name}} <em class="ml-1 danger fa fa-trash pointer" (click)="deletephoto(i)" title="{{'generics.Delete' | translate }}"></em></span>
           </p>
       </div>
     </div>
     <div class="modal-footer">
       <div class="form-actions col-md-12 center-elements">
-        
-        <button type="button" *ngIf="stepPhoto==1" class="btn btn-dark btn-sm float-right" (click)="captureImage()">{{'demo.Capture photo' | translate }}</button>
-        <button type="button" *ngIf="stepPhoto==2" class="btn btn-dark btn-sm float-left" (click)="otherPhoto(true)">{{'demo.Add another photo' | translate }}</button>
-        <button type="button" *ngIf="stepPhoto==2" class="btn btn-dark btn-sm float-right" (click)="otherPhoto(false)">{{'generics.Finish' | translate }}</button>
+        <button type="button" *ngIf="stepPhoto==1" class="btn btn-dark float-right"
+            (click)="captureImage()">
+            <i class="fa fa-camera mr-2"></i>{{'demo.Capture page' | translate }}
+        </button>
+        <button type="button" *ngIf="stepPhoto==2 && tempDocs.length<5" class="btn btn-dark float-left"
+            (click)="otherPhoto(true)">
+            <i class="fa fa-plus-circle mr-2"></i>{{'demo.Add another page' | translate }}
+        </button>
+        <button type="button" *ngIf="stepPhoto==2" class="btn btn-dark float-right"
+            (click)="otherPhoto(false)">
+            <i class="fa fa-check-circle mr-2"></i>{{'demo.Finalize document' | translate }}
+        </button>
       </div>
     </div>
 </ng-template>
 <ng-template #contentManual id="contentManual" let-c="close" let-d="dismiss" appendTo="body">
-  <div class="modal-header" id="idHeader">
+  <div class="modal-header modern-modal-header" id="idHeader">
       <div class="content-header text-left">
-          <h4 class="mb-0">{{'demo.Create report' | translate }}</h4>
+          <h4 class="mb-0 modern-modal-title">{{'demo.Create report' | translate }}</h4>
       </div>
-      <button type="button" class="close" aria-label="Close" (click)="closeModal();">
+      <button type="button" class="close modern-close-btn" aria-label="Close" (click)="closeModal();">
           <span aria-hidden="true">&times;</span>
       </button>
   </div>
-  <div class="modal-body content-wrapper p-2" id="idBody">
-      <div class="p-1">
-          <div>
-              <div class="row">
-                  <div class="col-md-12 center-elements">
-                    <div class="d-flex align-items-center mb-3">
-                        <input type="text" 
-                               class="form-control mt-0 mr-2" 
-                               [(ngModel)]="tempFileName" 
-                               placeholder="{{'voice.Enter file name' | translate }}" />
-                        
-                        <!-- Voice recorder button -->
-                        <button *ngIf="supported" 
-                                class="btn btn-outline-primary d-flex align-items-center" 
-                                (click)="toggleRecording()"
-                                [ngClass]="{'btn-danger': recording}"
-                                title="{{recording ? 'voice.Stop Voice Recognition' : 'voice.Start Voice Recognition' | translate}}">
-                            <i class="fa" [ngClass]="recording ? 'fa-stop' : 'fa-microphone'"></i>
-                            <span *ngIf="recording" class="ml-2">{{ timerDisplay }}</span>
-                        </button>
-                    </div>
-
-                    <textarea #inputTextArea 
-                              class="form-control data-hj-allow" 
-                              style="height:320px;" 
-                              [(ngModel)]="medicalText"
-                              name="medicalText" 
-                              placeholder="{{'generics.Create-paste a report' | translate }}"></textarea>
-                
-                    <button type="button" 
-                            class="mt-2 btn btn-sm btn-dark" 
-                            [disabled]="callingSummary || recording || medicalText.length==0" 
-                            title="{{'generics.Save' | translate }}"
-                            (click)="createFile();">
-                        <span>{{'generics.Save' | translate }}</span>
-                    </button>
-                  </div>
+  <div class="modal-body modern-modal-body create-report-modal" id="idBody">
+      <div class="create-report-form">
+          <div class="form-group">
+              <label class="form-label">{{'voice.Enter file name' | translate }}</label>
+              <div class="input-with-button">
+                  <input type="text" 
+                         class="form-control modern-input" 
+                         [(ngModel)]="tempFileName" 
+                         placeholder="{{'voice.Enter file name' | translate }}" />
+                  
+                  <!-- Voice recorder button -->
+                  <button *ngIf="supported" 
+                          class="btn btn-icon-only" 
+                          (click)="toggleRecording()"
+                          [ngClass]="{'btn-recording': recording, 'btn-primary': !recording}"
+                          [title]="recording ? ('voice.Stop Voice Recognition' | translate) : ('voice.Start Voice Recognition' | translate)">
+                      <i class="fa" [ngClass]="recording ? 'fa-stop' : 'fa-microphone'"></i>
+                      <span *ngIf="recording" class="recording-timer">{{ timerDisplay }}</span>
+                  </button>
               </div>
+          </div>
+
+          <div class="form-group">
+              <label class="form-label">{{'generics.Write or paste content' | translate }}</label>
+              <textarea #inputTextArea 
+                        class="form-control modern-textarea data-hj-allow" 
+                        [(ngModel)]="medicalText"
+                        name="medicalText" 
+                        placeholder="{{'generics.Write or paste content' | translate }}"></textarea>
+          </div>
+
+          <div class="form-actions">
+              <button type="button" 
+                      class="btn btn-primary btn-save" 
+                      [disabled]="callingSummary || recording || medicalText.length==0" 
+                      [title]="'generics.Save' | translate"
+                      (click)="createFile();">
+                  <i class="fa fa-save mr-2"></i>
+                  <span>{{'generics.Save' | translate }}</span>
+              </button>
           </div>
       </div>
   </div>

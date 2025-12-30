@@ -9,10 +9,12 @@
       "How do you want to start?": "Prova Nav29 con un referto medico che non capisci, vogliamo sorprenderti.",
       "startsubtitle": "Può trattarsi di qualsiasi tipo di rapporto. Puoi scattare una foto in buona luce e assicurandoti che il testo sia leggibile, Nav29 lo leggerà per te. Puoi anche utilizzare un file, se preferisci un PDF o un documento Word.",
       "Take a photo": "Scatta una foto",
+      "Take a photo description": "Cattura documenti con la tua fotocamera",
       "Use a file": "Usa un file",
       "Max. 5 documents": "Max. 5 documenti per lotto",
       "You can upload more files later": "Puoi caricare più file in seguito",
       "Write text": "Scrivi il testo",
+      "Write text description": "Scrivi o incolla il contenuto manualmente",
       "Drag and drop file here": "Trascina e rilascia i tuoi rapporti qui",
       "or": "o",
       "Browse for file": "Sfoglia i file",
@@ -31,14 +33,47 @@
       "No documents to summarize": "Non ci sono documenti da riassumere, oppure non hai finito di estrarre il testo.",
       "Add new document": "Come si desidera aggiungere i documenti?",
       "allowcamera": "È necessario consentire alla telecamera di continuare. Abilita l'accesso alla fotocamera nelle impostazioni del browser e riprova.",
-      "Repeat photo": "Ripeti foto",
-      "Capture photo": "Scatta foto",
-      "Photos taken": "Foto scattate",
-      "Add another photo": "Aggiungi un'altra foto",
+      "Repeat photo": "Ripeti pagina",
+      "Repeat page": "Ripeti pagina",
+      "Capture photo": "Cattura pagina",
+      "Capture page": "Cattura pagina",
+      "Capture document": "Cattura documento",
+      "Position the document in front of the camera": "Posiziona il documento davanti alla fotocamera",
+      "Photos taken": "Pagine catturate",
+      "Add another photo": "Aggiungi un'altra pagina",
+      "Add another page": "Aggiungi un'altra pagina",
+      "Captured pages": "Pagine catturate",
+      "page": "pagina",
+      "pages": "pagine",
+      "Pages": "Pagine",
+      "New document": "Nuovo documento",
+      "unsaved": "non salvato",
+      "Finalize document": "Finalizza documento",
+      "You have taken": "Hai catturato",
+      "You have captured": "Hai catturato",
+      "How do you want to upload the photos?": "Come vuoi caricare le foto?",
+      "How do you want to save this document?": "Come vuoi salvare questo documento?",
+      "Save as one document": "Salva come un documento",
+      "Save as one document description": "Tutte le pagine saranno combinate in un unico documento PDF",
+      "Save as separate documents": "Salva come documenti separati",
+      "Save as separate documents description": "Ogni pagina sarà caricata come un documento individuale",
+      "Save document": "Salva documento",
+      "Group into one document": "Raggruppa in un documento",
+      "Upload as separate documents": "Carica come documenti separati",
+      "Combining photos": "Combinando le foto",
+      "Combining": "Combinando",
+      "into one document": "in un documento",
+      "Enter document name": "Inserisci il nome del documento",
+      "Document name is required": "Il nome del documento è obbligatorio",
+      "You can change it later": "Puoi cambiarlo più tardi",
+      "Medical report": "Referto medico",
+      "Test results": "Risultati degli esami",
+      "Medical documentation": "Documentazione medica",
+      "Error combining photos": "Errore nel combinare le foto",
       "I like it": "Mi piace",
-      "Create report": "Crea rapporto",
-      "demot": "Hai referti medici che non capisci?",
-      "demot2": "Premi il pulsante per iniziare a comprendere i tuoi dati medici",
+      "Create report": "Inserimento testo",
+      "demot": "Nav29: il tuo secondo cervello per la salute",
+      "demot2": "I tuoi documenti, conversazioni e strumenti in un unico posto per prendere il controllo della tua salute.",
       "Extracting the text from the documents": "Nav29 sta analizzando il documento ed estraendo il testo.",
       "The summary is being generated": "Nav29 sta generando il riepilogo. Il processo potrebbe richiedere fino a un minuto.",
       "This may take up to a minute": "Sii paziente, potrebbe volerci fino a un minuto.",
@@ -48,19 +83,19 @@
       "My reports": "I miei rapporti",
       "While you wait": "Mentre aspetti, guarda tutto quello che puoi ottenere se ti registri come utente. La registrazione non ha alcun costo, ha solo vantaggi.",
       "Advantages":{
-         "title": "Inizia a prendere il controllo dei tuoi dati medici!",
+         "title": "Tutto ciò che puoi fare con Nav29",
          "t1": "Archiviazione sicura e permanente",
-         "d1": "Archivia e accedi ai tuoi rapporti medici da un unico posto, sempre protetti. I tuoi dati sono tuoi e sono supportati da Fundación 29.",
+         "d1": "Archivia e accedi a tutti i tuoi rapporti medici da un unico posto, sempre protetti. I tuoi dati sono tuoi e sono supportati da Fundación 29.",
          "t2": "Riepiloghi intelligenti",
-         "d2": "Trasforma rapporti medici complessi in riepiloghi facili da capire. Prendi decisioni informate sulla tua salute.",
+         "d2": "Trasforma rapporti medici complessi in riepiloghi facili da capire. L'IA analizza i tuoi documenti e ti aiuta a prendere decisioni informate sulla tua salute.",
          "t3": "Parla con i tuoi dati",
-         "d3": "Fai domande e ottieni risposte chiare dai tuoi rapporti medici attraverso un'interfaccia conversazionale semplice.",
-         "t4": "Esploratore della salute",
-         "d4": "Cerca farmaci, studi clinici e progressi medici. Il tuo assistente medico personale è sempre a tua disposizione.",
+         "d3": "Fai domande e ottieni risposte chiare dai tuoi rapporti medici attraverso un'interfaccia conversazionale con IA. Il tuo assistente medico sempre disponibile.",
+         "t4": "Strumenti di analisi avanzati",
+         "d4": "Diagnostica assistita dall'IA, analisi dei bisogni non coperti ed esplorazione di farmaci e studi clinici. Nuovi strumenti vengono aggiunti regolarmente.",
          "t5": "Condividi con fiducia",
-         "d5": "Condividi i tuoi rapporti medici in modo sicuro con il tuo team sanitario. Hai sempre il controllo dei tuoi dati.",
-         "t6": "Un diario della salute",
-         "d6": "Annota e organizza i tuoi appuntamenti e eventi medici importanti. Porta sempre con te il tuo cervello digitale."
+         "d5": "Condividi i tuoi rapporti medici in modo sicuro con il tuo team sanitario. Hai il controllo completo su chi accede ai tuoi dati e quando.",
+         "t6": "Diario e strumenti collaborativi",
+         "d6": "Annota e organizza i tuoi appuntamenti, eventi medici e note importanti. Collabora con il tuo team di assistenza e porta sempre con te il tuo secondo cervello digitale."
       }
     },
     "feedback": {
@@ -102,11 +137,21 @@
     "Other": "Altro",
      "There are no events": "Non ci sono eventi",
      "Show filters": "Mostra filtri",
-     "Hide filters": "Nascondi filtri"
+     "Hide filters": "Nascondi filtri",
+     "Export": "Esporta",
+     "Copy to clipboard": "Copia negli appunti",
+     "Export to CSV": "Esporta in CSV",
+     "Export to PDF": "Esporta in PDF",
+     "Timeline copied to clipboard": "Cronologia copiata negli appunti",
+     "Date": "Data",
+     "Exported on": "Esportato il"
     },
     "voice":{
+      "Stop recording": "Ferma registrazione",
+      "Start voice input": "Inizia input vocale",
       "Start Voice Recognition": "Inizia il riconoscimento vocale",
       "Stop Voice Recognition": "Interrompi il riconoscimento vocale",
+      "Not supported in this browser": "Il riconoscimento vocale non è disponibile in questo browser. Usa Chrome, Edge o Safari per questa funzionalità.",
       "Recording": "Registrazione",
       "Sorry, voice recognition is not supported in your browser.": "Spiacenti, il riconoscimento vocale non è supportato dal tuo browser.",
       "We recommend that you use Google Chrome, Microsoft Edge, or Safari.": "Ti consigliamo di utilizzare Google Chrome, Microsoft Edge, o Safari.",
@@ -128,10 +173,6 @@
      "p7": "Inserisci il tuo indirizzo email per richiedere la reimpostazione della password.",
      "p8": "Controlla la tua email e clicca sul link per verificare il tuo indirizzo email."
     },
-   "promts":{
-      "0": "Behave like an expert in detecting sentence intentions. A patient writes the following sentence: '{{value}}'. \nChoose only one of the following intentions the patient wants to make: \n1.$Data (When providing information about the patient) \n2.$Question (When asks something or send something with the question mark) \n3.$Share (He must to tell you the word 'share') \n4.$Take Quiz (When he want to make a questionnaire) \nIf it is none of this 4 intentions, returns: \n2.$Question",
-     "1": "Behave like a doctor. You have to give specific information and not general. Use only sources of medical information."
-   },
    "summaryoptions": {
       "title": "Riassunti",
     "timeline": {
@@ -174,7 +215,7 @@
   "dxgpt": {
     "description": "Analizza automaticamente le informazioni cliniche che inserisci, inclusi rapporti, note ed eventi registrati, e genera un elenco strutturato di possibili diagnosi basato sui modelli di sintomi estratti.",
     "analyze": "Analizza",
-    "button": "Diagnosi",
+    "button": "Cerca diagnosi",
     "analyzing": "Analizzando",
     "patientInfo": "Informazioni del paziente",
     "possibleDiagnoses": "Possibili diagnosi",
@@ -200,7 +241,38 @@
       "analysisError": "Errore durante l'esecuzione della nuova analisi. Riprova.",
       "analysisErrorWithDescription": "Errore durante l'esecuzione della nuova analisi. La descrizione è stata salvata ma le diagnosi non sono state aggiornate.",
       "couldNotGetInfo": "Impossibile ottenere le informazioni richieste.",
-      "errorLoadingInfo": "Errore nel caricamento delle informazioni. Riprova."
+      "errorLoadingInfo": "Errore nel caricamento delle informazioni. Riprova.",
+      "errorMessage": "Si è verificato un errore durante l'elaborazione dell'analisi. Riprova.",
+      "tryAgain": "Riprova",
+      "summary": {
+        "title": "Riassunto del paziente non disponibile",
+        "message": "Il paziente non ha un riassunto generato. Vuoi creare il riassunto ora?<br><br><small>Se crei il riassunto, riceverai una notifica quando sarà pronto e potrai tornare qui per eseguire l'analisi.</small>",
+        "create": "Crea riassunto",
+        "continue": "Continua senza riassunto",
+        "creating": "Creazione del riassunto...",
+        "notification": "Il riassunto è in fase di generazione. Riceverai una notifica quando sarà pronto.<br><br>Puoi tornare qui più tardi per eseguire l'analisi di diagnosi differenziale."
+      },
+      "editInfo": {
+        "title": "Non sei soddisfatto dei risultati?",
+        "message": "Puoi modificare la descrizione del paziente cliccando sull'icona della matita (✏️) sopra. Aggiungi informazioni dettagliate su sintomi, età, genere e da quando sono iniziati i sintomi per ottenere diagnosi più accurate."
+      },
+      "chooseMethod": {
+        "title": "Scegli il metodo di analisi",
+        "message": "Il paziente ha un riassunto generato. Come desideri eseguire l'analisi?<br><br><small><strong>Riassunto del paziente:</strong> Più veloce, include informazioni strutturate e contestualizzate.<br><strong>Eventi e documenti:</strong> Include informazioni più recenti che potrebbero non essere nel riassunto.</small>",
+        "withSummary": "Analizza con il riassunto del paziente",
+        "withEvents": "Analizza con eventi e documenti"
+      },
+      "async": {
+        "processing": "Elaborazione dell'analisi",
+        "message": "L'analisi è in corso. Riceverai una notifica quando sarà pronta.",
+        "timeMessage": "Questo processo può richiedere diversi minuti a seconda del numero di documenti.",
+        "cancel": "Annulla",
+        "cancelled": "Elaborazione annullata",
+        "cancelledMessage": "L'analisi è stata annullata. Puoi avviarla nuovamente quando vuoi.",
+        "completed": "Analisi completata",
+        "success": "L'analisi di diagnosi differenziale è stata completata con successo.",
+        "error": "Errore nell'analisi"
+      }
   },
    "categoriesPatients":{
      "title": "Patients",
@@ -713,6 +785,14 @@
      "msgError": "Non è ancora disponibile. Riprova tra qualche minuto. Se l'errore persiste dopo 10 minuti, elimina il rapporto e ricaricalo.",
      "nofileexist": "Il file non esiste",
      "errProcFile": "Si è verificato un errore durante l'elaborazione del file. Per favore riprova.",
+     "error": {
+       "docx": {
+         "convertToPdf": "Il documento DOCX non è stato elaborato. Alcuni documenti DOCX con modifiche o formati avanzati (tabelle complesse, immagini incorporate, macro) non sono compatibili con il servizio di analisi. Si prega di convertire il documento in PDF e caricarlo nuovamente. I file PDF hanno una migliore compatibilità."
+       },
+       "document": {
+         "processingFailed": "Errore durante l'elaborazione del documento. Si prega di provare con un altro documento."
+       }
+     },
      "procesando intent": "Analizzando la tua richiesta per capire di cosa hai bisogno...",
      "intent detectado": "Abbiamo compreso la tua richiesta, ora stiamo cercando le informazioni appropriate...",
      "generando respuesta": "Stiamo generando una risposta basata sulle informazioni rilevanti trovate...",
@@ -749,6 +829,7 @@
       "noNotes": "Ancora nessuna nota. Aggiungi una nota per iniziare!",
       "Add Note": "Aggiungi Nota",
       "Note Content": "Contenuto della Nota",
+      "Enter note content": "Inserisci il contenuto della nota...",
       "Save to notes": "Salva nelle note",
       "Edit Note": "Modifica nota",
       "Delete Note": "Elimina nota",
@@ -804,10 +885,19 @@
       "review_validate_events": "Rivedere gli eventi rilevati nel referto medico. Indicare se si tratta di eventi corretti, presenti o passati.",
       "incorrect": "Errato",
       "present": "Presente",
-      "past": "Passato"
+      "past": "Passato",
+      "originWizard": "Modulo iniziale del paziente",
+      "originAutomatic": "Automatico",
+      "Origin": "Origine",
+      "No events yet": "Nessun evento ancora",
+      "Create first event": "Crea il primo evento",
+      "Sort by": "Ordina per",
+      "Sort ascending": "Ordina in modo crescente",
+      "Sort descending": "Ordina in modo decrescente"
    },
     "menu":{
        "Dashboard":"Casa",
+       "Go to Home":"Torna alla home",
        "Dashboard Admin":"Amministratore dashboard",
        "Dashboard Super Admin":"Dashboard superAdmin",
        "User Profile":"Profilo utente",
@@ -861,6 +951,7 @@
        "Foot":"Piede",
        "Delete account":"Elimina account",
        "Language": "Lingua",
+      "Interface Language Explanation": "Seleziona la lingua in cui desideri vedere i menu, i pulsanti e i testi dell'applicazione.",
       "No knowledge": "Nessuna conoscenza",
       "Basic knowledge": "Conoscenze di base",
       "Intermediate knowledge": "Conoscenze intermedie",
@@ -956,6 +1047,8 @@
        "entervalidemail":"Inserisci una email valida!",
        "Passwordlength":"La lunghezza della password deve essere compresa tra 8 e 24",
        "required":"Questo campo è obbligatorio",
+      "selected": "selezionati",
+      "Show notes": "Mostra note",
        "numeric":"Questo campo deve essere numerico",
        "Passwordnomatch":"La password non corrisponde",
        "fieldsRequired":"I campi contrassegnati da * sono obbligatori",
@@ -1075,7 +1168,18 @@
        "generated by artificial intelligence": "Tieni presente che questo riepilogo è stato generato dall'intelligenza artificiale e potrebbe contenere imprecisioni o errori.",
        "Coming soon": "Prossimamente",
        "Select all documents": "Seleziona tutti i documenti",
-       "Create-paste a report":"Crea/incolla un rapporto",
+       "Manage documents": "Gestisci documenti",
+       "Manage documents context": "Gestisci documenti per contesto",
+       "Documents context explanation": "I documenti selezionati verranno utilizzati come contesto nella conversazione",
+       "Documents selected for context": "{{count}} di {{total}} documenti selezionati per contesto",
+       "No documents selected for context": "Nessun documento selezionato per contesto",
+       "Document included in context": "Documento incluso nel contesto della conversazione",
+       "Use document as context": "Usa questo documento come contesto nella conversazione",
+       "Select documents to include": "Seleziona documenti da includere",
+       "Select all": "Seleziona tutti",
+       "Deselect all": "Deseleziona tutti",
+       "No documents available": "Nessun documento disponibile",
+       "Write or paste content":"Scrivi o incolla il contenuto",
        "Write down any details":"Annota tutti i dettagli che potrebbero essere importanti"
     },
     "lang":{
@@ -1118,6 +1222,11 @@
        "Female":"Femmina"
     },
     "patients":{
+    "Search by name or birth date": "Cerca per nome o data di nascita",
+    "results found": "risultati trovati",
+    "No results found": "Nessun risultato trovato",
+    "No patients match your search": "Nessun paziente corrisponde alla tua ricerca",
+    "No shared patients match your search": "Nessun paziente condiviso corrisponde alla tua ricerca",
       "My patients": "I miei pazienti",
       "Create new patient": "Crea nuovo paziente",
       "View patient": "Visualizza paziente",
@@ -1507,5 +1616,19 @@
       "tryAgain": "Riprova",
       "placeholderNeed": "Scrivi quello che senti mancare e che dovrebbe essere affrontato",
       "dragToReorder": "Trascina per riordinare"
+    },
+    "tools": {
+      "title": "Strumenti",
+      "agents": "Agenti",
+      "results": "Risultati",
+      "clickToView": "Clicca per visualizzare",
+      "noSummary": "Nessun riepilogo disponibile",
+      "notesCount": "note",
+      "noNotes": "Nessuna nota"
+    },
+    "trialgpt": {
+      "title": "TrialGPT - In arrivo",
+      "button": "Cerca studi clinici",
+      "comingSoon": "Prossimamente disponibile"
     }
- }
+  }

@@ -27,7 +27,7 @@
                 </li>
                 <!--si no es pagina isHomePage mostrar para ir a la pagina principal  -->
                 <li class="nav-item mr-2" *ngIf="!isHomePage">
-                  <a class="btn btn-dark mb-0 btn-navbar btn-bolder" [routerLink]="['/']" (click)="trackEventsService.lauchEvent('Home btn 1')">{{'menu.Dashboard' | translate }}</a>
+                  <a class="btn btn-dark mb-0 btn-navbar btn-bolder" [routerLink]="['/']" (click)="trackEventsService.lauchEvent('Home btn 1')">{{(isLoginPage || isRegisterPage) ? ('menu.Go to Home' | translate) : ('menu.Dashboard' | translate)}}</a>
                 </li>
                 <li class="nav-item mr-2" *ngIf="!isLoginPage">
                     <a class="btn btn-dark mb-0 btn-navbar btn-bolder" [routerLink]="['/login']" [queryParams]="getInvitationParams()" (click)="trackEventsService.lauchEvent('Login btn 1')">{{'login.Sign in' | translate }}</a>

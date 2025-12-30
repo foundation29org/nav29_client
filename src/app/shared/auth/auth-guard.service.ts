@@ -1,7 +1,6 @@
 import { CanActivate, ActivatedRouteSnapshot, RouterStateSnapshot, Router } from '@angular/router';
 import { Injectable } from '@angular/core';
 import { AuthService } from './auth.service';
-import { TokenService } from './token.service';
 import { ToastrService } from 'ngx-toastr';
 import { TranslateService } from '@ngx-translate/core';
 import Swal from 'sweetalert2';
@@ -9,90 +8,80 @@ import Swal from 'sweetalert2';
 @Injectable()
 export class AuthGuard implements CanActivate {
 
-  constructor(private authService: AuthService, private router: Router, public toastr: ToastrService, public translate: TranslateService, private tokenService: TokenService) {}
+  constructor(
+    private authService: AuthService,
+    private router: Router,
+    public toastr: ToastrService,
+    public translate: TranslateService
+  ) {}
 
   canActivate(route: ActivatedRouteSnapshot, state: RouterStateSnapshot) {
-    this.authService.getEnvironment()
+    this.authService.getEnvironment();
 
     let url: string = state.url;
-
     const expectedRole = route.data.expectedRole;
 
-    const expiresAt = this.authService.getExpToken();
-
-
     return new Promise<boolean>((resolve) => {
-      if (this.authService.isAuthenticated()) {
-        if (this.tokenService.isTokenValid() && (Date.now() / 1000) < expiresAt) {
+      let attempts = 0;
+      const maxAttempts = 10; // Máximo ~5s de espera
+
+      const checkAuth = () => {
+        attempts++;
+
+        if (this.authService.isAuthenticated()) {
+          // Sesión válida en memoria -> permitir acceso
           return resolve(true);
         } else {
-          this.authService.logout();
-          this.router.navigate([this.authService.getLoginUrl()]);
-          return resolve(false);
-        }
-      } else {
-        if (expiresAt != null && (Date.now() / 1000) >= expiresAt) {
-          this.toastr.error('', this.translate.instant("generics.The session has expired"));
-        }
-
-        if (expectedRole === undefined) {
-          this.authService.logout();
-          this.router.navigate([this.authService.getLoginUrl()]);
-          return resolve(false);
-        } else {
-          if (expectedRole !== undefined && this.authService.getRole() !== '' && expectedRole.indexOf(this.authService.getRole()) === -1) {
-            this.authService.setRedirectUrl('/.');
-          } else {
-            this.authService.setRedirectUrl(url);
+          // Si se está verificando la sesión y no hemos excedido el máximo de intentos, esperar más
+          if (this.authService.isCheckingSessionStatus() && attempts < maxAttempts) {
+            setTimeout(() => {
+              checkAuth();
+            }, 500);
+            return;
           }
-          this.authService.logout();
-          this.router.navigate([this.authService.getLoginUrl()]);
-          return resolve(false);
+          
+          // Si aún no se ha verificado la sesión, esperar un poco más
+          if (!this.authService.isSessionChecked() && attempts < maxAttempts) {
+            setTimeout(() => {
+              checkAuth();
+            }, 500);
+            return;
+          }
+
+          // No hay sesión válida después de verificar -> redirigir a login
+          // Solo hacer logout si realmente no hay sesión (no mientras se verifica)
+          if (expectedRole === undefined) {
+            // Guardar URL actual antes de logout para redirección después de login
+            this.authService.setRedirectUrl(url);
+            this.authService.logout();
+            this.router.navigate([this.authService.getLoginUrl()]);
+            return resolve(false);
+          } else {
+            if (
+              expectedRole !== undefined &&
+              this.authService.getRole() !== '' &&
+              expectedRole.indexOf(this.authService.getRole()) === -1
+            ) {
+              this.authService.setRedirectUrl('/.');
+            } else {
+              this.authService.setRedirectUrl(url);
+            }
+            this.authService.logout();
+            this.router.navigate([this.authService.getLoginUrl()]);
+            return resolve(false);
+          }
         }
-      }
+      };
+
+      checkAuth();
     });
-
-    if (this.authService.isAuthenticated()){
-      if(this.tokenService.isTokenValid() && (Date.now()/1000) < expiresAt){
-         return true;
-      }else{
-        this.authService.logout();
-        this.router.navigate([this.authService.getLoginUrl()]);
-        return false
-      }
-    }else{
-      if(expiresAt!=null){
-        if((Date.now()/1000) >= expiresAt){
-          this.toastr.error('', this.translate.instant("generics.The session has expired"));
-        }
-      }
-      if(expectedRole == undefined){
-        this.authService.logout();
-        this.router.navigate([this.authService.getLoginUrl()]);
-        return false
-      }else{
-        if(expectedRole!== undefined && this.authService.getRole()!='' && expectedRole.indexOf(this.authService.getRole()) == -1 ){
-          this.authService.setRedirectUrl('/.');
-        }else{
-          this.authService.setRedirectUrl(url);
-        }
-        this.authService.logout();
-        this.router.navigate([this.authService.getLoginUrl()]);
-        return false;
-      }
-    }
-
   }
 
   testtoken(){
-    const expiresAt = this.authService.getExpToken();
-    if (this.authService.isAuthenticated() && (Date.now()/1000) < expiresAt) {
+    // Con cookies HttpOnly, delegamos la expiración al servidor.
+    // Este método se mantiene por compatibilidad pero solo comprueba isAuthenticated.
+    if (this.authService.isAuthenticated()) {
       return true;
-    }
-    if(expiresAt!=null){
-      if((Date.now()/1000) >= expiresAt){
-        this.toastr.error('', this.translate.instant("generics.The session has expired"));
-      }
     }
     this.authService.logout();
     this.router.navigate([this.authService.getLoginUrl()]);
@@ -125,7 +114,7 @@ export class AuthGuard implements CanActivate {
         allowEscapeKey: false,
     }).then((result) => {
       if (result.value) {
-        location.reload();
+        //location.reload();
       }
     });
 

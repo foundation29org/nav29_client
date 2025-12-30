@@ -202,7 +202,7 @@ export class AppComponent implements OnInit, OnDestroy {
           }).then((result) => {
             this.isSwalOpen = false; // Marcar que la alerta se ha cerrado
             if (result.value) {
-              location.reload();
+              //location.reload();
             }
           });
         }
