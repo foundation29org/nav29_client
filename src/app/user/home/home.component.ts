@@ -1603,9 +1603,31 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     } else if (parsedData.status === 'sugerencias generadas') {
       this.translateSuggestions(parsedData.suggestions);
     } else if (parsedData.status === 'error') {
+      // Limpiar el estado cuando hay un error
       this.callingOpenai = false;
-      console.error(parsedData.error);
-      this.insightsService.trackException(parsedData.error);
+      this.gettingSuggestions = false;
+      
+      // Manejar diferentes tipos de errores
+      const errorMessage = parsedData.message || parsedData.error || 'ERROR_PROCESSING_REQUEST';
+      const errorDetails = parsedData.error || errorMessage;
+      
+      console.error('Error en navigator:', errorDetails, parsedData);
+      
+      // Registrar el error en insights
+      this.insightsService.trackException(new Error(`Navigator error: ${errorMessage}`));
+      
+      // Mostrar mensaje de error al usuario
+      if (errorMessage === 'ERROR_PROCESSING_REQUEST') {
+        this.toastr.error(
+          this.translate.instant('messages.errorProcessingRequest') || 'Error procesando la solicitud. Por favor, inténtalo de nuevo.',
+          this.translate.instant('generics.Error') || 'Error'
+        );
+      } else {
+        this.toastr.error(
+          errorMessage,
+          this.translate.instant('generics.Error') || 'Error'
+        );
+      }
     } else {
       this.updateNavigatorStatus(parsedData);
     }
