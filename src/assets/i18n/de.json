@@ -123,6 +123,10 @@
     },
    "timeline":{
     "Timeline": "Zeitleiste",
+    "Missing date": "Fehlendes Datum",
+    "Please add a date to this event": "Bitte fügen Sie diesem Ereignis ein Datum hinzu",
+    "Events needing review": "Ereignisse, die überprüft werden müssen",
+    "Estimated": "Geschätzt",
     "Filter by": "Filtern nach",
     "Start date": "Startdatum",
     "End date": "Enddatum",

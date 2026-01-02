@@ -126,6 +126,10 @@
   },
    "timeline":{
     "Timeline": "Línea de tiempo",
+    "Missing date": "Sin fecha",
+    "Please add a date to this event": "Por favor, añada una fecha a este evento",
+    "Events needing review": "Eventos que necesitan revisión",
+    "Estimated": "Estimada",
     "Filter by": "Filtrar por",
     "Start date": "Fecha de inicio",
     "End date": "Fecha de finalización",

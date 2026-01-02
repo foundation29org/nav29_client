@@ -295,6 +295,19 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
   sortDirection: number = -1;
 
   timeline: any = [];
+  eventsNeedingReviewCount: number = 0;
+
+  updateNeedingReviewCount(): void {
+    if (!this.allEvents || this.allEvents.length === 0) {
+      this.eventsNeedingReviewCount = 0;
+      return;
+    }
+    this.eventsNeedingReviewCount = this.allEvents.filter(event => 
+      event.needsDateReview || 
+      (event.date === null && event.dateConfidence === 'missing') || 
+      event.dateConfidence === 'estimated'
+    ).length;
+  }
   showFilters = false;
   groupedEvents: any = [];
   startDate: Date;
@@ -2313,6 +2326,9 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
       } else {
         this.context.push({ role: "assistant", content: patientInfo });
       }
+
+      // Calcular eventos que necesitan revisión de fecha
+      this.updateNeedingReviewCount();
 
       this.loadedEvents = true;
     } catch (err) {
@@ -5144,24 +5160,47 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
 
   private groupEventsByMonth(events: any[]): any[] {
     const grouped = {};
+    const noDateEvents = [];
 
     events.forEach(event => {
-      const monthYear = this.getMonthYear(event.date).getTime(); // Usar getTime para agrupar
-      if (!grouped[monthYear]) {
-        grouped[monthYear] = [];
+      if (!event.date) {
+        noDateEvents.push(event);
+      } else {
+        const dateObj = new Date(event.date);
+        // Validar que la fecha sea válida y no sea 1970 (caso de error común)
+        if (isNaN(dateObj.getTime()) || dateObj.getFullYear() <= 1970) {
+          noDateEvents.push(event);
+        } else {
+          const monthYear = this.getMonthYear(event.date).getTime();
+          if (!grouped[monthYear]) {
+            grouped[monthYear] = [];
+          }
+          grouped[monthYear].push(event);
+        }
       }
-      grouped[monthYear].push(event);
     });
 
-    return Object.keys(grouped).map(key => ({
-      monthYear: new Date(Number(key)), // Convertir la clave de nuevo a fecha
+    const result = Object.keys(grouped).map(key => ({
+      monthYear: new Date(Number(key)),
       events: grouped[key]
     }));
+
+    if (noDateEvents.length > 0) {
+      result.push({
+        monthYear: null, // Identificador especial para eventos sin fecha
+        events: noDateEvents
+      });
+    }
+
+    return result;
   }
 
 
   private getMonthYear(dateStr: string): Date {
     const date = new Date(dateStr);
+    if (isNaN(date.getTime())) {
+      return new Date(0); // Fallback
+    }
     return new Date(date.getFullYear(), date.getMonth(), 1); // Primer día del mes
   }
 
@@ -5186,7 +5225,7 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
         // El evento debe empezar antes del fin del filtro
         isBeforeEndDate = !eventStart || eventStart <= endDate;
       }
-      
+
       const isEventTypeMatch = !this.selectedEventType || this.selectedEventType == 'null' || !event.key || event.key === this.selectedEventType;
       return isAfterStartDate && isBeforeEndDate && isEventTypeMatch;
     });
@@ -5211,15 +5250,22 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
 
   orderEvents() {
     this.groupedEvents.sort((a, b) => {
-      const dateA = a.monthYear.getTime(); // Convertir a timestamp
-      const dateB = b.monthYear.getTime(); // Convertir a timestamp
+      // Los eventos sin fecha (monthYear === null) siempre van primero para que el usuario los vea
+      if (a.monthYear === null) return -1;
+      if (b.monthYear === null) return 1;
+
+      const dateA = a.monthYear.getTime();
+      const dateB = b.monthYear.getTime();
       return this.isOldestFirst ? dateA - dateB : dateB - dateA;
     });
 
     this.groupedEvents.forEach(group => {
       group.events.sort((a, b) => {
-        const dateA = new Date(a.date).getTime(); // Convertir a timestamp
-        const dateB = new Date(b.date).getTime(); // Convertir a timestamp
+        if (!a.date) return -1;
+        if (!b.date) return 1;
+        
+        const dateA = new Date(a.date).getTime();
+        const dateB = new Date(b.date).getTime();
         return this.isOldestFirst ? dateA - dateB : dateB - dateA;
       });
     });

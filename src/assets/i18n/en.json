@@ -126,6 +126,10 @@
   },
   "timeline":{
    "Timeline": "Timeline",
+   "Missing date": "Missing date",
+   "Please add a date to this event": "Please add a date to this event",
+   "Events needing review": "Events needing review",
+   "Estimated": "Estimated",
    "Filter by": "Filter by",
    "Start date": "Start date",
    "End date": "End date",

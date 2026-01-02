@@ -225,6 +225,9 @@
                         *ngIf="timeline.length > 0">
                         <span>{{'timeline.Timeline' | translate }}</span>
                         <span class="ml-1 badge badge-dark">{{timeline.length}}</span>
+                        <span *ngIf="eventsNeedingReviewCount > 0" class="ml-1 badge badge-danger" title="{{'timeline.Events needing review' | translate}}">
+                            <i class="fa fa-exclamation-triangle"></i>
+                        </span>
                     </button>
                 </div>
             </div>
@@ -1150,9 +1153,19 @@
                         </div>
                     </div>
                     <div *ngFor="let group of groupedEvents">
-                        <div class="timeline-month-title">{{ group.monthYear | date: 'MMMM y' : '' : lang }}</div>
-                        <div class="timeline-item" *ngFor="let event of group.events">
-                            <div class="timeline-dot"></div>
+                        <div class="timeline-month-title">
+                            <ng-container *ngIf="group.monthYear; else noDateTitle">
+                                {{ group.monthYear | date: 'MMMM y' : '' : lang }}
+                            </ng-container>
+                            <ng-template #noDateTitle>
+                                <span class="text-danger">
+                                    <i class="fa fa-exclamation-triangle mr-1"></i> 
+                                    {{'timeline.Missing date' | translate}}
+                                </span>
+                            </ng-template>
+                        </div>
+                        <div class="timeline-item" *ngFor="let event of group.events" [ngClass]="{'timeline-item-no-date': !group.monthYear}">
+                            <div class="timeline-dot" [ngClass]="{'timeline-dot-danger': !group.monthYear}"></div>
                             <div class="timeline-content">
                                 <div class="d-flex justify-content-between align-items-start">
                                     <div>
@@ -1162,8 +1175,14 @@
                                             {{ event.name }}
                                         </p>
                                         <small class="text-muted">
-                                            <span *ngIf="!event.dateEnd">{{ event.date | date }}</span>
-                                            <span *ngIf="event.dateEnd">{{ event.date | date }} - {{ event.dateEnd | date }}</span>
+                                            <span *ngIf="!group.monthYear" class="d-block font-italic mb-1">
+                                                {{'timeline.Please add a date to this event' | translate}}
+                                            </span>
+                                            <span *ngIf="group.monthYear && !event.dateEnd">{{ event.date | date }}</span>
+                                            <span *ngIf="group.monthYear && event.dateEnd">{{ event.date | date }} - {{ event.dateEnd | date }}</span>
+                                            <span *ngIf="event.dateConfidence === 'estimated'" class="badge badge-warning ml-1" style="font-size: 0.7rem; vertical-align: middle;">
+                                                {{'timeline.Estimated' | translate}}
+                                            </span>
                                         </small>
                                     </div>
                                     <button class="btn btn-link btn-sm" [matMenuTriggerFor]="menu"

@@ -123,6 +123,10 @@
     },
     "timeline":{
      "Timeline": "Cronologia",
+     "Missing date": "Data mancante",
+     "Please add a date to this event": "Si prega de aggiungere una data a questo evento",
+     "Events needing review": "Eventi che richiedono revisione",
+     "Estimated": "Stimata",
      "Filter by": "Filtra per",
      "Start date": "Data di inizio",
      "End date": "Data di fine",
