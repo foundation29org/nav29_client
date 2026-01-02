@@ -784,6 +784,11 @@
      "tryDetEve": "Möchten Sie erneut versuchen, Ereignisse zu erkennen?",
      "msgError": "Es ist noch nicht verfügbar. Bitte versuchen Sie es in ein paar Minuten erneut. Wenn der Fehler nach 10 Minuten weiterhin besteht, löschen Sie den Bericht und laden Sie ihn erneut hoch.",
      "nofileexist": "Es wurde kein Dateiinhalt gefunden",
+     "openDocument": "Dokument öffnen",
+     "documentNotFound": "Dokument nicht gefunden",
+     "patientRecord": "Patientenakte",
+     "viewPatientHistory": "Patientenhistorie anzeigen",
+     "clickToOpen": "Zum Öffnen klicken",
      "errProcFile": "Beim Verarbeiten der Datei ist ein Fehler aufgetreten. Bitte versuche es erneut.",
      "error": {
        "docx": {

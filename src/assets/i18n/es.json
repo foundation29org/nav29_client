@@ -775,6 +775,11 @@
     "tryDetEve": "¿Quiere volver a intentar detectar eventos?",
     "msgError": "Aún no está disponible. Vuelva a intentarlo en unos minutos. Si el error persiste después de 10 minutos, elimine el informe y vuelva a cargarlo.",
     "nofileexist": "El archivo no existe",
+    "openDocument": "Abrir documento",
+    "documentNotFound": "Documento no encontrado",
+    "patientRecord": "Historial del paciente",
+    "viewPatientHistory": "Ver historial del paciente",
+    "clickToOpen": "Clic para abrir",
     "errProcFile": "Ha ocurrido un error al procesar el archivo. Por favor, vuelva a intentarlo.",
     "error": {
       "docx": {

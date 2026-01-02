@@ -784,6 +784,11 @@
      "tryDetEve": "Deseja tentar detectar eventos novamente?",
      "msgError": "Ainda não está disponível. Tente novamente em alguns minutos. Se o erro persistir após 10 minutos, exclua o relatório e faça o upload novamente.",
      "nofileexist": "O arquivo não existe",
+     "openDocument": "Abrir documento",
+     "documentNotFound": "Documento não encontrado",
+     "patientRecord": "Registro do paciente",
+     "viewPatientHistory": "Ver histórico do paciente",
+     "clickToOpen": "Clique para abrir",
      "errProcFile": "Ocorreu um erro ao processar o arquivo. Por favor, tente novamente.",
      "error": {
        "docx": {

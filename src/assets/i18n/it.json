@@ -784,6 +784,11 @@
      "tryDetEve": "Vuoi provare a rilevare nuovamente gli eventi?",
      "msgError": "Non è ancora disponibile. Riprova tra qualche minuto. Se l'errore persiste dopo 10 minuti, elimina il rapporto e ricaricalo.",
      "nofileexist": "Il file non esiste",
+     "openDocument": "Apri documento",
+     "documentNotFound": "Documento non trovato",
+     "patientRecord": "Cartella del paziente",
+     "viewPatientHistory": "Visualizza la storia del paziente",
+     "clickToOpen": "Clicca per aprire",
      "errProcFile": "Si è verificato un errore durante l'elaborazione del file. Per favore riprova.",
      "error": {
        "docx": {

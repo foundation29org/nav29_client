@@ -219,6 +219,7 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
   @ViewChild('notesModal', { static: false }) notesModal: TemplateRef<any>;
   @ViewChild('rarescopeModal', { static: false }) rarescopeModal: TemplateRef<any>;
   @ViewChild('diaryModal', { static: false }) diaryModal: TemplateRef<any>;
+  @ViewChild('timelineModal', { static: false }) timelineModal: TemplateRef<any>;
   tasksUpload: any[] = [];
   taskAnonimize: any[] = [];
   translateYouCanAskInChat: string = '';
@@ -1447,6 +1448,11 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
 
   addMessage(message: any) {
     if (message.text) {
+      // Procesar referencias de documentos usando las referencias del backend si están disponibles
+      // (guardadas temporalmente desde processNavigatorAnswer)
+      const references = (this as any).pendingReferences || message.references;
+      message.text = this.processDocumentReferences(message.text, references);
+      
       message.text = message.text.replace(/<h1>/g, '<h6>').replace(/<\/h1>/g, '</h5>');
       message.text = message.text.replace(/<h2>/g, '<h6>').replace(/<\/h2>/g, '</h6>');
       message.text = message.text.replace(/<h3>/g, '<h6>').replace(/<\/h3>/g, '</h6>');
@@ -1633,6 +1639,120 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     }
   }
 
+  /**
+   * Procesa las referencias de documentos en el texto HTML y las convierte en enlaces clickeables
+   * Usa las referencias estructuradas del backend cuando están disponibles, o hace fallback a búsqueda local
+   * @param htmlText Texto HTML con referencias en formato [filename, date]
+   * @param references Array de referencias estructuradas del backend (opcional)
+   */
+  /**
+   * Procesa las referencias de documentos en el texto HTML y las convierte en enlaces clickeables
+   * Soporta múltiples referencias separadas por punto y coma dentro de los mismos corchetes
+   * @param htmlText Texto HTML con referencias en formato [filename, date] o [file1, date1; file2, date2]
+   * @param references Array de referencias estructuradas del backend (opcional)
+   */
+  private processDocumentReferences(htmlText: string, references?: any[]): string {
+    if (!htmlText) {
+      return htmlText;
+    }
+
+    // Patrón para capturar todo lo que hay dentro de corchetes
+    const bracketPattern = /\[([^\]]+?)\]/g;
+
+    return htmlText.replace(bracketPattern, (fullMatch, content) => {
+      // Si el contenido no tiene coma, probablemente no sea una cita válida, lo dejamos como está
+      if (!content.includes(',')) {
+        return fullMatch;
+      }
+
+      // Dividir el contenido por punto y coma para manejar múltiples citas
+      const parts = content.split(';');
+      
+      const processedParts = parts.map(part => {
+        const trimmedPart = part.trim();
+        // Intentar capturar nombre de archivo y fecha/undated
+        // El regex busca el último fragmento después de la última coma como la fecha
+        const lastCommaIndex = trimmedPart.lastIndexOf(',');
+        if (lastCommaIndex === -1) {
+          return trimmedPart;
+        }
+
+        const fileName = trimmedPart.substring(0, lastCommaIndex).trim();
+        const date = trimmedPart.substring(lastCommaIndex + 1).trim();
+
+        // Validar que la fecha tenga un formato correcto (YYYY-MM-DD o undated)
+        if (!/^(\d{4}-\d{2}-\d{2}|undated)$/.test(date)) {
+          return trimmedPart;
+        }
+
+        const partFullCitation = `[${fileName}, ${date}]`;
+
+        // 1. Intentar usar las referencias del backend si existen
+        if (references && references.length > 0) {
+          const ref = references.find(r => r.fullCitation === partFullCitation || r.filename === fileName);
+          if (ref && ref.documentId) {
+            const tooltipText = `${this.translate.instant('messages.clickToOpen') || 'Clic para abrir'}: ${ref.filename} (${ref.date})`;
+            return `<a href="javascript:void(0)" 
+                        class="document-reference-link" 
+                        data-doc-id="${ref.documentId}"
+                        style="color: #0066cc; text-decoration: underline; cursor: pointer;"
+                        title="${tooltipText}">
+                        📄 ${fileName}, ${date}
+                      </a>`;
+          }
+        }
+
+        // 2. Manejar el caso especial de conversation_context
+        if (fileName === 'conversation_context') {
+          const label = this.translate.instant('messages.patientRecord') || 'Historial';
+          const tooltipText = this.translate.instant('messages.viewPatientHistory') || 'Ver historial del paciente';
+          
+          return `<a href="javascript:void(0)" 
+                      class="context-reference-link" 
+                      style="color: #6f42c1; text-decoration: none; border-bottom: 1px dashed #6f42c1; cursor: pointer;"
+                      title="${tooltipText}">
+                      👤 ${label}, ${date}
+                  </a>`;
+        }
+
+        // 3. Fallback a búsqueda local por nombre
+        if (this.docs && this.docs.length > 0) {
+          const doc = this.docs.find(d => {
+            if (!d.title && !d.url) return false;
+            const docTitle = (d.title || '').toLowerCase().trim();
+            const docFileName = (d.url || '').split('/').pop().toLowerCase().trim();
+            const searchFileName = fileName.toLowerCase().trim();
+            
+            return docTitle === searchFileName ||
+                   docFileName === searchFileName ||
+                   docTitle.includes(searchFileName.replace(/\.(pdf|txt|docx?)$/i, '')) ||
+                   docFileName.includes(searchFileName.replace(/\.(pdf|txt|docx?)$/i, ''));
+          });
+
+          if (doc) {
+            const docId = doc._id || doc.id || '';
+            const tooltipText = `${this.translate.instant('messages.clickToOpen') || 'Clic para abrir'}: ${fileName} (${date})`;
+            return `<a href="javascript:void(0)" 
+                        class="document-reference-link" 
+                        data-doc-id="${docId}"
+                        style="color: #007bff; text-decoration: underline; cursor: pointer;"
+                        title="${tooltipText}">
+                        📄 ${fileName}, ${date}
+                      </a>`;
+          }
+        }
+
+        // 4. Si no se encuentra, devolver formateado pero no clickeable
+        const style = date === 'undated' 
+             ? 'color: #856404; font-style: italic;' 
+             : 'color: #6c757d; font-style: italic;';
+        return `<span class="document-reference" style="${style}">${fileName}, ${date}</span>`;
+      });
+
+      return '[' + processedParts.join('; ') + ']';
+    });
+  }
+
   private async processNavigatorAnswer(parsedData: any) {
     // Protección contra respuestas duplicadas: usar timestamp + answer como ID único
     const answerId = `${parsedData.time || Date.now()}_${parsedData.answer?.substring(0, 50) || ''}`;
@@ -1653,10 +1773,21 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     this.message = '';
 
     try {
+      // Guardar las referencias del backend para usarlas después de la traducción
+      const references = parsedData.references || [];
+      
+      // Guardar referencias temporalmente para usarlas después de la traducción
+      // Las procesaremos en addMessage después de que se traduzca el texto
+      (this as any).pendingReferences = references;
+      
       await this.translateInverse(parsedData.answer);
+      
+      // Limpiar referencias temporales después de procesar
+      (this as any).pendingReferences = null;
     } catch (error) {
       console.error('Error al procesar el mensaje:', error);
       this.insightsService.trackException(error);
+      (this as any).pendingReferences = null;
     }
 
     const query = {
@@ -1868,6 +1999,39 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
 
   onMessageClick(event: MouseEvent, index: number) {
     const target = event.target as HTMLElement;
+    
+    // Manejar clics en enlaces de documentos
+    if (target.classList.contains('document-reference-link') || target.closest('.document-reference-link')) {
+      event.preventDefault();
+      const linkElement = target.classList.contains('document-reference-link') 
+        ? target 
+        : target.closest('.document-reference-link') as HTMLElement;
+      
+      if (linkElement) {
+        const docId = linkElement.getAttribute('data-doc-id');
+        if (docId) {
+          const doc = this.docs.find(x => x._id === docId);
+          if (doc) {
+            this.openResults(doc, this.contentSummaryDoc);
+          } else {
+            this.toastr.warning(
+              this.translate.instant('messages.documentNotFound') || 'Documento no encontrado',
+              ''
+            );
+          }
+        }
+      }
+      return;
+    }
+
+    // Manejar clics en enlaces de contexto (conversation_context)
+    if (target.classList.contains('context-reference-link') || target.closest('.context-reference-link')) {
+      event.preventDefault();
+      this.openTimelineModal(this.timelineModal);
+      return;
+    }
+    
+    // Manejar clics en elementos resumen (código original)
     if (target.tagName.toLowerCase() === 'resumen') {
       event.preventDefault();
       //search in docs where _id = target.id
@@ -1876,7 +2040,6 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
         this.openResults(doc, this.contentSummaryDoc);
       }
     }
-
   }
 
   initChat() {

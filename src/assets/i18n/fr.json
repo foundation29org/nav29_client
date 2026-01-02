@@ -785,6 +785,11 @@
      "tryDetEve": "Voulez-vous réessayer de détecter des événements?",
      "msgError": "Il n'est pas encore disponible. Veuillez réessayer dans quelques minutes. Si l'erreur persiste après 10 minutes, supprimez le rapport et re-téléchargez-le.",
      "nofileexist": "Le fichier n'existe pas",
+     "openDocument": "Ouvrir le document",
+     "documentNotFound": "Document non trouvé",
+     "patientRecord": "Dossier du patient",
+     "viewPatientHistory": "Voir l'historique du patient",
+     "clickToOpen": "Cliquez pour ouvrir",
      "errProcFile": "Une erreur s'est produite lors du traitement du fichier. Veuillez réessayer.",
      "error": {
        "docx": {
