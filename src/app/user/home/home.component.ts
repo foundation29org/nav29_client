@@ -5586,6 +5586,11 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     this.rightSidebarOpenMobile = false;
   }
 
+  openTrialGpt() {
+    // Abrir TrialGPT en una nueva pestaña
+    window.open('https://trialgpt.app/', '_blank');
+  }
+
   openToolModal(tool: string) {
     let ngbModalOptions: NgbModalOptions = {
       backdrop: 'static',
