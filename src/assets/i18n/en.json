@@ -1194,6 +1194,17 @@
     "Write or paste content": "Write or paste content",
     "Write down any details": "Write down any details that could be important"
   },
+  "connection":{
+    "lost_title": "Connection lost",
+    "lost_message": "Could not reconnect automatically. Do you want to try again?",
+    "retry": "Retry",
+    "reconnecting": "Reconnecting...",
+    "reconnected": "Reconnected",
+    "reconnected_message": "The connection has been restored successfully.",
+    "session_expired_title": "Session expired",
+    "session_expired_message": "Your session has expired. Please log in again.",
+    "reload": "Reload page"
+  },
   "lang":{
     "Question deleted successfully": "Question deleted successfully",
     "Question added correctly": "Question added correctly",

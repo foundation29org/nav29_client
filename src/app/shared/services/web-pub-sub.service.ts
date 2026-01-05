@@ -29,11 +29,6 @@ export class WebPubSubService {
 
   async getToken(IdUser): Promise<string> {
     return new Promise(async (resolve, reject) => {
-      if(this.client){
-        this.client.stop();
-        this.client = null;
-      }
-      
       // Guardar el userId para reconexiones futuras
       if (IdUser) {
         this.currentUserId = IdUser;
@@ -128,16 +123,21 @@ export class WebPubSubService {
 
   this.client.on("stopped", () => {
     console.log(`Client has stopped`);
-    this.disconnect();
+    // NO llamar a disconnect() aquí porque cancela la reconexión
+    // Solo actualizar el estado, la reconexión se maneja en "disconnected"
+    this.isConnected = false;
+    this.isListening = false;
     this.connectionStatus$.next(false);
     this.eventsService.broadcast('webpubsubevent', false);
   });
 
   this.client.on("disconnected", async (e) => {
-    console.log(`Connection ${e} is disconnected.`);
+    console.log(`Connection disconnected:`, e);
     this.isConnected = false;
+    this.isListening = false;
     this.connectionStatus$.next(false);
     this.eventsService.broadcast('webpubsubevent', false);
+    // Iniciar reconexión automática
     this.handleDisconnection();
   });
   }
@@ -208,6 +208,12 @@ export class WebPubSubService {
   }
 
   private async handleDisconnection() {
+    // Si ya hay un intervalo de reconexión activo, no crear otro
+    if (this.reconnectInterval) {
+      console.log('Reconnection already in progress');
+      return;
+    }
+
     if (this.reconnectAttempts >= this.maxReconnectAttempts) {
       console.log('Max reconnection attempts reached, stopping reconnection');
       return;
@@ -219,35 +225,106 @@ export class WebPubSubService {
       return;
     }
 
-    if (!this.reconnectInterval) {
-      this.reconnectInterval = setInterval(async () => {
-        if (this.isConnected || this.reconnectAttempts >= this.maxReconnectAttempts) {
+    console.log('Starting reconnection process...');
+    
+    // Limpiar el cliente anterior si existe
+    if (this.client) {
+      try {
+        this.client.off("group-message", () => {});
+        this.client.off("connected", () => {});
+        this.client.off("stopped", () => {});
+        this.client.off("disconnected", () => {});
+      } catch (e) {
+        // Ignorar errores al remover listeners
+      }
+      this.client = null;
+    }
+
+    this.reconnectInterval = setInterval(async () => {
+      if (this.isConnected) {
+        console.log('Stopping reconnection interval - connected');
+        clearInterval(this.reconnectInterval);
+        this.reconnectInterval = null;
+        return;
+      }
+      
+      if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+        console.log('Max reconnection attempts reached');
+        clearInterval(this.reconnectInterval);
+        this.reconnectInterval = null;
+        // Notificar que la reconexión falló - mostrar mensaje al usuario
+        this.eventsService.broadcast('webpubsub-reconnect-failed', true);
+        return;
+      }
+
+      this.reconnectAttempts++;
+      
+      try {
+        console.log(`Reconnection attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts}`);
+        const token = await this.getToken(this.currentUserId);
+        await this.connect(token);
+        console.log('Reconnection successful!');
+      } catch (error: any) {
+        console.log("Reconnection attempt failed:", error?.message || error);
+        
+        // Si la sesión ha expirado (recibimos HTML), detener los intentos
+        if (error?.message?.includes('Session expired') || error?.message?.includes('received HTML')) {
+          console.warn('Session appears to be expired, stopping reconnection attempts');
           clearInterval(this.reconnectInterval);
           this.reconnectInterval = null;
-          return;
+          this.reconnectAttempts = this.maxReconnectAttempts;
+          // Notificar que la sesión expiró
+          this.eventsService.broadcast('webpubsub-session-expired', true);
+        } else {
+          this.insightsService.trackException(error);
         }
+      }
+    }, 5000);
+  }
 
-        try {
-          console.log(`Reconnection attempt ${this.reconnectAttempts + 1}/${this.maxReconnectAttempts}`);
-          const token = await this.getToken(this.currentUserId);
-          await this.connect(token);
-        } catch (error: any) {
-          console.log("Reconnection attempt failed:", error);
-          this.reconnectAttempts++;
-          
-          // Si la sesión ha expirado (recibimos HTML), detener los intentos
-          if (error?.message?.includes('Session expired') || error?.message?.includes('received HTML')) {
-            console.warn('Session appears to be expired, stopping reconnection attempts');
-            clearInterval(this.reconnectInterval);
-            this.reconnectInterval = null;
-            this.reconnectAttempts = this.maxReconnectAttempts;
-            // Notificar que la conexión falló permanentemente
-            this.eventsService.broadcast('webpubsubevent', false);
-          } else {
-            this.insightsService.trackException(error);
-          }
-        }
-      }, 5000);
+  /**
+   * Reintentar la conexión manualmente (llamado desde UI)
+   */
+  async retryConnection(): Promise<boolean> {
+    console.log('Manual reconnection requested');
+    
+    // Resetear el contador de intentos
+    this.reconnectAttempts = 0;
+    
+    // Limpiar intervalo si existe
+    if (this.reconnectInterval) {
+      clearInterval(this.reconnectInterval);
+      this.reconnectInterval = null;
+    }
+    
+    // Limpiar cliente si existe
+    if (this.client) {
+      try {
+        this.client.off("group-message", () => {});
+        this.client.off("connected", () => {});
+        this.client.off("stopped", () => {});
+        this.client.off("disconnected", () => {});
+      } catch (e) {
+        // Ignorar errores
+      }
+      this.client = null;
+    }
+    this.isListening = false;
+    
+    if (!this.currentUserId) {
+      console.warn('No userId available for manual reconnection');
+      return false;
+    }
+    
+    try {
+      const token = await this.getToken(this.currentUserId);
+      await this.connect(token);
+      console.log('Manual reconnection successful!');
+      return true;
+    } catch (error) {
+      console.error('Manual reconnection failed:', error);
+      this.insightsService.trackException(error);
+      return false;
     }
   }
 }

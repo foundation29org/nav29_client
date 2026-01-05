@@ -1780,10 +1780,11 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     this.gettingSuggestions = false;
     this.actualStatus = '';
     
-    this.context.push({ role: 'user', content: this.message });
+    // Usar tempInput ya que this.message se limpia en sendMessage() antes de recibir la respuesta
+    const messageToUse = this.tempInput || this.message;
+    this.context.push({ role: 'user', content: messageToUse });
     this.context.push({ role: 'assistant', content: parsedData.answer });
-    let tempMessage = this.message;
-    this.message = '';
+    let tempMessage = messageToUse;
 
     try {
       // Guardar las referencias del backend para usarlas después de la traducción

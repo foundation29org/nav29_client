@@ -1191,6 +1191,17 @@
        "Write or paste content":"Schreiben oder fügen Sie Inhalte ein",
        "Write down any details":"Notieren Sie alle Details, die wichtig sein könnten"
     },
+    "connection":{
+      "lost_title": "Verbindung verloren",
+      "lost_message": "Automatische Wiederverbindung fehlgeschlagen. Möchten Sie es erneut versuchen?",
+      "retry": "Erneut versuchen",
+      "reconnecting": "Verbindung wird hergestellt...",
+      "reconnected": "Verbunden",
+      "reconnected_message": "Die Verbindung wurde erfolgreich wiederhergestellt.",
+      "session_expired_title": "Sitzung abgelaufen",
+      "session_expired_message": "Ihre Sitzung ist abgelaufen. Bitte melden Sie sich erneut an.",
+      "reload": "Seite neu laden"
+    },
     "lang":{
        "Question deleted successfully":"Frage erfolgreich gelöscht",
        "Question added correctly":"Frage richtig hinzugefügt",

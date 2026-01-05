@@ -1191,6 +1191,17 @@
        "Write or paste content":"Scrivi o incolla il contenuto",
        "Write down any details":"Annota tutti i dettagli che potrebbero essere importanti"
     },
+    "connection":{
+      "lost_title": "Connessione persa",
+      "lost_message": "Impossibile riconnettersi automaticamente. Vuoi riprovare?",
+      "retry": "Riprova",
+      "reconnecting": "Riconnessione in corso...",
+      "reconnected": "Riconnesso",
+      "reconnected_message": "La connessione è stata ripristinata con successo.",
+      "session_expired_title": "Sessione scaduta",
+      "session_expired_message": "La tua sessione è scaduta. Per favore, accedi di nuovo.",
+      "reload": "Ricarica pagina"
+    },
     "lang":{
        "Question deleted successfully":"Domanda eliminata correttamente",
        "Question added correctly":"Domanda aggiunta correttamente",

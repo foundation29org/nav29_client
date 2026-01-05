@@ -1192,6 +1192,17 @@
        "Write or paste content":"Écrivez ou collez le contenu",
        "Write down any details":"Notez tous les détails qui pourraient être importants"
     },
+    "connection":{
+      "lost_title": "Connexion perdue",
+      "lost_message": "Impossible de se reconnecter automatiquement. Voulez-vous réessayer ?",
+      "retry": "Réessayer",
+      "reconnecting": "Reconnexion en cours...",
+      "reconnected": "Reconnecté",
+      "reconnected_message": "La connexion a été rétablie avec succès.",
+      "session_expired_title": "Session expirée",
+      "session_expired_message": "Votre session a expiré. Veuillez vous reconnecter.",
+      "reload": "Recharger la page"
+    },
     "lang":{
        "Question deleted successfully":"Question supprimée avec succès",
        "Question added correctly":"Question ajoutée correctement",

@@ -246,6 +246,16 @@ export class AppComponent implements OnInit, OnDestroy {
                 this.loadCultures();
             })();
         }.bind(this));
+
+      // Evento cuando la reconexión WebPubSub falla después de varios intentos
+      this.eventsService.on('webpubsub-reconnect-failed', function () {
+        this.showReconnectDialog();
+      }.bind(this));
+
+      // Evento cuando la sesión ha expirado
+      this.eventsService.on('webpubsub-session-expired', function () {
+        this.showSessionExpiredDialog();
+      }.bind(this));
     }
 
     delay(ms: number) {
@@ -316,6 +326,87 @@ export class AppComponent implements OnInit, OnDestroy {
             window.history.back();
           }
         }
+      }
+
+      /**
+       * Muestra diálogo para reconectar cuando falla la reconexión automática
+       */
+      private showReconnectDialog(): void {
+        // Cerrar cualquier Swal abierto primero
+        if (this.connectionSwalOpen) {
+          Swal.close();
+          this.connectionSwalOpen = false;
+        }
+
+        const isAuthenticated = this.authService.isAuthenticated();
+        if (!isAuthenticated || this.router.url.indexOf('/welcome') !== -1) {
+          return;
+        }
+
+        Swal.fire({
+          title: this.translate.instant("connection.lost_title") || 'Conexión perdida',
+          text: this.translate.instant("connection.lost_message") || 'No se pudo reconectar automáticamente. ¿Desea intentar de nuevo?',
+          icon: 'warning',
+          showCancelButton: true,
+          confirmButtonColor: '#2F8BE6',
+          cancelButtonColor: '#6c757d',
+          confirmButtonText: this.translate.instant("connection.retry") || 'Reintentar',
+          cancelButtonText: this.translate.instant("generics.Cancel") || 'Cancelar',
+          allowOutsideClick: false,
+          allowEscapeKey: false,
+        }).then(async (result) => {
+          if (result.isConfirmed) {
+            // Mostrar loading mientras intenta reconectar
+            Swal.fire({
+              title: this.translate.instant("connection.reconnecting") || 'Reconectando...',
+              allowOutsideClick: false,
+              allowEscapeKey: false,
+              didOpen: () => {
+                Swal.showLoading();
+              }
+            });
+
+            const success = await this.webPubSubService.retryConnection();
+            
+            if (success) {
+              Swal.fire({
+                title: this.translate.instant("connection.reconnected") || 'Reconectado',
+                text: this.translate.instant("connection.reconnected_message") || 'La conexión se ha restablecido correctamente.',
+                icon: 'success',
+                timer: 2000,
+                showConfirmButton: false
+              });
+            } else {
+              // Si falla, mostrar el diálogo de nuevo
+              this.showReconnectDialog();
+            }
+          }
+        });
+      }
+
+      /**
+       * Muestra diálogo cuando la sesión ha expirado
+       */
+      private showSessionExpiredDialog(): void {
+        // Cerrar cualquier Swal abierto primero
+        if (this.connectionSwalOpen) {
+          Swal.close();
+          this.connectionSwalOpen = false;
+        }
+
+        Swal.fire({
+          title: this.translate.instant("connection.session_expired_title") || 'Sesión expirada',
+          text: this.translate.instant("connection.session_expired_message") || 'Tu sesión ha expirado. Por favor, vuelve a iniciar sesión.',
+          icon: 'warning',
+          confirmButtonColor: '#2F8BE6',
+          confirmButtonText: this.translate.instant("connection.reload") || 'Recargar página',
+          allowOutsideClick: false,
+          allowEscapeKey: false,
+        }).then((result) => {
+          if (result.isConfirmed) {
+            location.reload();
+          }
+        });
       }
 
 }
