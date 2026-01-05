@@ -17,7 +17,8 @@ export class WebPubSubService {
   private reconnectAttempts = 0;
   private maxReconnectAttempts = 5;
   private reconnectInterval: any;
-  private isListening: boolean = false; 
+  private isListening: boolean = false;
+  private currentUserId: string = ''; 
 
   constructor(private http: HttpClient, public insightsService: InsightsService, private eventsService: EventsService) { }
 
@@ -32,12 +33,41 @@ export class WebPubSubService {
         this.client.stop();
         this.client = null;
       }
-      const url = environment.api + '/api/gettoken/' + IdUser;
+      
+      // Guardar el userId para reconexiones futuras
+      if (IdUser) {
+        this.currentUserId = IdUser;
+      }
+      
+      const userIdToUse = IdUser || this.currentUserId;
+      if (!userIdToUse) {
+        reject(new Error('No userId available for token request'));
+        return;
+      }
+      
+      const url = environment.api + '/api/gettoken/' + userIdToUse;
       const cacheBuster = Date.now().toString();
       // Usar withCredentials para enviar cookies de autenticación
-      this.http.get(url, {params: {_cb: cacheBuster}, withCredentials: true})
-        .subscribe((res: any) => {
-          resolve(res.url);
+      // Usar responseType: 'text' para manejar respuestas que no sean JSON válido
+      this.http.get(url, {params: {_cb: cacheBuster}, withCredentials: true, responseType: 'text'})
+        .subscribe((res: string) => {
+          try {
+            // Verificar si la respuesta parece HTML (sesión expirada/redirección)
+            if (res.trim().startsWith('<!DOCTYPE') || res.trim().startsWith('<html')) {
+              const error = new Error('Session expired or invalid response - received HTML instead of token');
+              console.warn('getToken received HTML response - possible session expiration');
+              this.insightsService.trackException(error);
+              reject(error);
+              return;
+            }
+            
+            const parsed = JSON.parse(res);
+            resolve(parsed.url);
+          } catch (parseError) {
+            console.error('Error parsing getToken response:', parseError);
+            this.insightsService.trackException(parseError);
+            reject(parseError);
+          }
         }, (err) => {
           console.log(err);
           this.insightsService.trackException(err);
@@ -116,9 +146,22 @@ export class WebPubSubService {
     return this.messageSubject.asObservable();
   }
 
-  disconnect() {
+  disconnect(clearUserId: boolean = false) {
     this.isConnected = false; 
-    this.isListening = false; 
+    this.isListening = false;
+    
+    // Limpiar el intervalo de reconexión si existe
+    if (this.reconnectInterval) {
+      clearInterval(this.reconnectInterval);
+      this.reconnectInterval = null;
+    }
+    this.reconnectAttempts = 0;
+    
+    // Solo limpiar el userId si se solicita explícitamente (logout)
+    if (clearUserId) {
+      this.currentUserId = '';
+    }
+    
     if(this.client){
       this.client.off("group-message", (e) => { });
       this.client.off("connected", (e) => { });
@@ -166,6 +209,13 @@ export class WebPubSubService {
 
   private async handleDisconnection() {
     if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+      console.log('Max reconnection attempts reached, stopping reconnection');
+      return;
+    }
+
+    // Verificar que tenemos un userId válido para reconectar
+    if (!this.currentUserId) {
+      console.warn('No userId available for reconnection');
       return;
     }
 
@@ -178,12 +228,24 @@ export class WebPubSubService {
         }
 
         try {
-          const token = await this.getToken('');
+          console.log(`Reconnection attempt ${this.reconnectAttempts + 1}/${this.maxReconnectAttempts}`);
+          const token = await this.getToken(this.currentUserId);
           await this.connect(token);
-        } catch (error) {
+        } catch (error: any) {
           console.log("Reconnection attempt failed:", error);
           this.reconnectAttempts++;
-          this.insightsService.trackException(error);
+          
+          // Si la sesión ha expirado (recibimos HTML), detener los intentos
+          if (error?.message?.includes('Session expired') || error?.message?.includes('received HTML')) {
+            console.warn('Session appears to be expired, stopping reconnection attempts');
+            clearInterval(this.reconnectInterval);
+            this.reconnectInterval = null;
+            this.reconnectAttempts = this.maxReconnectAttempts;
+            // Notificar que la conexión falló permanentemente
+            this.eventsService.broadcast('webpubsubevent', false);
+          } else {
+            this.insightsService.trackException(error);
+          }
         }
       }, 5000);
     }
