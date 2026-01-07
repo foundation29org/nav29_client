@@ -1,0 +1,40 @@
+<div class="inactivity-warning-overlay" *ngIf="visible" (click)="$event.stopPropagation()" (keydown.enter)="onKeepAlive()" (keydown.space)="onKeepAlive()" tabindex="0">
+  <div class="inactivity-warning-modal" role="dialog" aria-modal="true" aria-labelledby="warning-title">
+    <div class="modal-header">
+      <h3 id="warning-title" class="modal-title">
+        <i class="fas fa-exclamation-triangle warning-icon"></i>
+        {{ translate.instant("inactivity.warning_title") || 'Sesión a punto de expirar' }}
+      </h3>
+    </div>
+    
+    <div class="modal-body">
+      <p class="warning-message">
+        {{ translate.instant("inactivity.warning_message") || 'Tu sesión está a punto de expirar por inactividad. ¿Deseas seguir conectado?' }}
+      </p>
+      
+      <div class="timer-container">
+        <div class="timer-progress-bar">
+          <div class="timer-progress-fill" [style.width.%]="progress"></div>
+        </div>
+        <div class="timer-text">
+          <span class="timer-value">{{ minutes }}:{{ seconds | number:'2.0' }}</span>
+          <span class="timer-label">{{ translate.instant("inactivity.time_remaining") || 'restantes' }}</span>
+        </div>
+      </div>
+    </div>
+    
+    <div class="modal-footer">
+      <button 
+        #keepAliveButton
+        type="button" 
+        class="btn btn-primary keep-alive-btn"
+        (click)="onKeepAlive()"
+        [attr.aria-label]="translate.instant('inactivity.keep_session') || 'Seguir conectado'"
+        autofocus>
+        <i class="fas fa-check"></i>
+        {{ translate.instant("inactivity.keep_session") || 'Seguir conectado' }}
+      </button>
+    </div>
+  </div>
+</div>
+

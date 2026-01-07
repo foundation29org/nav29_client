@@ -1189,16 +1189,13 @@
     "Write or paste content": "Escribe o pega el contenido",
     "Write down any details": "Anote cualquier detalle que pueda ser importante"
   },
-  "connection":{
-    "lost_title": "Conexión perdida",
-    "lost_message": "No se pudo reconectar automáticamente. ¿Desea intentar de nuevo?",
-    "retry": "Reintentar",
-    "reconnecting": "Reconectando...",
-    "reconnected": "Reconectado",
-    "reconnected_message": "La conexión se ha restablecido correctamente.",
-    "session_expired_title": "Sesión expirada",
-    "session_expired_message": "Tu sesión ha expirado. Por favor, vuelve a iniciar sesión.",
-    "reload": "Recargar página"
+  "inactivity":{
+    "warning_title": "Sesión a punto de expirar",
+    "warning_message": "Tu sesión está a punto de expirar por inactividad. ¿Deseas seguir conectado?",
+    "keep_session": "Seguir conectado",
+    "time_remaining": "restantes",
+    "logout_title": "Sesión cerrada",
+    "logout_message": "Tu sesión ha sido cerrada por inactividad para proteger los datos del paciente."
   },
   "lang":{
     "Question deleted successfully": "Pregunta eliminada con éxito",

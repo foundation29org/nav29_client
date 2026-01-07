@@ -1192,16 +1192,13 @@
        "Write or paste content":"Écrivez ou collez le contenu",
        "Write down any details":"Notez tous les détails qui pourraient être importants"
     },
-    "connection":{
-      "lost_title": "Connexion perdue",
-      "lost_message": "Impossible de se reconnecter automatiquement. Voulez-vous réessayer ?",
-      "retry": "Réessayer",
-      "reconnecting": "Reconnexion en cours...",
-      "reconnected": "Reconnecté",
-      "reconnected_message": "La connexion a été rétablie avec succès.",
-      "session_expired_title": "Session expirée",
-      "session_expired_message": "Votre session a expiré. Veuillez vous reconnecter.",
-      "reload": "Recharger la page"
+    "inactivity":{
+      "warning_title": "Session sur le point d'expirer",
+      "warning_message": "Votre session est sur le point d'expirer en raison de l'inactivité. Souhaitez-vous rester connecté ?",
+      "keep_session": "Rester connecté",
+      "time_remaining": "restantes",
+      "logout_title": "Session fermée",
+      "logout_message": "Votre session a été fermée pour cause d'inactivité afin de protéger les données du patient."
     },
     "lang":{
        "Question deleted successfully":"Question supprimée avec succès",

@@ -1191,16 +1191,13 @@
        "Write or paste content":"Scrivi o incolla il contenuto",
        "Write down any details":"Annota tutti i dettagli che potrebbero essere importanti"
     },
-    "connection":{
-      "lost_title": "Connessione persa",
-      "lost_message": "Impossibile riconnettersi automaticamente. Vuoi riprovare?",
-      "retry": "Riprova",
-      "reconnecting": "Riconnessione in corso...",
-      "reconnected": "Riconnesso",
-      "reconnected_message": "La connessione è stata ripristinata con successo.",
-      "session_expired_title": "Sessione scaduta",
-      "session_expired_message": "La tua sessione è scaduta. Per favore, accedi di nuovo.",
-      "reload": "Ricarica pagina"
+    "inactivity":{
+      "warning_title": "Sessione in scadenza",
+      "warning_message": "La tua sessione sta per scadere per inattività. Vuoi rimanere connesso?",
+      "keep_session": "Rimani connesso",
+      "time_remaining": "rimanenti",
+      "logout_title": "Sessione chiusa",
+      "logout_message": "La tua sessione è stata chiusa per inattività per proteggere i dati del paziente."
     },
     "lang":{
        "Question deleted successfully":"Domanda eliminata correttamente",
