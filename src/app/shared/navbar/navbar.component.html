@@ -94,6 +94,16 @@
                           <span>{{'diary.There are new messages in the diary' | translate }}</span>
                           <button class="btn btn-primary" (click)="seeRecentAppointments(task.patientId)">{{'generics.View' | translate }}</button>
                         </div>
+                        <div *ngIf="task.type=='chat-response'">
+                          <span>{{task.title}}</span>
+                          <p class="mb-1">{{task.message}}</p>
+                          <button class="btn btn-primary btn-sm" (click)="seePendingMessages(task)">{{'generics.View' | translate }}</button>
+                        </div>
+                        <div *ngIf="task.type=='events-extracted' || task.type=='appointments-extracted'">
+                          <span>{{task.title}}</span>
+                          <p class="mb-1">{{task.message}}</p>
+                          <button class="btn btn-primary btn-sm" (click)="seePendingMessages(task)">{{'generics.View' | translate }}</button>
+                        </div>
                         <span *ngIf="task.steps">
                           <small class="noti-text d-block" *ngFor="let step of task.steps; let last = last">
                             <span *ngIf="step.name!=translateYouCanAskInChat" [ngClass]="{'pointer info text-decoration-underline': step.status=='finished' && step.name!=translateYouCanAskInChat && (step.name==translateGeneratingSummary || step.name==translateAnonymizingDocument || step.name==translateSummaryPatient)}" (click)="onMessageClick(step, task)">

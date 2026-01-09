@@ -650,10 +650,7 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
       this.chatSpeechSubscription.unsubscribe();
     }
     
-    //save this.messages in bbdd
-    if (this.currentPatient) {
-      await this.saveMessages(this.currentPatient);
-    }
+    // El backend ahora guarda los mensajes automáticamente
 
     // Unsubscribe de todas las subscripciones
     this.subscription.unsubscribe();
@@ -673,29 +670,25 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     this.highlightService.highlightAll();
   }
 
-  saveMessages(pacient) {
+  /**
+   * Elimina todos los mensajes del chat en el servidor
+   */
+  deleteMessagesFromServer(): Promise<any> {
     return new Promise((resolve, reject) => {
-      //delete messages with task 
-      var messages = [];
-      this.messages.forEach(element => {
-        if (element.task == undefined && element.file == undefined) {
-          if (element.text.toString().indexOf('<form>') == -1) {
-            messages.push(element);
-          }
-          /*if (element.text.toString().indexOf('<strong>') == -1 && element.text.toString().indexOf('<form>') == -1 ) {
-            messages.push(element);
-          }*/
-        }
-      });
-      var info = { 'messages': messages };
-      this.subscription.add(this.http.post(environment.api + '/api/messages/' + this.authService.getIdUser() + '/' + pacient, info)
-        .subscribe((res: any) => {
-          resolve(res);
-        }, (err) => {
-          console.log(err);
-          this.insightsService.trackException(err);
-          resolve(err);
-        }));
+      this.subscription.add(
+        this.http.delete(environment.api + '/api/messages/' + this.authService.getIdUser() + '/' + this.currentPatient)
+          .subscribe(
+            (res: any) => {
+              console.log('✅ Mensajes eliminados del servidor');
+              resolve(res);
+            },
+            (err) => {
+              console.error('Error eliminando mensajes:', err);
+              this.insightsService.trackException(err);
+              resolve(err);
+            }
+          )
+      );
     });
   }
 
@@ -705,14 +698,20 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
         if (res.messages != undefined) {
           if (res.messages.length > 0) {
             this.messages = res.messages;
-            await this.delay(200);
-            this.scrollToBottom();
           } else {
             this.messages = [];
           }
         } else {
           this.messages = [];
         }
+        
+        // Cargar sugerencias del último mensaje si el backend las devuelve
+        if (res.lastSuggestions && res.lastSuggestions.length > 0) {
+          this.translateSuggestions(res.lastSuggestions);
+        }
+        
+        await this.delay(200);
+        this.scrollToBottom();
       }, (err) => {
         console.log(err);
         this.insightsService.trackException(err);
@@ -792,6 +791,12 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
       // Paciente válido
       this.isInitialLoad = false;
       this.currentPatientId = patient.sub;
+      
+      // IMPORTANTE: Resetear estados de carga del chat cuando cambias de paciente
+      // Esto evita que el chat quede bloqueado si había una petición pendiente del paciente anterior
+      this.callingOpenai = false;
+      this.gettingSuggestions = false;
+      
       this.initEnvironment();
       
       // Limpiar resultados de DxGPT siempre cuando cambias de paciente
@@ -897,6 +902,7 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     this.eventsService.on('changelang', this.handleChangeLang.bind(this));
     this.eventsService.on('patientChanged', this.handlePatientChanged.bind(this));
     this.eventsService.on('changeView', this.handleChangeView.bind(this));
+    this.eventsService.on('reload-messages', () => this.getMessages());
     
 
     /*if (this.authService.getRole() === 'Caregiver') {
@@ -1138,7 +1144,7 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
 
 
   handlePatientChanged(patient: any) {
-    this.saveMessages(patient.sub);
+    // El backend ahora guarda los mensajes automáticamente
     
     // Limpiar datos de las herramientas cuando cambia el paciente
     this.dxGptResults = null;
@@ -1147,8 +1153,10 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     this.additionalNeeds = [];
     this.rarescopeError = null;
     this.isLoadingRarescope = false;
+    
+    // Cargar mensajes del nuevo paciente (getMessages ya carga los pendientes)
+    this.getMessages();
   }
-
 
   private async handleMessage(message: any) {
     console.log('Message received in component:', message);
@@ -1194,6 +1202,20 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
         this.handleNoStep(parsedData);
       }
     } else {
+      // IMPORTANTE: Para mensajes de navigator y extract events, validar patientId ANTES de procesar
+      // Si el mensaje no es para el paciente actual, ignorarlo completamente
+      // El navbar se encargará de almacenarlo como pendiente
+      if (parsedData.step === 'navigator' || parsedData.step === 'extract events') {
+        if (parsedData.patientId && !this.isActualPatient(parsedData.patientId)) {
+          console.log('⚠️ Mensaje de', parsedData.step, 'ignorado: no corresponde al paciente actual');
+          console.log('  - Mensaje patientId:', parsedData.patientId);
+          console.log('  - Paciente actual:', this.authService.getCurrentPatient()?.sub);
+          console.log('  - El navbar almacenará este mensaje como pendiente');
+          return; // Ignorar completamente el mensaje
+        }
+      }
+      
+      // Para otros tipos de mensajes, intentar cambiar de paciente si es necesario
       if (!this.isActualPatient(parsedData.patientId)) {
         //change patient
         const patientsList = this.authService.getPatientList();
@@ -1301,10 +1323,26 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
   }
 
   isActualPatient(patientId: string): boolean {
+    if (!patientId) {
+      return false;
+    }
+    
     const currentPatient = this.authService.getCurrentPatient();
-    if (currentPatient && currentPatient.sub == patientId) {
+    if (!currentPatient) {
+      return false;
+    }
+    
+    // Comparar por sub (usar == para comparación débil)
+    if (currentPatient.sub == patientId) {
       return true;
     }
+    
+    // Si no coincide por sub, comparar por _id (ID de MongoDB)
+    const currentPatientId = (currentPatient as any)._id;
+    if (currentPatientId && currentPatientId == patientId) {
+      return true;
+    }
+    
     return false;
   }
   private handleNoStep(parsedData: any) {
@@ -1612,6 +1650,15 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
   }
 
   private handleNavigator(parsedData: any) {
+    // Validar una vez más que el mensaje sea para el paciente actual
+    // Esto es una doble verificación por si acaso
+    if (parsedData.patientId && !this.isActualPatient(parsedData.patientId)) {
+      console.warn('⚠️ handleNavigator: mensaje ignorado, no corresponde al paciente actual');
+      console.warn('  - Mensaje patientId:', parsedData.patientId);
+      console.warn('  - Paciente actual:', this.authService.getCurrentPatient()?.sub);
+      return;
+    }
+    
     if (parsedData.status === 'generando sugerencias') {
       // Solo activar gettingSuggestions si no estamos procesando una respuesta
       if (this.callingOpenai) {
@@ -1780,47 +1827,40 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     this.gettingSuggestions = false;
     this.actualStatus = '';
     
-    // Usar tempInput ya que this.message se limpia en sendMessage() antes de recibir la respuesta
-    const messageToUse = this.tempInput || this.message;
-    this.context.push({ role: 'user', content: messageToUse });
+    // Verificar si esta respuesta ya está en los mensajes cargados (evitar duplicados)
+    const answerPreview = parsedData.answer?.substring(0, 100) || '';
+    const isDuplicate = this.messages.some(msg => 
+      !msg.isUser && msg.text && msg.text.includes(answerPreview)
+    );
+    
+    if (isDuplicate) {
+      console.log('⚠️ Respuesta ya existe en los mensajes, ignorando duplicado');
+      return;
+    }
+    
+    // Si el mensaje NO viene de notificación, añadir también la pregunta al contexto
+    const isFromNotification = parsedData.fromNotification === true;
+    if (!isFromNotification) {
+      const messageToUse = this.tempInput || this.message;
+      this.context.push({ role: 'user', content: messageToUse });
+    }
+    
+    // Añadir la respuesta al contexto
     this.context.push({ role: 'assistant', content: parsedData.answer });
-    let tempMessage = messageToUse;
-
+    
+    // Mostrar el mensaje (el backend ya traduce y guarda)
     try {
-      // Guardar las referencias del backend para usarlas después de la traducción
       const references = parsedData.references || [];
-      
-      // Guardar referencias temporalmente para usarlas después de la traducción
-      // Las procesaremos en addMessage después de que se traduzca el texto
       (this as any).pendingReferences = references;
-      
       await this.translateInverse(parsedData.answer);
-      
-      // Limpiar referencias temporales después de procesar
       (this as any).pendingReferences = null;
     } catch (error) {
       console.error('Error al procesar el mensaje:', error);
       this.insightsService.trackException(error);
       (this as any).pendingReferences = null;
     }
-
-    const query = {
-      question: tempMessage,
-      answer: parsedData.answer,
-      userId: this.authService.getIdUser(),
-      patientId: this.currentPatient,
-      initialEvents: this.initialEvents
-    };
-
-    this.subscription.add(
-      this.http.post(environment.api + '/api/eventsnavigator/', query).subscribe(
-        () => { },
-        err => {
-          console.error(err);
-          this.insightsService.trackException(err);
-        }
-      )
-    );
+    
+    // El backend ya guarda el mensaje, no necesitamos hacer POST
   }
 
   private updateNavigatorStatus(parsedData: any) {
@@ -2082,7 +2122,9 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     this.proposedAppointments = [];
     this.initChat();
     this.context.splice(1, this.context.length - 1);
-    await this.saveMessages(this.currentPatient);
+    
+    // Eliminar mensajes en el backend
+    await this.deleteMessagesFromServer();
     // get 4 random suggestions from the hardcoded pool or the summary
     try {
       this.suggestions = this.getAllSuggestions(4);
@@ -2972,7 +3014,7 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     const callId = `${Date.now()}_${Math.random().toString(36).substring(7)}`;
     console.log(`[${callId}] continueSendIntent: Preparando llamada HTTP a callnavigator`);
     
-    var query = { "question": msg, "context": this.context, "containerName": this.containerName, "index": this.currentPatient, "userId": this.authService.getIdUser(), "docs": docsSelected };
+    var query = { "question": msg, "context": this.context, "containerName": this.containerName, "index": this.currentPatient, "userId": this.authService.getIdUser(), "docs": docsSelected, "detectedLang": this.detectedLang };
     this.subscription.add(this.http.post(environment.api + '/api/callnavigator/'+this.authService.getCurrentPatient().sub, query)
       .subscribe(async (res: any) => {
         console.log(`[${callId}] continueSendIntent: Respuesta HTTP recibida:`, res.action);
@@ -3080,38 +3122,21 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     });
   }
 
-  translateSuggestions(info, hardcodedSuggestion = undefined) {
-    if (this.detectedLang != 'en') {
-      var jsontestLangText = [];
-      for (var i = 0; i < info.length; i++) {
-        if (info[i] !== hardcodedSuggestion) {
-          jsontestLangText.push({ "Text": info[i] });
-        } else {
-          info[i] = hardcodedSuggestion;
-        }
-      }
+  /**
+   * Asigna las sugerencias directamente (ya vienen traducidas del backend)
+   */
+  setSuggestions(suggestions: string[]) {
+    this.suggestions = suggestions || [];
+    this.gettingSuggestions = false;
+  }
 
-      this.subscription.add(this.apiDx29ServerService.getTranslationInvert(this.detectedLang, jsontestLangText)
-        .subscribe((res2: any) => {
-          if (res2[0] != undefined) {
-            for (var i = 0; i < res2.length; i++) {
-              if (res2[i].translations[0] != undefined && info[i] !== hardcodedSuggestion) {
-                info[i] = res2[i].translations[0].text;
-              }
-            }
-          }
-          this.suggestions = info;
-          this.gettingSuggestions = false;
-        }, (err) => {
-          console.log(err);
-          this.insightsService.trackException(err);
-          this.suggestions = info;
-          this.gettingSuggestions = false;
-        }));
-    } else {
-      this.suggestions = info;
-      this.gettingSuggestions = false;
-    }
+  /**
+   * Asigna las sugerencias (ya vienen traducidas del backend)
+   */
+  translateSuggestions(info, hardcodedSuggestion = undefined) {
+    // El backend ahora devuelve las sugerencias ya traducidas
+    this.suggestions = info || [];
+    this.gettingSuggestions = false;
   }
 
 
@@ -3214,43 +3239,20 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     return info;
   }
 
+  /**
+   * Muestra el mensaje de respuesta del asistente
+   * El backend ahora envía el mensaje ya traducido y lo guarda en la BD
+   */
   async translateInverse(msg): Promise<string> {
     return new Promise((resolve, reject) => {
-
-      if (this.detectedLang != 'en') {
-        var jsontestLangText = [{ "Text": msg }]
-        this.subscription.add(this.apiDx29ServerService.getDeepLTranslationInvert(this.detectedLang, jsontestLangText)
-          .subscribe((res2: any) => {
-            if (res2.text != undefined) {
-              msg = res2.text;
-            }
-            this.addMessage({
-              text: msg,
-              isUser: false
-            });
-            this.callingOpenai = false;
-            this.saveMessages(this.currentPatient);
-            resolve('ok')
-          }, (err) => {
-            console.log(err);
-            this.insightsService.trackException(err);
-            this.addMessage({
-              text: msg,
-              isUser: false
-            });
-            this.callingOpenai = false;
-            this.saveMessages(this.currentPatient);
-            resolve('ok')
-          }));
-      } else {
-        this.addMessage({
-          text: msg,
-          isUser: false
-        });
-        this.callingOpenai = false;
-        this.saveMessages(this.currentPatient);
-        resolve('ok')
-      }
+      // El backend ahora traduce y guarda, solo necesitamos mostrar el mensaje
+      this.addMessage({
+        text: msg,
+        isUser: false
+      });
+      this.callingOpenai = false;
+      // Ya no llamamos a saveMessages porque el backend ya guarda
+      resolve('ok');
     });
   }
 
