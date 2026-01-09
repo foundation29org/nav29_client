@@ -797,6 +797,15 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
       this.callingOpenai = false;
       this.gettingSuggestions = false;
       
+      // Limpiar sugerencias del paciente anterior
+      this.suggestions = [];
+      
+      // Limpiar mensajes del paciente anterior mientras se cargan los nuevos
+      this.messages = [];
+      
+      // Limpiar contexto de conversación del paciente anterior
+      this.context = [{ role: 'system', content: '' }];
+      
       this.initEnvironment();
       
       // Limpiar resultados de DxGPT siempre cuando cambias de paciente
@@ -812,6 +821,8 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
       // No hay paciente
       this.currentPatientId = null;
       this.dxGptResults = null;
+      this.suggestions = [];
+      this.messages = [];
       
       // Redirigir solo si no es la carga inicial
       if (!this.isInitialLoad) {
@@ -900,7 +911,6 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
 
     this.eventsService.on('eventTask', this.handleEventTask.bind(this));
     this.eventsService.on('changelang', this.handleChangeLang.bind(this));
-    this.eventsService.on('patientChanged', this.handlePatientChanged.bind(this));
     this.eventsService.on('changeView', this.handleChangeView.bind(this));
     this.eventsService.on('reload-messages', () => this.getMessages());
     
@@ -1142,21 +1152,6 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     }
   }
 
-
-  handlePatientChanged(patient: any) {
-    // El backend ahora guarda los mensajes automáticamente
-    
-    // Limpiar datos de las herramientas cuando cambia el paciente
-    this.dxGptResults = null;
-    this.isDxGptLoading = false;
-    this.rarescopeNeeds = [''];
-    this.additionalNeeds = [];
-    this.rarescopeError = null;
-    this.isLoadingRarescope = false;
-    
-    // Cargar mensajes del nuevo paciente (getMessages ya carga los pendientes)
-    this.getMessages();
-  }
 
   private async handleMessage(message: any) {
     console.log('Message received in component:', message);
