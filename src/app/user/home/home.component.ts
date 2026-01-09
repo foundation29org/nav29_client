@@ -207,6 +207,7 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
   summaryJson: any = {};
   needFeedback: boolean = true;
   private messageSubscription: Subscription;
+  private processedAnomalies: Set<string> = new Set(); // Control para evitar duplicados de anomalías
   @ViewChild('contentviewSummary', { static: false }) contentviewSummary: TemplateRef<any>;
   @ViewChild('contentviewDoc', { static: false }) contentviewDoc: TemplateRef<any>;
   @ViewChild('contentSummaryDoc', { static: false }) contentSummaryDoc: TemplateRef<any>;
@@ -805,6 +806,9 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
       
       // Limpiar contexto de conversación del paciente anterior
       this.context = [{ role: 'system', content: '' }];
+      
+      // Limpiar control de anomalías procesadas del paciente anterior
+      this.processedAnomalies.clear();
       
       this.initEnvironment();
       
@@ -1621,12 +1625,22 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     }
 
     if (parsedData.status === 'anomalies found') {
-      this.translateAnomalies(parsedData.anomalies).then(translatedAnomalies => {
-        this.addMessage({
-          text: '<span class="badge badge-warning mb-1 mr-2"><i class="fa fa-exclamation-triangle"></i></span><strong>' + parsedData.filename + '</strong>: ' + this.translate.instant('messages.anomaliesFound') + '<br>' + translatedAnomalies,
-          isUser: false
+      // Crear un ID único para esta anomalía para evitar duplicados
+      const anomalyKey = `${parsedData.docId}_${parsedData.filename}_anomalies`;
+      
+      // Solo procesar si no se ha mostrado ya
+      if (!this.processedAnomalies.has(anomalyKey)) {
+        this.processedAnomalies.add(anomalyKey);
+        
+        this.translateAnomalies(parsedData.anomalies).then(translatedAnomalies => {
+          this.addMessage({
+            text: '<span class="badge badge-warning mb-1 mr-2"><i class="fa fa-exclamation-triangle"></i></span><strong>' + parsedData.filename + '</strong>: ' + this.translate.instant('messages.anomaliesFound') + '<br>' + translatedAnomalies,
+            isUser: false
+          });
         });
-      });
+      } else {
+        console.log('⚠️ Anomalías ya mostradas para:', anomalyKey);
+      }
     }
   }
 

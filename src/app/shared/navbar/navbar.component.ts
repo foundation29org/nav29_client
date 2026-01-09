@@ -507,7 +507,10 @@ export class NavbarComponent implements OnInit, AfterViewInit, OnDestroy {
 
   private updateTaskSteps(parsedData: any, stepsTaskUpload: any[], stepsTaskAnonimize: any[], stepsTaskSummary: any[]) {
     const updateStepStatus = (steps: any[], status: string, index: number) => {
-      if (index !== undefined && steps[index] && steps[index].status !== 'finished' && steps[3].status !== 'finished') {
+      // Solo verificar que el step exista y no esté ya terminado
+      // Removida la condición steps[3].status !== 'finished' que bloqueaba actualizaciones
+      // cuando el resumen terminaba antes que otros pasos
+      if (index !== undefined && steps[index] && steps[index].status !== 'finished') {
         steps[index].status = status.includes('error') ? 'failed' : status;
       }
     };
@@ -517,8 +520,32 @@ export class NavbarComponent implements OnInit, AfterViewInit, OnDestroy {
       'extracted done': () => updateStepStatus(stepsTaskUpload, 'finished', 0),
       'creando resumen': () => stepsTaskUpload[3].status = 'inProcess',
       'resumen ready': () => {
+        // Marcar TODOS los steps como finished cuando el resumen está listo
+        // Esto es importante si el cliente se conectó tarde y no recibió los mensajes anteriores
         updateStepStatus(stepsTaskUpload, 'finished', 0);
+        updateStepStatus(stepsTaskUpload, 'finished', 1);
+        updateStepStatus(stepsTaskUpload, 'finished', 2);
         updateStepStatus(stepsTaskUpload, 'finished', 3);
+      },
+      'timeline ready': () => {
+        // Timeline ready indica que la extracción de eventos terminó
+        // Marcar steps 0, 1, 2 como finished
+        updateStepStatus(stepsTaskUpload, 'finished', 0);
+        updateStepStatus(stepsTaskUpload, 'finished', 1);
+        updateStepStatus(stepsTaskUpload, 'finished', 2);
+      },
+      'anomalies found': () => {
+        // Anomalías encontradas indica que la extracción de info médica terminó
+        // Marcar steps 0, 1, 2 como finished
+        updateStepStatus(stepsTaskUpload, 'finished', 0);
+        updateStepStatus(stepsTaskUpload, 'finished', 1);
+        updateStepStatus(stepsTaskUpload, 'finished', 2);
+      },
+      'no anomalies found': () => {
+        // Sin anomalías también indica que la extracción terminó
+        updateStepStatus(stepsTaskUpload, 'finished', 0);
+        updateStepStatus(stepsTaskUpload, 'finished', 1);
+        updateStepStatus(stepsTaskUpload, 'finished', 2);
       },
       'categorizando texto': () => stepsTaskUpload[1].status = 'inProcess',
       'clean ready': () => {
