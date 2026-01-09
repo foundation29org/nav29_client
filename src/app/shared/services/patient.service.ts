@@ -109,9 +109,9 @@ export class PatientService {
         map((res: any) => {
           if(res.listpatients.length>0){
             this.authService.setPatientList(res.listpatients);
-            if(this.authService.getCurrentPatient()== null){
-              this.authService.setCurrentPatient(res.listpatients[0]);
-            }
+            // NO auto-seleccionar aquí - dejar que el navbar decida
+            // considerando tanto pacientes propios como compartidos
+            // para evitar seleccionar automáticamente cuando hay múltiples pacientes
             return this.authService.getCurrentPatient();
           }else{
             return null;

@@ -346,10 +346,12 @@ export class UserProfilePageComponent implements OnInit, AfterViewInit, OnDestro
     }
 
     goBack(){
-      if(this.user.role == 'Clinical'){
-        this.router.navigate(['/patients']);
-      }else{
+      // Si hay un paciente seleccionado, ir a home
+      // Si no hay paciente seleccionado, ir a la lista de pacientes (seguro para cualquier rol)
+      if(this.authService.getCurrentPatient()){
         this.router.navigate(['/home']);
+      }else{
+        this.router.navigate(['/patients']);
       }
     }
 

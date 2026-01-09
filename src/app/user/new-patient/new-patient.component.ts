@@ -184,8 +184,13 @@ export class NewPatientComponent implements OnInit, OnDestroy {
                 this.continuePatient(res);
               });
             } else {
-              // User does not want to create a new patient, navigate to home
-              this.router.navigate(['/home']);
+              // User does not want to create a new patient
+              // Si hay paciente seleccionado, ir a home; si no, ir a patients para elegir
+              if (this.authService.getCurrentPatient()) {
+                this.router.navigate(['/home']);
+              } else {
+                this.router.navigate(['/patients']);
+              }
             }
           });          
         }

@@ -192,15 +192,27 @@ export class NavbarComponent implements OnInit, AfterViewInit, OnDestroy {
         if (res == null) {
           if (this.authService.getRole() == 'Unknown') {
             this.router.navigate(['/welcome']);
-          } else{
-            if (this.sharedPatients && this.sharedPatients.length > 0) {
-              this.selectPatient(this.sharedPatients[0]);
-            } else {
+          } else {
+            // Calcular total de pacientes (propios + compartidos)
+            // Usar authService.getPatientList() como fallback por si patientsList no está actualizado aún
+            const ownPatients = this.patientsList?.length > 0 ? this.patientsList : (this.authService.getPatientList() || []);
+            const shared = this.sharedPatients || [];
+            const totalPatients = ownPatients.length + shared.length;
+            
+            if (totalPatients === 0) {
+              // No hay pacientes, ir a crear uno (o lista para Clinical)
               if (this.authService.getRole() == 'Clinical') {
                 this.router.navigate(['/patients']);
               } else {
                 this.router.navigate(['/new-patient']);
               }
+            } else if (totalPatients === 1) {
+              // Solo 1 paciente, auto-seleccionarlo
+              const singlePatient = ownPatients.length === 1 ? ownPatients[0] : shared[0];
+              this.selectPatient(singlePatient);
+            } else {
+              // Más de 1 paciente, ir a la lista para que el usuario elija
+              this.router.navigate(['/patients']);
             }
           }
           

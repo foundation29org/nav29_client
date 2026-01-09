@@ -281,7 +281,12 @@ export class LoginCompPageComponent implements OnDestroy, OnInit{
                 confirmButtonText: this.translate.instant("generics.Close")
               });
             }else if(res.userid && res.message=='Done'){
-              this.router.navigate(['/home']);
+              // Si hay paciente seleccionado, ir a home; si no, ir a patients
+              if (this.authService.getCurrentPatient()) {
+                this.router.navigate(['/home']);
+              } else {
+                this.router.navigate(['/patients']);
+              }
             }   
             
           }, (err) => {

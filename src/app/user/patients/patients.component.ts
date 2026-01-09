@@ -316,7 +316,11 @@ export class PatientsComponent implements OnInit, OnDestroy {
     }
 
     backToHome(): void {
-      this.router.navigate(['/home']);
+      // Si hay paciente seleccionado, ir a home; si no, quedarse en patients
+      if (this.authService.getCurrentPatient()) {
+        this.router.navigate(['/home']);
+      }
+      // Si no hay paciente, no navegar (ya estamos en patients)
     }
 
 }
