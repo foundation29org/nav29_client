@@ -698,7 +698,13 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
       .subscribe(async (res: any) => {
         if (res.messages != undefined) {
           if (res.messages.length > 0) {
-            this.messages = res.messages;
+            // Procesar referencias de documentos en mensajes cargados de la BD
+            this.messages = res.messages.map((msg: any) => {
+              if (!msg.isUser && msg.text) {
+                msg.text = this.processDocumentReferences(msg.text, msg.references);
+              }
+              return msg;
+            });
           } else {
             this.messages = [];
           }
@@ -1747,10 +1753,21 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
         }
 
         const fileName = trimmedPart.substring(0, lastCommaIndex).trim();
-        const date = trimmedPart.substring(lastCommaIndex + 1).trim();
+        let date = trimmedPart.substring(lastCommaIndex + 1).trim();
 
-        // Validar que la fecha tenga un formato correcto (YYYY-MM-DD o undated)
-        if (!/^(\d{4}-\d{2}-\d{2}|undated)$/.test(date)) {
+        // Normalizar formato de fecha: aceptar YYYY-MM-DD, DD-MM-YYYY, DD/MM/YYYY
+        // y convertir todo a YYYY-MM-DD para consistencia
+        const isoDatePattern = /^(\d{4})-(\d{2})-(\d{2})$/;
+        const euDatePattern = /^(\d{2})[-\/](\d{2})[-\/](\d{4})$/;
+        
+        if (isoDatePattern.test(date)) {
+          // Ya está en formato correcto YYYY-MM-DD
+        } else if (euDatePattern.test(date)) {
+          // Convertir DD-MM-YYYY o DD/MM/YYYY a YYYY-MM-DD
+          const match = date.match(euDatePattern);
+          date = `${match[3]}-${match[2]}-${match[1]}`;
+        } else if (date.toLowerCase() !== 'undated') {
+          // Fecha no reconocida, devolver sin procesar
           return trimmedPart;
         }
 
@@ -1786,16 +1803,36 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
 
         // 3. Fallback a búsqueda local por nombre
         if (this.docs && this.docs.length > 0) {
+          // Función para normalizar nombres (quitar tildes, guiones, etc.)
+          const normalize = (str: string) => str
+            .toLowerCase()
+            .trim()
+            .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // Quitar tildes
+            .replace(/[-_\s]+/g, '') // Normalizar separadores
+            .replace(/\.(pdf|txt|docx?)$/i, ''); // Quitar extensión
+          
+          // Extraer posible ID numérico del nombre (ej: 19702982 de "Hematología-19702982.pdf")
+          const numericIdMatch = fileName.match(/(\d{8,})/);
+          const searchNumericId = numericIdMatch ? numericIdMatch[1] : null;
+          
+          const searchFileName = normalize(fileName);
+          
           const doc = this.docs.find(d => {
             if (!d.title && !d.url) return false;
-            const docTitle = (d.title || '').toLowerCase().trim();
-            const docFileName = (d.url || '').split('/').pop().toLowerCase().trim();
-            const searchFileName = fileName.toLowerCase().trim();
+            const docTitle = normalize(d.title || '');
+            const docFileName = normalize((d.url || '').split('/').pop() || '');
             
-            return docTitle === searchFileName ||
-                   docFileName === searchFileName ||
-                   docTitle.includes(searchFileName.replace(/\.(pdf|txt|docx?)$/i, '')) ||
-                   docFileName.includes(searchFileName.replace(/\.(pdf|txt|docx?)$/i, ''));
+            // Match exacto normalizado
+            if (docTitle === searchFileName || docFileName === searchFileName) return true;
+            
+            // Match parcial (uno contiene al otro)
+            if (docTitle.includes(searchFileName) || searchFileName.includes(docTitle)) return true;
+            if (docFileName.includes(searchFileName) || searchFileName.includes(docFileName)) return true;
+            
+            // Match por ID numérico
+            if (searchNumericId && (docTitle.includes(searchNumericId) || docFileName.includes(searchNumericId))) return true;
+            
+            return false;
           });
 
           if (doc) {
