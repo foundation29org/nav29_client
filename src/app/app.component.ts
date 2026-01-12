@@ -512,8 +512,12 @@ export class AppComponent implements OnInit, OnDestroy {
             icon: 'info',
             confirmButtonColor: '#2F8BE6',
             confirmButtonText: this.translate.instant("login.Sign in") || 'Iniciar sesión',
-            allowOutsideClick: false,
-            allowEscapeKey: false,
+            showCloseButton: true,
+          }).then((result) => {
+            // Solo redirigir al login si pulsa el botón de confirmar
+            if (result.isConfirmed) {
+              this.router.navigate(['/login']);
+            }
           });
         }, 100);
       }

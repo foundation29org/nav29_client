@@ -437,8 +437,7 @@ export class NavbarComponent implements OnInit, AfterViewInit, OnDestroy {
           if (parsedData.step === 'navigator' && 
               (parsedData.status === 'respuesta generada' || parsedData.status === 'error')) {
             this.createChatNotification(parsedData);
-          } else if (parsedData.step === 'extract events' && 
-                     (parsedData.status === 'respuesta analizada' || parsedData.status === 'respuesta timeline analizada')) {
+          } else if (parsedData.step === 'extract events' && parsedData.status === 'respuesta analizada') {
             this.createEventsNotification(parsedData);
           }
         }

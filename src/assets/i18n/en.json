@@ -142,6 +142,8 @@
    "Symptoms": "Symptoms",
     "Medications": "Medications",
     "Other": "Other",
+    "Activity": "Activity",
+    "Reminder": "Reminder",
    "There are no events": "There are no events",
    "Show filters": "Show filters",
    "Hide filters": "Hide filters",
@@ -977,7 +979,8 @@
     "Level of health knowledge": "Level of health knowledge",
     "Medical Level Explanation": "Select your level to best adapt the information we offer you.",
     "You can change it later in the user profile": "You can change it later in the user profile",
-    "If you change the health knowledge level": "If you change the health knowledge level, previously generated summaries will remain the same unless you delete the files and re-upload them."
+    "If you change the health knowledge level": "If you change the health knowledge level, previously generated summaries will remain the same unless you delete the files and re-upload them.",
+    "Language change info": "The new language will be applied to future responses"
   },
   "login":{
     "Sign in": "Sign in",
@@ -1019,6 +1022,7 @@
     "Sign in again": "Sign in again"
   },
   "generics":{
+    "Continue": "Continue",
     "Summary": "Summary",
     "Choose a date": "Choose a date",
     "Uploaded on": "Uploaded on",
@@ -1255,14 +1259,27 @@
     "No shared patients match your search": "No shared patients match your search",
     "My patients": "My patients",
     "Create new patient": "Create new patient",
-    "View patient": "View patient",
+    "View patient": "View",
     "no patients": "Create your first patient to start using the app",
     "Patients shared with me": "Patients shared with me",
     "No patients shared with you": "No patients shared with you",
     "msgdelete": "Are you sure you want to delete this patient?",
-    "msgdelete2": "You will not be able to recover this patient!",
-    "Yes, delete it!": "Yes, delete it!",
-    "No, keep it": "No, keep it",
+    "msgdelete2": "This action cannot be undone.",
+    "Yes, delete it!": "Yes, delete",
+    "No, keep it": "No, cancel",
+    "deleteReasonTitle": "Why do you want to remove this patient?",
+    "deleteReasonText": "We'd like to understand the reason so we can better assist you.",
+    "reasonDeceased": "The patient has passed away",
+    "reasonNoLongerFollowing": "I no longer follow this patient",
+    "reasonDuplicate": "This is a duplicate patient",
+    "reasonOther": "Other reason",
+    "selectReason": "Select a reason...",
+    "pleaseSelectReason": "Please select a reason",
+    "condolencesTitle": "We are sorry for your loss",
+    "condolencesText": "We understand this is a difficult time. We share in your sorrow and extend our deepest condolences.<br><br>If you wish to remove the patient's data, you may do so below.",
+    "confirmDeleteDeceased": "Remove patient data",
+    "condolencesFinalTitle": "Our deepest sympathy",
+    "condolencesFinalText": "The data has been removed. We wish you strength during this time.",
     "Patient updated successfully": "Patient updated successfully",
     "Failed to update patient": "Failed to update patient",
     "Manage patients": "Manage patients",
@@ -1653,11 +1670,28 @@
     "clickToView": "Click to view",
     "noSummary": "No summary available",
     "notesCount": "notes",
-    "noNotes": "No notes"
+    "noNotes": "No notes",
+    "exploreOptions": "Ideas & suggestions",
+    "exploreOptionsDesc": "See what I can ask the assistant"
   },
   "trialgpt": {
     "title": "TrialGPT - Coming Soon",
     "button": "Search clinical trials",
     "comingSoon": "Coming soon"
+  },
+  "prepareConsult": {
+    "title": "Prepare consultation",
+    "button": "Prepare consultation",
+    "description": "Prepare your next medical appointment. AI will help you organize the relevant information.",
+    "specialist": "Specialist",
+    "specialistPlaceholder": "E.g.: Physiotherapist, Neurologist, General practitioner...",
+    "consultDate": "Consultation date",
+    "consultDatePlaceholder": "E.g.: Tomorrow, January 15th, next week...",
+    "comments": "What do you want to prepare or ask?",
+    "commentsPlaceholder": "E.g.: I want to ask about my latest tests, review current medication...",
+    "generate": "Prepare consultation",
+    "editTooltip": "Customize consultation",
+    "requiredField": "This field is required",
+    "quickMessage": "Prepare me for my next medical consultation. Make a summary of my current situation, my recent symptoms and my medications so I can take it to the appointment."
   }
 }

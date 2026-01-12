@@ -142,6 +142,8 @@
     "Symptoms": "Síntomas",
     "Medications": "Medicamentos",
     "Other": "Otro",
+    "Activity": "Actividad",
+    "Reminder": "Recordatorio",
     "There are no events": "No hay eventos",
     "Show filters": "Mostrar filtros",
     "Hide filters": "Ocultar filtros",
@@ -967,7 +969,8 @@
     "Level of health knowledge": "Nivel de conocimientos en salud",
     "Medical Level Explanation": "Selecciona tu nivel para adaptar mejor la información que te ofrecemos.",
     "You can change it later in the user profile": "Podrás cambiarlo más tarde en el perfil de usuario.",
-    "If you change the health knowledge level": "Si cambias el nivel de conocimientos en salud, los resúmenes generados anteriormente seguirán igual, a no ser que elimine los ficheros y vuelva a subirlos."
+    "If you change the health knowledge level": "Si cambias el nivel de conocimientos en salud, los resúmenes generados anteriormente seguirán igual, a no ser que elimine los ficheros y vuelva a subirlos.",
+    "Language change info": "El nuevo idioma se aplicará en las próximas respuestas"
   },
   "login":{
     "Sign in": "Iniciar sesión",
@@ -1009,6 +1012,7 @@
     "Sign in again": "Vuelve a iniciar sesión"
   },
   "generics":{
+    "Continue": "Continuar",
     "Summary": "Resumen",
     "Choose a date": "Elige una fecha",
     "Uploaded on": "Subido el",
@@ -1250,14 +1254,27 @@
     "No shared patients match your search": "No hay pacientes compartidos que coincidan con tu búsqueda",
     "My patients": "Mis pacientes",
     "Create new patient": "Crear nuevo paciente",
-    "View patient": "Ver paciente",
+    "View patient": "Ver",
     "no patients": "Cree su primer paciente para empezar a usar la aplicación",
     "Patients shared with me": "Pacientes compartidos conmigo",
     "No patients shared with you": "No hay pacientes compartidos con usted",
     "msgdelete": "¿Está seguro de que desea eliminar a este paciente?",
-    "msgdelete2": "¡No podrá recuperar a este paciente!",
-    "Yes, delete it!": "¡Sí, elimínelo!",
-    "No, keep it": "No, consérvelo",
+    "msgdelete2": "Esta acción no se puede deshacer.",
+    "Yes, delete it!": "Sí, eliminar",
+    "No, keep it": "No, cancelar",
+    "deleteReasonTitle": "¿Por qué desea eliminar este paciente?",
+    "deleteReasonText": "Nos gustaría entender el motivo para poder ayudarle mejor.",
+    "reasonDeceased": "El paciente ha fallecido",
+    "reasonNoLongerFollowing": "Ya no sigo a este paciente",
+    "reasonDuplicate": "Es un paciente duplicado",
+    "reasonOther": "Otro motivo",
+    "selectReason": "Seleccione un motivo...",
+    "pleaseSelectReason": "Por favor, seleccione un motivo",
+    "condolencesTitle": "Lamentamos su pérdida",
+    "condolencesText": "Entendemos que este es un momento difícil. Acompañamos su dolor y le enviamos nuestras más sinceras condolencias.<br><br>Si desea eliminar los datos del paciente, puede hacerlo a continuación.",
+    "confirmDeleteDeceased": "Eliminar datos del paciente",
+    "condolencesFinalTitle": "Nuestro más sentido pésame",
+    "condolencesFinalText": "Los datos han sido eliminados. Le deseamos mucha fuerza en estos momentos.",
     "Patient updated successfully": "Paciente actualizado correctamente",
     "Failed to update patient": "Error al actualizar el paciente",
     "Manage patients": "Gestionar pacientes",
@@ -1648,11 +1665,28 @@
     "clickToView": "Haz clic para ver",
     "noSummary": "No hay resumen disponible",
     "notesCount": "notas",
-    "noNotes": "No hay notas"
+    "noNotes": "No hay notas",
+    "exploreOptions": "Ideas y sugerencias",
+    "exploreOptionsDesc": "Ver qué puedo preguntarle al asistente"
   },
   "trialgpt": {
     "title": "TrialGPT - Próximamente",
     "button": "Buscar ensayos clínicos",
     "comingSoon": "Próximamente disponible"
+  },
+  "prepareConsult": {
+    "title": "Preparar consulta",
+    "button": "Preparar consulta",
+    "description": "Prepara tu próxima cita médica. La IA te ayudará a organizar la información relevante.",
+    "specialist": "Especialista",
+    "specialistPlaceholder": "Ej: Fisioterapeuta, Neurólogo, Médico de cabecera...",
+    "consultDate": "Fecha de la consulta",
+    "consultDatePlaceholder": "Ej: Mañana, 15 de enero, la próxima semana...",
+    "comments": "¿Qué quieres preparar o preguntar?",
+    "commentsPlaceholder": "Ej: Quiero preguntar sobre mis últimos análisis, revisar la medicación actual...",
+    "generate": "Preparar consulta",
+    "editTooltip": "Personalizar consulta",
+    "requiredField": "Este campo es obligatorio",
+    "quickMessage": "Prepárame para mi próxima consulta médica. Haz un resumen de mi situación actual, mis síntomas recientes y mis medicamentos para que pueda llevarlo a la cita."
   }
 }

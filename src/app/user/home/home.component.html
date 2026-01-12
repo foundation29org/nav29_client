@@ -603,68 +603,8 @@
                                         </div>
                                     </span>
                                 </span>
-                                <span *ngIf="proposedAppointments.length > 0" class="mb-2" style="display: flex;">
-                                    <span class="border"
-                                        style="background-color: white !important;border-radius: 1rem;">
-                                        <span *ngIf="proposedAppointments.length == 1">
-                                            <h6 class="m-2" *ngIf="proposedAppointments.length == 1">{{'events.event has
-                                                been detected' | translate}}</h6>
-                                            <p class="m-2">{{'events.We need you to validate if is correct' |
-                                                translate}}</p>
-                                        </span>
-                                        <span *ngIf="proposedAppointments.length > 1">
-                                            <h6 class="m-2" *ngIf="proposedAppointments.length > 1">{{'events.events
-                                                have been detected' | translate: { value: proposedAppointments.length }
-                                                }}</h6>
-                                            <p class="m-2">{{'events.Save or delete to continue the conversation' |
-                                                translate}}</p>
-                                        </span>
-                                        <div *ngFor="let proposedAppointment of proposedAppointments; let j = index"
-                                            class="m-2">
-                                            <hr class="mt-2 mb-2">
-                                            <p class=""><strong>{{'generics.Name' | translate}}:</strong><span
-                                                    class="ml-1">{{proposedAppointment.insight}}</span></p>
-                                            <p class=""><strong>{{'generics.Date' | translate}}:</strong><span
-                                                    class="ml-1">{{proposedAppointment.date | date: timeformat}}</span>
-                                            </p>
-                                            <p *ngIf="!proposedAppointment.saving && !submitted">
-                                                <button class="mb-1 btn btn-white btn-sm mr-1"
-                                                    title="{{'generics.Edit' | translate}}"
-                                                    (click)="editProposedAppointment(proposedAppointment)"><i
-                                                        class="fa fa-edit success"></i> {{'generics.Edit' |
-                                                    translate}}</button>
-                                                <button class="mb-1 btn btn-white btn-sm ml-1 mr-1"
-                                                    title="{{'generics.Save' | translate}}"
-                                                    (click)="addProposedAppointment(proposedAppointment)"><i
-                                                        class="fa fa-plus success"></i> {{'generics.Save' |
-                                                    translate}}</button>
-                                                <button class="mb-1 btn btn-white btn-sm ml-1"
-                                                    title="{{'generics.Delete' | translate}}"
-                                                    (click)="deleteProposedAppointment(j)"><i
-                                                        class="fa fa-trash danger"></i> {{'generics.Delete' |
-                                                    translate}}</button>
-                                            </p>
-                                            <p *ngIf="proposedAppointment.saving">
-                                                <em class="fa fa-spinner fa-spin fa-2x fa-fw primary"></em>
-                                            </p>
-                                        </div>
-                                        <div *ngIf="proposedAppointments.length > 1"
-                                            class="border-top pt-3 pb-2 center-elements">
-                                            <button class="mb-1 btn btn-white btn-sm mr-1"
-                                                title="{{'generics.Save all' | translate}}"
-                                                (click)="addAllProposedAppointments()"><i
-                                                    class="fa fa-plus success"></i> {{'generics.Save all' |
-                                                translate}}</button>
-                                            <button class="mb-1 btn btn-white btn-sm ml-1"
-                                                title="{{'generics.Delete all' | translate}}"
-                                                (click)="deleteAllProposedAppointments()"><i
-                                                    class="fa fa-trash danger"></i> {{'generics.Delete all' |
-                                                translate}}</button>
-                                        </div>
-                                    </span>
-                                </span>
                                 <span
-                                    *ngIf="suggestions.length > 0 && proposedEvents.length == 0 && proposedAppointments.length == 0"
+                                    *ngIf="suggestions.length > 0 && proposedEvents.length == 0"
                                     class="suggestion-items">
                                     <span *ngFor="let suggestion of suggestions" class="suggestion-item"
                                         title="{{suggestion}}">
@@ -685,7 +625,7 @@
                     </div>
                     <a id="chatContainer"></a>
                     <div class="chat-input-container" [ngClass]="{'left-sidebar-collapsed': leftSidebarCollapsed && !isSmallScreen()}">
-                        <!--<div class="d-flex align-items-center input-container" *ngIf="!callingOpenai && proposedEvents.length == 0 && proposedAppointments.length == 0">-->
+                        <!--<div class="d-flex align-items-center input-container" *ngIf="!callingOpenai && proposedEvents.length == 0">-->
                         <div class="d-flex align-items-end input-container border" id="chat-container">
                             <textarea [(ngModel)]="message" [disabled]="callingOpenai || chatRecording"
                                 placeholder="{{'generics.Write a message' | translate }}..."
@@ -788,9 +728,13 @@
                             title="{{'rarescope.My Needs' | translate}}">
                         <i class="fa fa-lightbulb-o"></i>
                     </button>
-                    <button class="collapsed-icon-btn tool-card-blue" (click)="openToolModal('trialgpt')" 
+                    <button class="collapsed-icon-btn tool-card-blue" (click)="openTrialGpt()" 
                             title="{{'trialgpt.title' | translate}}">
                         <i class="fa fa-flask"></i>
+                    </button>
+                    <button class="collapsed-icon-btn tool-card-purple" (click)="openPrepareConsultModal()" 
+                            title="{{'prepareConsult.button' | translate}}">
+                        <i class="fa fa-calendar-check-o"></i>
                     </button>
                     
                     <!-- Separador -->
@@ -837,6 +781,27 @@
                                 <i class="fa fa-flask tool-icon"></i>
                                 <span class="tool-name">{{'trialgpt.button' | translate}}</span>
                             </button>
+                            
+                            <!-- Preparar Consulta -->
+                            <div class="tool-card tool-card-purple tool-card-with-edit">
+                                <div class="tool-card-main" (click)="sendQuickPrepareConsult()" 
+                                     title="{{'prepareConsult.button' | translate}}">
+                                    <i class="fa fa-calendar-check-o tool-icon"></i>
+                                    <span class="tool-name">{{'prepareConsult.button' | translate}}</span>
+                                </div>
+                                <button class="tool-card-edit-btn" (click)="openPrepareConsultModal(); $event.stopPropagation()"
+                                        title="{{'prepareConsult.editTooltip' | translate}}">
+                                    <i class="fa fa-pencil"></i>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Enlace a Ideas y sugerencias -->
+                        <div class="explore-options-link" (click)="showOptionsMenu(ContentOptionsMenu)"
+                             title="{{'tools.exploreOptionsDesc' | translate}}">
+                            <i class="fa fa-lightbulb-o"></i>
+                            <span>{{'tools.exploreOptions' | translate}}</span>
+                            <i class="fa fa-chevron-right"></i>
                         </div>
                     </div>
                     
@@ -930,9 +895,13 @@
                             title="{{'rarescope.My Needs' | translate}}">
                         <i class="fa fa-lightbulb-o"></i>
                     </button>
-                    <button class="collapsed-icon-btn tool-card-blue" (click)="openToolModal('trialgpt')" 
+                    <button class="collapsed-icon-btn tool-card-blue" (click)="openTrialGpt()" 
                             title="{{'trialgpt.title' | translate}}">
                         <i class="fa fa-flask"></i>
+                    </button>
+                    <button class="collapsed-icon-btn tool-card-purple" (click)="openPrepareConsultModal()" 
+                            title="{{'prepareConsult.button' | translate}}">
+                        <i class="fa fa-calendar-check-o"></i>
                     </button>
                     
                     <!-- Separador -->
@@ -980,6 +949,27 @@
                                 <i class="fa fa-flask tool-icon"></i>
                                 <span class="tool-name">{{'trialgpt.button' | translate}}</span>
                             </button>
+                            
+                            <!-- Preparar Consulta -->
+                            <div class="tool-card tool-card-purple tool-card-with-edit">
+                                <div class="tool-card-main" (click)="sendQuickPrepareConsult()" 
+                                     title="{{'prepareConsult.button' | translate}}">
+                                    <i class="fa fa-calendar-check-o tool-icon"></i>
+                                    <span class="tool-name">{{'prepareConsult.button' | translate}}</span>
+                                </div>
+                                <button class="tool-card-edit-btn" (click)="openPrepareConsultModal(); $event.stopPropagation()"
+                                        title="{{'prepareConsult.editTooltip' | translate}}">
+                                    <i class="fa fa-pencil"></i>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Enlace a Ideas y sugerencias -->
+                        <div class="explore-options-link" (click)="showOptionsMenu(ContentOptionsMenu)"
+                             title="{{'tools.exploreOptionsDesc' | translate}}">
+                            <i class="fa fa-lightbulb-o"></i>
+                            <span>{{'tools.exploreOptions' | translate}}</span>
+                            <i class="fa fa-chevron-right"></i>
                         </div>
                     </div>
                     
@@ -1641,6 +1631,8 @@
                                     <option value="appointment">📅 {{ 'events.appointment' | translate }}</option>
                                     <option value="symptom">🤒 {{ 'timeline.Symptoms' | translate }}</option>
                                     <option value="medication">💊 {{ 'timeline.Medications' | translate }}</option>
+                                    <option value="activity">🏃 {{ 'timeline.Activity' | translate }}</option>
+                                    <option value="reminder">🔔 {{ 'timeline.Reminder' | translate }}</option>
                                     <option value="other">🔍 {{ 'timeline.Other' | translate }}</option>
                                 </select>
                             </div>
@@ -1661,77 +1653,6 @@
                 <button type="button" class="btn btn-secondary mr-1" (click)="cancelData();">{{'generics.Cancel' |
                     translate }}</button>
                 <button type="button" class="btn btn-dark ml-1" (click)="saveData(true, true);">{{'generics.Save' |
-                    translate }}</button>
-            </div>
-            <div class="col-md-12 center-elements" *ngIf="submitted">
-                <em class="fa fa-spinner fa-spin fa-2x fa-fw primary"></em>
-            </div>
-        </div>
-    </div>
-</ng-template>
-
-<ng-template #contentviewProposedAppointments let-c="close" let-d="dismiss" appendTo="body">
-    <div class="modal-header" id="idHeader">
-        <div class="content-header text-left">
-            <h4 class="mb-0">{{'events.appointment' | translate }}</h4>
-        </div>
-        <button type="button" class="close" aria-label="Close" (click)="closeModal();">
-            <span aria-hidden="true">&times;</span>
-        </button>
-    </div>
-    <div class="modal-body content-wrapper p-2" id="idBody">
-        <div class="p-1">
-            <form action="#" class="form form-horizontal" [formGroup]="appointmentsForm">
-                <div class="form-body">
-                    <div class="">
-                        <div class="">
-                            <div class="form-group">
-                                <label>{{'generics.Name' | translate }}</label>
-                                <input type="text" class="col-12 form-control" id="numericos2" formControlName="name"
-                                    [ngClass]="{ 'is-invalid': submitted && efappointment.name.errors }"
-                                    name="numericos2">
-                                <small class="form-text text-muted danger"
-                                    *ngIf="submitted && efappointment.name.errors">{{'generics.required' |
-                                    translate }}</small>
-                            </div>
-                        </div>
-                        <div class="">
-                            <div class="form-group">
-                                <label class="mb-0">{{'generics.Date' | translate }}</label>
-                                <div class="">
-                                    <mat-form-field class="mr-sm-24" fxFlex>
-                                        <input matInput class="grey" readonly [matDatepicker]="picker"
-                                            autocomplete="off" name="date" formControlName="date">
-                                        <button *ngIf="appointmentsForm.value.endDate!=null" matSuffix mat-icon-button
-                                            aria-label="Clear"
-                                            (click)="appointmentsForm.controls['endDate'].setValue(null)"
-                                            style="position: absolute; left: 30px;">
-                                            <em class="fa fa-trash danger"></em>
-                                        </button>
-                                        <mat-datepicker-toggle matSuffix [for]="picker"></mat-datepicker-toggle>
-                                        <mat-datepicker touchUi="true" [startAt]="dateAppointment"
-                                            #picker></mat-datepicker>
-                                    </mat-form-field>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="">
-                            <div class="form-group">
-                                <label>{{'generics.notes' | translate }}</label>
-                                <textarea maxlength="150" name="notes" formControlName="notes"
-                                    placeholder="{{'generics.Write down any details' | translate }}"
-                                    class="autoajustable form-control"></textarea>
-                            </div>
-                        </div>
-                    </div>
-
-                </div>
-            </form>
-            <div class="col-md-12 center-elements" *ngIf="!submitted">
-                <button type="button" class="btn btn-secondary mr-1" (click)="cancelData();">{{'generics.Cancel' |
-                    translate }}</button>
-                <button type="button" class="btn btn-dark ml-1"
-                    (click)="saveAppointmentsData(true, true);">{{'generics.Save' |
                     translate }}</button>
             </div>
             <div class="col-md-12 center-elements" *ngIf="submitted">
@@ -2735,6 +2656,107 @@
     </div>
     <div class="modal-footer">
         <button type="button" class="btn btn-secondary" (click)="modal.dismiss('Close click')">{{'generics.Close' | translate}}</button>
+    </div>
+</ng-template>
+
+<!-- Modal de Preparar Consulta -->
+<ng-template #prepareConsultModal let-modal>
+    <div class="modal-header prepare-consult-header">
+        <div class="d-flex align-items-center">
+            <i class="fa fa-calendar-check-o mr-2" style="font-size: 1.5rem; color: #7c4dff;"></i>
+            <h4 class="modal-title mb-0">{{'prepareConsult.title' | translate}}</h4>
+        </div>
+        <button type="button" class="close" aria-label="Close" (click)="modal.dismiss('Cross click')">
+            <span aria-hidden="true">&times;</span>
+        </button>
+    </div>
+    <div class="modal-body prepare-consult-body">
+        <div class="prepare-consult-content">
+            <p class="prepare-consult-description text-center mb-4">
+                {{'prepareConsult.description' | translate}}
+            </p>
+            
+            <!-- Campo: Especialista -->
+            <div class="prepare-consult-field mb-3">
+                <label class="prepare-consult-label">
+                    <i class="fa fa-user-md mr-2"></i>
+                    {{'prepareConsult.specialist' | translate}}
+                </label>
+                <div class="prepare-consult-input-wrapper" 
+                     [class.editing]="prepareConsultEditMode.specialist">
+                    <input type="text" 
+                           class="prepare-consult-input"
+                           [(ngModel)]="prepareConsultData.specialist"
+                           [placeholder]="'prepareConsult.specialistPlaceholder' | translate"
+                           [readonly]="!prepareConsultEditMode.specialist"
+                           (focus)="prepareConsultEditMode.specialist = true"
+                           (blur)="prepareConsultEditMode.specialist = false">
+                    <button class="prepare-consult-edit-btn" 
+                            (click)="togglePrepareConsultEdit('specialist')"
+                            [title]="'prepareConsult.editTooltip' | translate">
+                        <i class="fa" [ngClass]="prepareConsultEditMode.specialist ? 'fa-check' : 'fa-pencil'"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Campo: Fecha de la consulta -->
+            <div class="prepare-consult-field mb-3">
+                <label class="prepare-consult-label">
+                    <i class="fa fa-calendar mr-2"></i>
+                    {{'prepareConsult.consultDate' | translate}}
+                </label>
+                <div class="prepare-consult-input-wrapper"
+                     [class.editing]="prepareConsultEditMode.consultDate">
+                    <input type="text" 
+                           class="prepare-consult-input"
+                           [(ngModel)]="prepareConsultData.consultDate"
+                           [placeholder]="'prepareConsult.consultDatePlaceholder' | translate"
+                           [readonly]="!prepareConsultEditMode.consultDate"
+                           (focus)="prepareConsultEditMode.consultDate = true"
+                           (blur)="prepareConsultEditMode.consultDate = false">
+                    <button class="prepare-consult-edit-btn"
+                            (click)="togglePrepareConsultEdit('consultDate')"
+                            [title]="'prepareConsult.editTooltip' | translate">
+                        <i class="fa" [ngClass]="prepareConsultEditMode.consultDate ? 'fa-check' : 'fa-pencil'"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Campo: Comentarios / Qué preparar -->
+            <div class="prepare-consult-field mb-4">
+                <label class="prepare-consult-label">
+                    <i class="fa fa-comment-o mr-2"></i>
+                    {{'prepareConsult.comments' | translate}}
+                </label>
+                <div class="prepare-consult-textarea-wrapper"
+                     [class.editing]="prepareConsultEditMode.comments">
+                    <textarea class="prepare-consult-textarea"
+                              [(ngModel)]="prepareConsultData.comments"
+                              [placeholder]="'prepareConsult.commentsPlaceholder' | translate"
+                              [readonly]="!prepareConsultEditMode.comments"
+                              (focus)="prepareConsultEditMode.comments = true"
+                              (blur)="prepareConsultEditMode.comments = false"
+                              rows="4"></textarea>
+                    <button class="prepare-consult-edit-btn textarea-edit-btn"
+                            (click)="togglePrepareConsultEdit('comments')"
+                            [title]="'prepareConsult.editTooltip' | translate">
+                        <i class="fa" [ngClass]="prepareConsultEditMode.comments ? 'fa-check' : 'fa-pencil'"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="modal-footer prepare-consult-footer">
+        <button type="button" class="btn btn-outline-secondary" (click)="modal.dismiss('Close click')">
+            {{'generics.Cancel' | translate}}
+        </button>
+        <button type="button" 
+                class="btn btn-primary prepare-consult-generate-btn"
+                (click)="sendPreparedConsult()"
+                [disabled]="!prepareConsultData.specialist && !prepareConsultData.comments">
+            <i class="fa fa-magic mr-2"></i>
+            {{'prepareConsult.generate' | translate}}
+        </button>
     </div>
 </ng-template>
 

@@ -140,7 +140,6 @@ interface DxGptResponse {
 export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
   private subscription: Subscription = new Subscription();
   eventsForm: FormGroup;
-  appointmentsForm: FormGroup;
   dataFile: any = {};
   tempDocs: any = [];
   submitted = false;
@@ -213,7 +212,6 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
   @ViewChild('contentSummaryDoc', { static: false }) contentSummaryDoc: TemplateRef<any>;
   @ViewChild('documentContextModal', { static: false }) documentContextModal: TemplateRef<any>;
   @ViewChild('contentviewProposedEvents', { static: false }) contentviewProposedEvents: TemplateRef<any>;
-  @ViewChild('contentviewProposedAppointments', { static: false }) contentviewProposedAppointments: TemplateRef<any>;
   @ViewChild('shareCustom', { static: false }) contentshareCustom: TemplateRef<any>;
   @ViewChild('qrPanel', { static: false }) contentqrPanel: TemplateRef<any>;
   @ViewChild('dxGptModal', { static: false }) dxGptModal: TemplateRef<any>;
@@ -221,6 +219,20 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
   @ViewChild('rarescopeModal', { static: false }) rarescopeModal: TemplateRef<any>;
   @ViewChild('diaryModal', { static: false }) diaryModal: TemplateRef<any>;
   @ViewChild('timelineModal', { static: false }) timelineModal: TemplateRef<any>;
+  @ViewChild('prepareConsultModal', { static: false }) prepareConsultModal: TemplateRef<any>;
+  
+  // Variables para Preparar Consulta
+  prepareConsultData = {
+    specialist: '',
+    consultDate: '',
+    comments: ''
+  };
+  prepareConsultEditMode = {
+    specialist: false,
+    consultDate: false,
+    comments: false
+  };
+  
   tasksUpload: any[] = [];
   taskAnonimize: any[] = [];
   translateYouCanAskInChat: string = '';
@@ -261,7 +273,6 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
   sendingVote: boolean = false;
   actualParam: string = '';
   proposedEvents = [];
-  proposedAppointments = [];
   currentPatient: string = '';
   actualPatient: any = {};
   containerName: string = '';
@@ -628,7 +639,6 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
   }
 
   get ef() { return this.eventsForm.controls; }
-  get efappointment() { return this.appointmentsForm.controls; }
 
   async ngOnDestroy() {
     // Detener reconocimiento de voz si está activo
@@ -696,6 +706,7 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
   getMessages() {
     this.subscription.add(this.http.get(environment.api + '/api/messages/' + this.authService.getIdUser() + '/' + this.currentPatient)
       .subscribe(async (res: any) => {
+        console.log('getMessages', res);
         if (res.messages != undefined) {
           if (res.messages.length > 0) {
             // Procesar referencias de documentos en mensajes cargados de la BD
@@ -1754,9 +1765,9 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
 
         const fileName = trimmedPart.substring(0, lastCommaIndex).trim();
         let date = trimmedPart.substring(lastCommaIndex + 1).trim();
+        const displayDate = date; // Guardar la fecha original para mostrar
 
         // Normalizar formato de fecha: aceptar YYYY-MM-DD, DD-MM-YYYY, DD/MM/YYYY
-        // y convertir todo a YYYY-MM-DD para consistencia
         const isoDatePattern = /^(\d{4})-(\d{2})-(\d{2})$/;
         const euDatePattern = /^(\d{2})[-\/](\d{2})[-\/](\d{4})$/;
         
@@ -1788,21 +1799,12 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
           }
         }
 
-        // 2. Manejar el caso especial de conversation_context
-        if (fileName === 'conversation_context') {
-          const label = this.translate.instant('messages.patientRecord') || 'Historial';
-          const tooltipText = this.translate.instant('messages.viewPatientHistory') || 'Ver historial del paciente';
-          
-          return `<a href="javascript:void(0)" 
-                      class="context-reference-link" 
-                      style="color: #6f42c1; text-decoration: none; border-bottom: 1px dashed #6f42c1; cursor: pointer;"
-                      title="${tooltipText}">
-                      👤 ${label}, ${date}
-                  </a>`;
-        }
+        // 2. Detectar si NO es un archivo real (sin extensión conocida)
+        // Las citaciones de contexto/conversación no tienen extensión de archivo
+        const hasFileExtension = /\.(pdf|docx?|txt|xlsx?|csv|png|jpg|jpeg|gif|html?|xml|json)$/i.test(fileName);
 
-        // 3. Fallback a búsqueda local por nombre
-        if (this.docs && this.docs.length > 0) {
+        // 3. Búsqueda local por nombre (solo si parece un archivo)
+        if (hasFileExtension && this.docs && this.docs.length > 0) {
           // Función para normalizar nombres (quitar tildes, guiones, etc.)
           const normalize = (str: string) => str
             .toLowerCase()
@@ -1848,11 +1850,18 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
           }
         }
 
-        // 4. Si no se encuentra, devolver formateado pero no clickeable
-        const style = date === 'undated' 
-             ? 'color: #856404; font-style: italic;' 
-             : 'color: #6c757d; font-style: italic;';
-        return `<span class="document-reference" style="${style}">${fileName}, ${date}</span>`;
+        // 4. Si no es archivo o no se encontró: mostrar como referencia de contexto (morado)
+        // o como documento no encontrado (gris) dependiendo del caso
+        if (!hasFileExtension) {
+          // Es una referencia al contexto/conversación/historial - mostrar en morado
+          return `<span class="context-reference" style="color: #6f42c1; font-style: italic;">👤 ${fileName}, ${displayDate}</span>`;
+        } else {
+          // Es un archivo pero no se encontró - mostrar en gris
+          const style = date === 'undated' 
+               ? 'color: #856404; font-style: italic;' 
+               : 'color: #6c757d; font-style: italic;';
+          return `<span class="document-reference" style="${style}">📄 ${fileName}, ${date}</span>`;
+        }
       });
 
       return '[' + processedParts.join('; ') + ']';
@@ -1906,7 +1915,25 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
       (this as any).pendingReferences = null;
     }
     
-    // El backend ya guarda el mensaje, no necesitamos hacer POST
+    // Detectar eventos del navegador (extracción automática de eventos de la respuesta)
+    const messageToUse = this.tempInput || this.message;
+    const query = {
+      question: messageToUse,
+      answer: parsedData.answer,
+      userId: this.authService.getIdUser(),
+      patientId: this.currentPatient,
+      initialEvents: this.initialEvents
+    };
+
+    this.subscription.add(
+      this.http.post(environment.api + '/api/eventsnavigator/', query).subscribe(
+        () => { },
+        err => {
+          console.error(err);
+          this.insightsService.trackException(err);
+        }
+      )
+    );
   }
 
   private updateNavigatorStatus(parsedData: any) {
@@ -1945,8 +1972,6 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
       this.setLastMessageLoading();
     } else if (parsedData.status === 'respuesta analizada') {
       this.processExtractedEvents(parsedData.events);
-    } else if (parsedData.status === 'respuesta timeline analizada') {
-      this.processExtractedAppointments(parsedData.events);
     }
   }
 
@@ -1992,48 +2017,6 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     }
 
   }
-
-  private processExtractedAppointments(events: any[]) {
-    let index = this.messages.length - 1;
-    while (index >= 0) {
-      if (!this.messages[index].isUser) {
-        if (events.length > 0) {
-          this.messages[index].events = events;
-          const jsontestLangText = events.map(event => ({
-            Text: event.insight
-          }));
-
-          if (this.detectedLang !== 'en') {
-            this.subscription.add(
-              this.apiDx29ServerService.getTranslationInvert(this.detectedLang, jsontestLangText)
-                .subscribe({
-                  next: (res2: any) => {
-                    if (res2[0]) {
-                      res2.forEach((translation: any, i: number) => {
-                        if (translation.translations[0]) {
-                          events[i].insight = translation.translations[0].text;
-                        }
-                      });
-                    }
-                    this.proposedAppointments = events;
-                  },
-                  error: (err) => {
-                    console.log(err);
-                    this.insightsService.trackException(err);
-                    this.proposedAppointments = events;
-                  }
-                })
-            );
-          } else {
-            this.proposedAppointments = events;
-          }
-        }
-        break;
-      }
-      index--;
-    }
-  }
-
 
   private async handleEventTask(info: any) {
     const doc = this.docs.find(x => x._id === info.task.docId);
@@ -2165,7 +2148,6 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     this.messages = [];
     this.suggestions = [];
     this.proposedEvents = [];
-    this.proposedAppointments = [];
     this.initChat();
     this.context.splice(1, this.context.length - 1);
     
@@ -3000,7 +2982,6 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     }
     
     this.proposedEvents = [];
-    this.proposedAppointments = [];
     this.actualStatus = 'procesando intent';
     this.statusChange();
 
@@ -3366,56 +3347,9 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     this.callingOpenai = false;
   }
 
-  showFormAppointment(info) {
-    if (this.detectedLang != 'en') {
-      var textToExtract = info.name;
-      var jsontestLangText = [{ "Text": textToExtract }]
-      this.subscription.add(this.apiDx29ServerService.getDeepLTranslationInvert(this.detectedLang, jsontestLangText)
-        .subscribe((res2: any) => {
-          if (res2.text != undefined) {
-            info.name = res2.text;
-          }
-          this.addFormAppointment(info);
-        }, (err) => {
-          console.log(err);
-          this.insightsService.trackException(err);
-          this.addFormAppointment(info);
-        }));
-
-    } else {
-      this.addFormAppointment(info);
-    }
-  }
-
-  addFormAppointment(info) {
-    Swal.close();
-    //this.eventsForm.reset();
-    this.appointmentsForm = this.formBuilder.group({
-      name: ['', Validators.required],
-      date: [new Date()],
-      key: ['appointment'],
-      notes: []
-    });
-    //if no date, set today
-    if (!info.date) {
-      info.date = new Date();
-    }
-    //info.date = this.dateService.transformDate(new Date());
-    this.appointmentsForm.patchValue(info);
-    this.showProposedAppointments();
-    this.callingTextAnalytics = false;
-    this.callingOpenai = false;
-  }
-
   get date() {
     //return this.seizuresForm.get('date').value;
     let minDate = new Date(this.eventsForm.get('date').value);
-    return minDate;
-  }
-
-  get dateAppointment() {
-    //return this.seizuresForm.get('date').value;
-    let minDate = new Date(this.appointmentsForm.get('date').value);
     return minDate;
   }
 
@@ -4121,10 +4055,15 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
       'appointment': `${this.translate.instant('events.appointment')} 📅`,
       'symptom': `${this.translate.instant('timeline.Symptoms')} 🤒`,
       'medication': `${this.translate.instant('timeline.Medications')} 💊`,
+      'activity': `${this.translate.instant('timeline.Activity')} 🏃`,
+      'reminder': `${this.translate.instant('timeline.Reminder')} 🔔`,
       'other': `${this.translate.instant('timeline.Other')} 🔍`
     };
 
-    return types[type] || type;
+    if (!type || type === 'null') {
+      return `${this.translate.instant('timeline.Other')} 🔍`;
+    }
+    return types[type] || `${this.translate.instant('timeline.Other')} 🔍`;
   }
 
   showProposedEvents() {
@@ -4219,156 +4158,6 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
       });
       this.loadEnvironmentMydata(); // llamar a loadEvents una vez que todos los datos se guarden
     });
-  }
-
-  editProposedAppointment(event) {
-    console.log(event);
-    var info = {
-      name: event.insight.toLowerCase(),
-      date: event.date,
-      notes: '',
-      data: event.data,
-      key: event.key
-    }
-    this.showFormAppointment(info)
-  }
-
-  addProposedAppointment(event) {
-    this.appointmentsForm = this.formBuilder.group({
-      name: ['', Validators.required],
-      date: [new Date()],
-      key: ['appointment'],
-      notes: []
-    });
-    if (event.date != undefined) {
-      event.date = new Date(event.date);
-    } else {
-      event.date = new Date();
-    }
-    event.name = event.insight;
-    event.key = 'appointment';
-    //info.date = this.dateService.transformDate(new Date());
-    this.appointmentsForm.patchValue(event);
-    this.saveAppointmentsData(false, true);
-  }
-
-  deleteProposedAppointment(index) {
-    this.proposedAppointments.splice(index, 1);
-    if (this.proposedAppointments.length == 0 && this.suggestions.length == 0) {
-      this.suggestions = this.getAllSuggestions(4);
-    }
-  }
-
-  deleteAllProposedAppointments() {
-    this.proposedAppointments = [];
-    if (this.proposedAppointments.length == 0 && this.suggestions.length == 0) {
-      this.suggestions = this.getAllSuggestions(4);
-    }
-  }
-
-  addAllProposedAppointments() {
-
-    let savePromises = [];
-    this.proposedAppointments.forEach(event => {
-      this.appointmentsForm = this.formBuilder.group({
-        name: ['', Validators.required],
-        date: [new Date()],
-        key: ['appointment'],
-        notes: []
-      });
-      event.date = new Date();
-      event.key = 'appointment';
-      //info.date = this.dateService.transformDate(new Date());
-      this.appointmentsForm.patchValue(event);
-      savePromises.push(this.saveAppointmentsData(false, false));
-    });
-    this.proposedAppointments = [];
-
-    Promise.all(savePromises).then(() => { // cuando todas las promesas se resuelven
-      if (this.proposedAppointments.length == 0 && this.suggestions.length == 0) {
-        this.suggestions = this.getAllSuggestions(4);
-      }
-      let newMsg = this.translate.instant('events.The events have been saved');
-      this.addMessage({
-        text: newMsg,
-        isUser: false
-      });
-      this.loadEnvironmentMydata(); // llamar a loadEvents una vez que todos los datos se guarden
-    });
-  }
-
-  saveAppointmentsData(checkForm, loadEvents) {
-    return new Promise((resolve, reject) => {
-      if (checkForm) {
-        if (this.appointmentsForm.invalid) {
-          return;
-        }
-      }
-      var actualIndex = 0;
-      this.proposedAppointments.forEach((element, index) => {
-        if (element.name == this.appointmentsForm.value.name) {
-          this.proposedAppointments[index].saving = true;
-          actualIndex = index;
-        }
-      });
-
-      this.submitted = true;
-      /*if (this.appointmentsForm.value.date != null) {
-        this.appointmentsForm.value.date = this.dateService.transformDate(this.appointmentsForm.value.date);
-      }
-      console.log(this.appointmentsForm.value.date)*/
-
-      if (this.authGuard.testtoken()) {
-        this.saving = true;
-        const userId = this.authService.getIdUser();
-        this.subscription.add(this.http.post(environment.api + '/api/events/' + this.currentPatient + '/' + userId, this.appointmentsForm.value)
-          .subscribe((res: any) => {
-            this.saving = false;
-            this.proposedAppointments.splice(actualIndex, 1);
-
-
-            if (this.modalReference != null) {
-              this.modalReference.close();
-            }
-            this.submitted = false;
-            if (loadEvents) {
-              let newMsg = this.translate.instant('home.botmsg3') + ': ' + this.appointmentsForm.value.name;
-              this.addMessage({
-                text: newMsg,
-                isUser: false
-              });
-              if (this.proposedAppointments.length == 0 && this.suggestions.length == 0) {
-                this.suggestions = this.getAllSuggestions(4);
-              }
-              this.loadEnvironmentMydata();
-            }
-            resolve(true);
-          }, (err) => {
-            this.proposedAppointments[actualIndex].saving = false;
-            this.submitted = false;
-            console.log(err);
-            this.insightsService.trackException(err);
-            this.saving = false;
-            if (err.error.message == 'Token expired' || err.error.message == 'Invalid Token') {
-              this.authGuard.testtoken();
-            } else {
-            }
-            reject(err);
-          }));
-      }
-    });
-  }
-
-  showProposedAppointments() {
-    if (this.modalReference != undefined) {
-      this.modalReference.close();
-      this.modalReference = undefined;
-    }
-    let ngbModalOptions: NgbModalOptions = {
-      keyboard: false,
-      windowClass: 'ModalClass-sm' // xl, lg, sm
-    };
-    this.modalReference = this.modalService.open(this.contentviewProposedAppointments, ngbModalOptions);
   }
 
   resetPermisions() {
@@ -5744,6 +5533,69 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     this.modalReference = this.modalService.open(this.diaryModal, ngbModalOptions);
   }
 
+  sendQuickPrepareConsult() {
+    // Enviar directamente un mensaje predeterminado al chat
+    this.message = this.translate.instant('prepareConsult.quickMessage');
+    this.sendMessage();
+  }
+
+  openPrepareConsultModal() {
+    // Resetear datos del formulario
+    this.prepareConsultData = {
+      specialist: '',
+      consultDate: '',
+      comments: ''
+    };
+    this.prepareConsultEditMode = {
+      specialist: false,
+      consultDate: false,
+      comments: false
+    };
+    
+    let ngbModalOptions: NgbModalOptions = {
+      backdrop: 'static',
+      keyboard: false,
+      windowClass: 'ModalClass-md' // md para un modal mediano
+    };
+    
+    if (this.modalReference != undefined) {
+      this.modalReference.close();
+    }
+    this.modalReference = this.modalService.open(this.prepareConsultModal, ngbModalOptions);
+  }
+
+  togglePrepareConsultEdit(field: 'specialist' | 'consultDate' | 'comments') {
+    this.prepareConsultEditMode[field] = !this.prepareConsultEditMode[field];
+  }
+
+  sendPreparedConsult() {
+    // Construir el mensaje para el chat
+    let messageToSend = this.translate.instant('prepareConsult.title');
+    
+    if (this.prepareConsultData.specialist) {
+      messageToSend += ` con ${this.prepareConsultData.specialist}`;
+    }
+    
+    if (this.prepareConsultData.consultDate) {
+      messageToSend += ` (${this.prepareConsultData.consultDate})`;
+    }
+    
+    messageToSend += '. ';
+    
+    if (this.prepareConsultData.comments) {
+      messageToSend += this.prepareConsultData.comments;
+    } else {
+      messageToSend += this.translate.instant('prepareConsult.commentsPlaceholder');
+    }
+    
+    // Cerrar el modal
+    this.closeModal();
+    
+    // Enviar el mensaje al chat
+    this.message = messageToSend;
+    this.sendMessage();
+  }
+
   getNotes() {
     this.patientService.getPatientNotes(this.currentPatient).subscribe((res: any) => {
       //sort by date
@@ -6269,9 +6121,14 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
       'appointment': '📅',
       'symptom': '🤒',
       'medication': '💊',
+      'activity': '🏃',
+      'reminder': '🔔',
       'other': '🔍'
     };
-    return icons[type] ? icons[type] + ' ' : '';
+    if (!type || type === 'null') {
+      return '🔍 ';
+    }
+    return icons[type] ? icons[type] + ' ' : '🔍 ';
   }
 
   newMedicalEventTimeline() {
@@ -6420,9 +6277,14 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
       'appointment': this.translate.instant('events.appointment'),
       'symptom': this.translate.instant('timeline.Symptoms'),
       'medication': this.translate.instant('timeline.Medications'),
+      'activity': this.translate.instant('timeline.Activity'),
+      'reminder': this.translate.instant('timeline.Reminder'),
       'other': this.translate.instant('timeline.Other')
     };
-    return types[type] || type || '';
+    if (!type || type === 'null') {
+      return this.translate.instant('timeline.Other');
+    }
+    return types[type] || this.translate.instant('timeline.Other');
   }
 
   exportTimelineToPDF() {

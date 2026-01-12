@@ -166,9 +166,6 @@ export class UserProfilePageComponent implements OnInit, AfterViewInit, OnDestro
         this.subscription.add( this.http.put(environment.api+'/api/users/lang/'+this.authService.getIdUser(), data)
         .subscribe( (res : any) => {
 
-          if(this.user.lang != this.userCopy.lang){
-            this.saveMessages();
-          }
           this.user.lang = res.user.lang;
           this.userCopy = JSON.parse(JSON.stringify(res.user));
           this.authService.setLang(this.user.lang);
@@ -176,7 +173,6 @@ export class UserProfilePageComponent implements OnInit, AfterViewInit, OnDestro
           var eventsLang = this.inj.get(EventsService);
           eventsLang.broadcast('changelang', this.authService.getLang());
           this.sending = false;
-          //this.toastr.success('', this.msgDataSavedOk);
           this.showSaveStatus();
          }, (err) => {
            console.log(err);
@@ -193,9 +189,32 @@ export class UserProfilePageComponent implements OnInit, AfterViewInit, OnDestro
 
     onChangePreferredResponseLanguage(newValue) {
       console.log(newValue)
+      const previousLang = this.userCopy.preferredResponseLanguage;
+      const langChanged = previousLang && previousLang !== newValue;
+      
       this.patientService.updatePreferredLang(newValue).subscribe((res3) => {
-        this.showSaveStatus();
+        this.userCopy.preferredResponseLanguage = newValue;
+        
+        if(langChanged){
+          // Mostrar mensaje informativo sobre el cambio de idioma
+          this.showLangChangeInfo();
+        } else {
+          this.showSaveStatus();
+        }
       });
+    }
+
+    showLangChangeInfo(){
+      Swal.fire({
+          icon: 'success',
+          html: this.translate.instant("generics.Data saved successfully") + '<br><br><small>' + this.translate.instant("profile.Language change info") + '</small>',
+          showCancelButton: false,
+          showConfirmButton: false,
+          allowOutsideClick: false
+      })
+      setTimeout(function () {
+          Swal.close();
+      }, 3000);
     }
 
     onRoleChange(role: string) {
@@ -239,16 +258,6 @@ export class UserProfilePageComponent implements OnInit, AfterViewInit, OnDestro
       }, 2000);
     }
 
-    saveMessages(){
-      var info = { 'messages': [] };
-      console.log(this.authService.getCurrentPatient())
-      this.subscription.add(this.http.post(environment.api + '/api/messages/' + this.authService.getIdUser() + '/' + this.authService.getCurrentPatient().sub, info)
-        .subscribe((res: any) => {
-        }, (err) => {
-          console.log(err);
-          this.insightsService.trackException(err);
-        }));
-    }
 
     deleteAccount(){
       this.showPanelDelete = true;

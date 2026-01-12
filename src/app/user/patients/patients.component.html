@@ -62,7 +62,7 @@
             </tr>
         </thead>
         <tbody>
-            <tr *ngFor="let patient of filteredPatients; let i = index" class="patient-row">
+            <tr *ngFor="let patient of filteredPatients; let i = index" class="patient-row clickable-row" (click)="!patient.editing && selectPatient(patient)">
                 <td *ngIf="!patient.editing" class="patient-name">{{ patient.patientName }}</td>
                 <td *ngIf="patient.editing">
                     <mat-form-field class="example-full-width">
@@ -91,7 +91,7 @@
                     </mat-form-field>
                 </td>
   
-                <td class="patient-actions">
+                <td class="patient-actions" (click)="$event.stopPropagation()">
                     <div class="action-buttons">
                       <button *ngIf="!patient.editing" (click)="selectPatient(patient)" class="btn-action btn-view" title="{{'patients.View patient' | translate}}">
                         <i class="fa fa-eye"></i> <span class="d-none d-lg-inline">{{'patients.View patient' | translate}}</span>
@@ -118,7 +118,7 @@
     </table>
     </div>
     <div class="d-md-none patients-cards-mobile">
-      <div class="patient-card" *ngFor="let patient of filteredPatients">
+      <div class="patient-card clickable-card" *ngFor="let patient of filteredPatients" (click)="!patient.editing && selectPatient(patient)">
         <div class="patient-card-body">
           <h5 class="patient-card-title" *ngIf="!patient.editing">{{ patient.patientName }}</h5>
           <mat-form-field *ngIf="patient.editing" class="w-100">
@@ -148,7 +148,7 @@
             </mat-select>
           </mat-form-field>
     
-          <div class="patient-card-actions" *ngIf="!patient.editing">
+          <div class="patient-card-actions" *ngIf="!patient.editing" (click)="$event.stopPropagation()">
             <button (click)="selectPatient(patient)" class="btn-action btn-view"><i class="fa fa-eye"></i> {{'generics.View' | translate}}</button>
             <button (click)="enableEdit(patient)" class="btn-action btn-edit"><i class="fa fa-pencil-square-o"></i></button>
             <button (click)="share(patient)" class="btn-action btn-share"><i class="fa-light fa-share-nodes"></i></button>
@@ -179,11 +179,11 @@
           </tr>
         </thead>
         <tbody>
-          <tr *ngFor="let patient of filteredSharedPatients; let i = index" class="patient-row">
+          <tr *ngFor="let patient of filteredSharedPatients; let i = index" class="patient-row clickable-row" (click)="selectPatient(patient)">
             <td class="patient-name">{{ patient.patientName }}</td>
             <td class="patient-date">{{ patient.birthDate | date }}</td>
             <td class="patient-gender">{{ patient.gender ? ('steps.' + patient.gender | translate) : ('generics.Unknown' | translate) }}</td>
-            <td class="patient-actions">
+            <td class="patient-actions" (click)="$event.stopPropagation()">
               <button (click)="selectPatient(patient)" class="btn-action btn-view">
                 <i class="fa fa-eye"></i> <span class="d-none d-lg-inline">{{'patients.View patient' | translate}}</span>
               </button>
@@ -193,7 +193,7 @@
       </table>
     </div>
     <div class="d-md-none patients-cards-mobile">
-      <div class="patient-card" *ngFor="let patient of filteredSharedPatients">
+      <div class="patient-card clickable-card" *ngFor="let patient of filteredSharedPatients" (click)="selectPatient(patient)">
         <div class="patient-card-body">
           <h5 class="patient-card-title">{{ patient.patientName }}</h5>
           <div class="patient-card-info">
@@ -204,7 +204,7 @@
               <i class="fa fa-venus-mars"></i> {{'personalinfo.Gender' | translate}}: {{ patient.gender ? ('steps.' + patient.gender | translate) : ('generics.Unknown' | translate) }}
             </p>
           </div>
-          <div class="patient-card-actions">
+          <div class="patient-card-actions" (click)="$event.stopPropagation()">
             <button (click)="selectPatient(patient)" class="btn-action btn-view"><i class="fa fa-eye"></i> {{'generics.View' | translate}}</button>
           </div>
         </div>
