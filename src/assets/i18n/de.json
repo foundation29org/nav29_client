@@ -1674,6 +1674,20 @@
       "title": "TrialGPT - Demnächst verfügbar",
       "button": "Klinische Studien suchen",
       "comingSoon": "Demnächst verfügbar"
+    },
+    "navigator": {
+      "detecting_intent": "Analysiere deine Frage...",
+      "intent_detected": "Frage analysiert",
+      "retrieving_history": "Rufe Verlauf ab...",
+      "searching_documents": "Suche in deinen Dokumenten...",
+      "analyzing_documents": "Analysiere Dokumente...",
+      "extracting_data": "Extrahiere klinische Daten...",
+      "preparing_context": "Bereite Kontext vor...",
+      "invoking_model": "Denke nach...",
+      "generating_response": "Generiere Antwort...",
+      "generating_suggestions": "Generiere Vorschläge...",
+      "response_generated": "Antwort generiert",
+      "suggestions_generated": "Vorschläge generiert"
     }
   }
 

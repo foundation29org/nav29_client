@@ -1938,11 +1938,20 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
 
   private updateNavigatorStatus(parsedData: any) {
     const statusMapping: { [key: string]: string } = {
-      'intent detectado': parsedData.intent,
-      'generando respuesta': 'generando respuesta',
-      'generando sugerencias': 'generando sugerencias',
-      'respuesta generada': 'respuesta generada',
-      'sugerencias generadas': 'sugerencias generadas'
+      // Nuevos estados del pipeline
+      'detectando intención': this.translate.instant('navigator.detecting_intent') || 'Analizando tu pregunta...',
+      'intent detectado': this.translate.instant('navigator.intent_detected') || 'Pregunta analizada',
+      'recuperando historial': this.translate.instant('navigator.retrieving_history') || 'Recuperando historial...',
+      'buscando en documentos': this.translate.instant('navigator.searching_documents') || 'Buscando en tus documentos...',
+      'analizando documentos': this.translate.instant('navigator.analyzing_documents') || `Analizando ${parsedData.documentsFound || ''} documentos...`,
+      'extrayendo datos clínicos': this.translate.instant('navigator.extracting_data') || 'Extrayendo datos clínicos...',
+      'preparando contexto': this.translate.instant('navigator.preparing_context') || 'Preparando contexto...',
+      'invocando modelo': this.translate.instant('navigator.invoking_model') || 'Pensando...',
+      // Estados existentes
+      'generando respuesta': this.translate.instant('navigator.generating_response') || 'Generando respuesta...',
+      'generando sugerencias': this.translate.instant('navigator.generating_suggestions') || 'Generando sugerencias...',
+      'respuesta generada': this.translate.instant('navigator.response_generated') || 'Respuesta generada',
+      'sugerencias generadas': this.translate.instant('navigator.suggestions_generated') || 'Sugerencias generadas'
     };
 
     const actionMapping: { [key: string]: string } = {

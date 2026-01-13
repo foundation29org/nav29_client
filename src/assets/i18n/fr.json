@@ -1675,5 +1675,19 @@
       "title": "TrialGPT - Bientôt disponible",
       "button": "Rechercher des essais cliniques",
       "comingSoon": "Bientôt disponible"
+    },
+    "navigator": {
+      "detecting_intent": "Analyse de votre question...",
+      "intent_detected": "Question analysée",
+      "retrieving_history": "Récupération de l'historique...",
+      "searching_documents": "Recherche dans vos documents...",
+      "analyzing_documents": "Analyse des documents...",
+      "extracting_data": "Extraction des données cliniques...",
+      "preparing_context": "Préparation du contexte...",
+      "invoking_model": "Réflexion en cours...",
+      "generating_response": "Génération de la réponse...",
+      "generating_suggestions": "Génération des suggestions...",
+      "response_generated": "Réponse générée",
+      "suggestions_generated": "Suggestions générées"
     }
   }

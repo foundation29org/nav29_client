@@ -1688,5 +1688,19 @@
     "editTooltip": "Personalizar consulta",
     "requiredField": "Este campo es obligatorio",
     "quickMessage": "Prepárame para mi próxima consulta médica. Haz un resumen de mi situación actual, mis síntomas recientes y mis medicamentos para que pueda llevarlo a la cita."
+  },
+  "navigator": {
+    "detecting_intent": "Analizando tu pregunta...",
+    "intent_detected": "Pregunta analizada",
+    "retrieving_history": "Recuperando historial...",
+    "searching_documents": "Buscando en tus documentos...",
+    "analyzing_documents": "Analizando documentos...",
+    "extracting_data": "Extrayendo datos clínicos...",
+    "preparing_context": "Preparando contexto...",
+    "invoking_model": "Pensando...",
+    "generating_response": "Generando respuesta...",
+    "generating_suggestions": "Generando sugerencias...",
+    "response_generated": "Respuesta generada",
+    "suggestions_generated": "Sugerencias generadas"
   }
 }

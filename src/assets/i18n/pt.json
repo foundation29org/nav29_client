@@ -1675,5 +1675,19 @@
       "title": "TrialGPT - Em breve",
       "button": "Buscar ensaios clínicos",
       "comingSoon": "Em breve"
+    },
+    "navigator": {
+      "detecting_intent": "Analisando sua pergunta...",
+      "intent_detected": "Pergunta analisada",
+      "retrieving_history": "Recuperando histórico...",
+      "searching_documents": "Buscando em seus documentos...",
+      "analyzing_documents": "Analisando documentos...",
+      "extracting_data": "Extraindo dados clínicos...",
+      "preparing_context": "Preparando contexto...",
+      "invoking_model": "Pensando...",
+      "generating_response": "Gerando resposta...",
+      "generating_suggestions": "Gerando sugestões...",
+      "response_generated": "Resposta gerada",
+      "suggestions_generated": "Sugestões geradas"
     }
 }

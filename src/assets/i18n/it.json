@@ -1672,5 +1672,19 @@
       "title": "TrialGPT - In arrivo",
       "button": "Cerca studi clinici",
       "comingSoon": "Prossimamente disponibile"
+    },
+    "navigator": {
+      "detecting_intent": "Analizzo la tua domanda...",
+      "intent_detected": "Domanda analizzata",
+      "retrieving_history": "Recupero dello storico...",
+      "searching_documents": "Ricerca nei tuoi documenti...",
+      "analyzing_documents": "Analisi dei documenti...",
+      "extracting_data": "Estrazione dei dati clinici...",
+      "preparing_context": "Preparazione del contesto...",
+      "invoking_model": "Sto pensando...",
+      "generating_response": "Generazione della risposta...",
+      "generating_suggestions": "Generazione dei suggerimenti...",
+      "response_generated": "Risposta generata",
+      "suggestions_generated": "Suggerimenti generati"
     }
   }

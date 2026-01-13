@@ -1693,5 +1693,19 @@
     "editTooltip": "Customize consultation",
     "requiredField": "This field is required",
     "quickMessage": "Prepare me for my next medical consultation. Make a summary of my current situation, my recent symptoms and my medications so I can take it to the appointment."
+  },
+  "navigator": {
+    "detecting_intent": "Analyzing your question...",
+    "intent_detected": "Question analyzed",
+    "retrieving_history": "Retrieving history...",
+    "searching_documents": "Searching your documents...",
+    "analyzing_documents": "Analyzing documents...",
+    "extracting_data": "Extracting clinical data...",
+    "preparing_context": "Preparing context...",
+    "invoking_model": "Thinking...",
+    "generating_response": "Generating response...",
+    "generating_suggestions": "Generating suggestions...",
+    "response_generated": "Response generated",
+    "suggestions_generated": "Suggestions generated"
   }
 }
