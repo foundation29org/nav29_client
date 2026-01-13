@@ -1664,6 +1664,69 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     }
   }
 
+  /**
+   * Inicializa paneles de progreso para documentos que están en proceso
+   * pero no tienen un panel creado (ej: usuario viene del wizard)
+   */
+  private initializeInProgressDocuments() {
+    const inProgressStatuses = ['pending', 'inProcess', 'extracted done', 'extracted_translated done', 
+                                 'categorizando texto', 'clean ready', 'creando resumen'];
+    
+    for (const doc of this.docs) {
+      if (inProgressStatuses.includes(doc.status)) {
+        const docIdEnc = doc._id; // El ID ya viene encriptado del servidor
+        
+        // Solo crear el panel si no existe
+        if (!this.tasksUpload[docIdEnc]) {
+          console.log(`[initializeInProgressDocuments] Creando panel para doc en proceso: ${doc.title} (${doc.status})`);
+          
+          // Crear el panel de progreso
+          const task = {
+            index: this.messages.length,
+            steps: [
+              { name: this.translate.instant('messages.m1.1'), status: 'pending' },
+              { name: this.translate.instant('messages.m4.1'), status: 'pending' },
+              { name: this.translateYouCanAskInChat, status: 'pending' },
+              {
+                name: this.translate.instant('messages.m3.1'),
+                status: 'pending',
+                action: `<resumen id='${docIdEnc}' class="round ml-1 btn btn-success btn-sm bg-light-success">${this.translate.instant('generics.View')}</resumen>`
+              }
+            ]
+          };
+          
+          // Actualizar estados basados en el status actual del documento
+          if (doc.status === 'extracted done' || doc.status === 'extracted_translated done') {
+            task.steps[0].status = 'finished';
+          } else if (doc.status === 'categorizando texto') {
+            task.steps[0].status = 'finished';
+            task.steps[1].status = 'inProcess';
+          } else if (doc.status === 'clean ready') {
+            task.steps[0].status = 'finished';
+            task.steps[1].status = 'finished';
+            task.steps[2].status = 'finished';
+          } else if (doc.status === 'creando resumen') {
+            task.steps[0].status = 'finished';
+            task.steps[1].status = 'finished';
+            task.steps[2].status = 'finished';
+            task.steps[3].status = 'inProcess';
+          } else if (doc.status === 'inProcess') {
+            task.steps[0].status = 'inProcess';
+          }
+          
+          this.tasksUpload[docIdEnc] = task;
+          
+          const msg1 = this.translate.instant("messages.m0", { value: doc.title });
+          this.addMessage({
+            text: msg1,
+            isUser: false,
+            task: task,
+            index: docIdEnc
+          });
+        }
+      }
+    }
+  }
 
   private handleDocTypeDetected(parsedData: any) {
     const docTypeMapping: { [key: string]: string } = {
@@ -2299,6 +2362,10 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
           this.docs.forEach(doc => doc.selected = true);
           this.updateDocumentSelection();
           this.defaultDoc = this.docs[0];
+          
+          // Inicializar paneles de progreso para documentos que están en proceso
+          // (por si el usuario viene del wizard y los eventos WebPubSub se perdieron)
+          this.initializeInProgressDocuments();
         }
         this.loadedDocs = true;
         //this.assignFeedbackToDocs(this.docs);
