@@ -15,6 +15,7 @@ import { DateService } from 'app/shared/services/date.service';
 import { InsightsService } from 'app/shared/services/azureInsights.service';
 import { SpeechRecognitionService } from 'app/shared/services/speech-recognition.service';
 import * as datos from './icons.json';
+import * as countriesData from '../../../assets/jsons/countries.json';
 import { jsPDF } from "jspdf";
 
 @Component({
@@ -39,6 +40,7 @@ export class NewPatientComponent implements OnInit, OnDestroy {
   currentPatient: string = '';
   actualPatient: any = {};
   icons: any = (datos as any).default;
+  countries: any[] = (countriesData as any).default || countriesData;
   initialEvents: any[] = [];
   medicalLevel: string = '1';
 
@@ -1158,6 +1160,7 @@ export class NewPatientComponent implements OnInit, OnDestroy {
       heightIn: [null], // Altura en pulgadas
       heightCm: [null], // Altura en centímetros
       ethnicGroup: ['white_european', Validators.required],
+      country: [''], // País opcional - se puede añadir después
       gender: [null, Validators.required],
       chronicConditions: ['', Validators.required],
       diagnosis: [''],
@@ -1281,6 +1284,7 @@ export class NewPatientComponent implements OnInit, OnDestroy {
       this.actualPatient.patientName = this.initialEventsForm.value.name;
       this.actualPatient.birthDate = this.initialEventsForm.value.dob;
       this.actualPatient.gender = this.initialEventsForm.value.gender;
+      this.actualPatient.country = this.initialEventsForm.value.country; // País para contextualizar respuestas
       let savePromises = [this.updateBasicInfo(this.actualPatient)];
 
       const eventsData = [];

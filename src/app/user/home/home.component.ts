@@ -165,6 +165,8 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
   message = '';
   callingOpenai: boolean = false;
   chatRecording: boolean = false;
+  chatMode: 'fast' | 'advanced' = 'fast'; // Modo de respuesta: fast (gpt4omini) o advanced (gpt5mini)
+  showChatOptions: boolean = false; // Mostrar menú de opciones del chat
   chatVoiceSupported: boolean = false;
   private chatSpeechSubscription: Subscription;
   lastProcessedAnswerId: string = ''; // Para evitar procesar respuestas duplicadas
@@ -276,6 +278,7 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
   currentPatient: string = '';
   actualPatient: any = {};
   containerName: string = '';
+  hasShownCountryWarning: boolean = false;
   gettingSuggestions: boolean = false;
   newPermission: any;
   mode: string = 'Custom';
@@ -1742,12 +1745,31 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
       return htmlText;
     }
 
+    // Contador para superíndices
+    let refCounter = 0;
+
+    // Patrones para detectar placeholders internos que no deben mostrarse
+    const internalPlaceholders = /^\[?(PATIENT PROFILE|PERFIL DEL PACIENTE|PROFIL PATIENT|PATIENTENPROFIL|RELEVANT CLINICAL DATA|DATOS CLÍNICOS|HISTORICAL CONTEXT|CONTEXTO HISTÓRICO)/i;
+
     // Patrón para capturar todo lo que hay dentro de corchetes
     const bracketPattern = /\[([^\]]+?)\]/g;
 
     return htmlText.replace(bracketPattern, (fullMatch, content) => {
-      // Si el contenido no tiene coma, probablemente no sea una cita válida, lo dejamos como está
+      // Ocultar placeholders internos del curateContext
+      if (internalPlaceholders.test(content)) {
+        return '';
+      }
+
+      // Referencias sin coma pero que son memorias/contexto (ej: "Memoria de conversación reciente 1")
       if (!content.includes(',')) {
+        // Detectar si es una referencia a memoria/contexto/conversación
+        const memoryPattern = /(memoria|memory|contexto|context|historial|history|conversaci[oó]n|conversation)/i;
+        if (memoryPattern.test(content)) {
+          refCounter++;
+          const tooltipText = content.trim();
+          return `<span class="context-reference" style="cursor: help;" title="${tooltipText}"><sup style="font-size: 0.7em; background: #f3e5f5; color: #6f42c1; padding: 1px 4px; border-radius: 3px;">💬${refCounter}</sup></span>`;
+        }
+        // No es una cita válida, dejarlo como está
         return fullMatch;
       }
 
@@ -1770,6 +1792,8 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
         // Normalizar formato de fecha: aceptar YYYY-MM-DD, DD-MM-YYYY, DD/MM/YYYY
         const isoDatePattern = /^(\d{4})-(\d{2})-(\d{2})$/;
         const euDatePattern = /^(\d{2})[-\/](\d{2})[-\/](\d{4})$/;
+        // Equivalentes de "undated" en varios idiomas
+        const undatedPattern = /^(undated|sin fecha|ohne datum|sans date|sem data|senza data|no date|fecha desconocida|unknown date)$/i;
         
         if (isoDatePattern.test(date)) {
           // Ya está en formato correcto YYYY-MM-DD
@@ -1777,25 +1801,27 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
           // Convertir DD-MM-YYYY o DD/MM/YYYY a YYYY-MM-DD
           const match = date.match(euDatePattern);
           date = `${match[3]}-${match[2]}-${match[1]}`;
-        } else if (date.toLowerCase() !== 'undated') {
+        } else if (undatedPattern.test(date)) {
+          // Normalizar a "undated" internamente
+          date = 'undated';
+        } else {
           // Fecha no reconocida, devolver sin procesar
           return trimmedPart;
         }
 
+        refCounter++;
         const partFullCitation = `[${fileName}, ${date}]`;
 
         // 1. Intentar usar las referencias del backend si existen
         if (references && references.length > 0) {
           const ref = references.find(r => r.fullCitation === partFullCitation || r.filename === fileName);
           if (ref && ref.documentId) {
-            const tooltipText = `${this.translate.instant('messages.clickToOpen') || 'Clic para abrir'}: ${ref.filename} (${ref.date})`;
+            const tooltipText = `${fileName} (${displayDate})`;
             return `<a href="javascript:void(0)" 
                         class="document-reference-link" 
                         data-doc-id="${ref.documentId}"
-                        style="color: #0066cc; text-decoration: underline; cursor: pointer;"
-                        title="${tooltipText}">
-                        📄 ${fileName}, ${date}
-                      </a>`;
+                        style="color: #007bff; text-decoration: none; cursor: pointer;"
+                        title="${tooltipText}"><sup style="font-size: 0.7em; background: #e3f2fd; padding: 1px 4px; border-radius: 3px;">📄${refCounter}</sup></a>`;
           }
         }
 
@@ -1839,32 +1865,31 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
 
           if (doc) {
             const docId = doc._id || doc.id || '';
-            const tooltipText = `${this.translate.instant('messages.clickToOpen') || 'Clic para abrir'}: ${fileName} (${date})`;
+            const tooltipText = `${fileName} (${displayDate})`;
             return `<a href="javascript:void(0)" 
                         class="document-reference-link" 
                         data-doc-id="${docId}"
-                        style="color: #007bff; text-decoration: underline; cursor: pointer;"
-                        title="${tooltipText}">
-                        📄 ${fileName}, ${date}
-                      </a>`;
+                        style="color: #007bff; text-decoration: none; cursor: pointer;"
+                        title="${tooltipText}"><sup style="font-size: 0.7em; background: #e3f2fd; padding: 1px 4px; border-radius: 3px;">📄${refCounter}</sup></a>`;
           }
         }
 
         // 4. Si no es archivo o no se encontró: mostrar como referencia de contexto (morado)
         // o como documento no encontrado (gris) dependiendo del caso
         if (!hasFileExtension) {
-          // Es una referencia al contexto/conversación/historial - mostrar en morado
-          return `<span class="context-reference" style="color: #6f42c1; font-style: italic;">👤 ${fileName}, ${displayDate}</span>`;
+          // Es una referencia al contexto/conversación/historial - mostrar en morado compacto
+          const tooltipText = `${fileName} (${displayDate})`;
+          return `<span class="context-reference" style="cursor: help;" title="${tooltipText}"><sup style="font-size: 0.7em; background: #f3e5f5; color: #6f42c1; padding: 1px 4px; border-radius: 3px;">👤${refCounter}</sup></span>`;
         } else {
-          // Es un archivo pero no se encontró - mostrar en gris
-          const style = date === 'undated' 
-               ? 'color: #856404; font-style: italic;' 
-               : 'color: #6c757d; font-style: italic;';
-          return `<span class="document-reference" style="${style}">📄 ${fileName}, ${date}</span>`;
+          // Es un archivo pero no se encontró - mostrar en gris compacto
+          const tooltipText = `${fileName} (${displayDate})`;
+          const bgColor = date === 'undated' ? '#fff3cd' : '#f5f5f5';
+          return `<span class="document-reference" style="cursor: help;" title="${tooltipText}"><sup style="font-size: 0.7em; background: ${bgColor}; color: #6c757d; padding: 1px 4px; border-radius: 3px;">📄${refCounter}</sup></span>`;
         }
       });
 
-      return '[' + processedParts.join('; ') + ']';
+      // En modo compacto, no envolvemos con corchetes
+      return processedParts.join('');
     });
   }
 
@@ -2048,7 +2073,8 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     }
     this.messagesExpectOutPut = '';
 
-    this.messagesExpect = this.translate.instant(`messages.${this.actualStatus}`);
+    // actualStatus ya viene traducido del statusMapping, usarlo directamente
+    this.messagesExpect = this.actualStatus;
     this.delay(100);
     const words = this.messagesExpect.split(' ');
     let index = 0;
@@ -2991,7 +3017,7 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     }
     
     this.proposedEvents = [];
-    this.actualStatus = 'procesando intent';
+    this.actualStatus = this.translate.instant('navigator.processing') || 'Procesando...';
     this.statusChange();
 
     // La detección de idioma y traducción ahora se hace en el backend
@@ -3050,7 +3076,17 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     const callId = `${Date.now()}_${Math.random().toString(36).substring(7)}`;
     console.log(`[${callId}] continueSendIntent: Preparando llamada HTTP a callnavigator`);
     
-    var query = { "question": msg, "context": this.context, "containerName": this.containerName, "index": this.currentPatient, "userId": this.authService.getIdUser(), "docs": docsSelected, "detectedLang": this.detectedLang };
+    // Mostrar aviso si el paciente no tiene país configurado (solo una vez por sesión)
+    if (!this.hasShownCountryWarning && this.actualPatient && !this.actualPatient.country) {
+      this.hasShownCountryWarning = true;
+      this.toastr.info(
+        this.translate.instant('messages.countryNotConfiguredDesc') || 'Puedes añadirlo desde la lista de pacientes para obtener respuestas más contextualizadas.',
+        this.translate.instant('messages.countryNotConfigured') || 'País no configurado',
+        { timeOut: 8000, positionClass: 'toast-bottom-right' }
+      );
+    }
+    
+    var query = { "question": msg, "context": this.context, "containerName": this.containerName, "index": this.currentPatient, "userId": this.authService.getIdUser(), "docs": docsSelected, "detectedLang": this.detectedLang, "chatMode": this.chatMode };
     this.subscription.add(this.http.post(environment.api + '/api/callnavigator/'+this.authService.getCurrentPatient().sub, query)
       .subscribe(async (res: any) => {
         console.log(`[${callId}] continueSendIntent: Respuesta HTTP recibida:`, res.action);

@@ -626,19 +626,77 @@
                     <a id="chatContainer"></a>
                     <div class="chat-input-container" [ngClass]="{'left-sidebar-collapsed': leftSidebarCollapsed && !isSmallScreen()}">
                         <!--<div class="d-flex align-items-center input-container" *ngIf="!callingOpenai && proposedEvents.length == 0">-->
-                        <div class="d-flex align-items-end input-container border" id="chat-container">
+                        <div class="d-flex align-items-end input-container border" id="chat-container" style="position: relative;">
+                            <!-- Botón + para opciones -->
+                            <button class="btn btn-link p-0 ml-2" 
+                                    type="button" 
+                                    (click)="showChatOptions = !showChatOptions"
+                                    [disabled]="callingOpenai"
+                                    style="color: #9ca3af; font-size: 1.3rem; line-height: 1; align-self: center;"
+                                    [title]="chatMode === 'advanced' ? ('chat.advancedMode' | translate) : ('chat.fastMode' | translate)">
+                                <em class="fa fa-plus-circle"></em>
+                            </button>
+                            <!-- Badge de modo avanzado -->
+                            <span *ngIf="chatMode === 'advanced'" 
+                                  (click)="chatMode = 'fast'"
+                                  class="chat-mode-badge"
+                                  style="display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; background: #2563eb; color: white; border-radius: 16px; font-size: 0.75rem; font-weight: 500; cursor: pointer; align-self: center; margin-left: 8px; transition: background 0.15s;"
+                                  (mouseenter)="$event.target.style.background='#1d4ed8'"
+                                  (mouseleave)="$event.target.style.background='#2563eb'"
+                                  [title]="'Click to switch to fast mode'">
+                                <span>🧠</span>
+                                <span>{{'chat.advancedMode' | translate}}</span>
+                                <em class="fa fa-times" style="font-size: 0.65rem; opacity: 0.8;"></em>
+                            </span>
+                            <!-- Menú desplegable -->
+                            <div *ngIf="showChatOptions" 
+                                 class="chat-options-menu"
+                                 style="position: absolute; bottom: 100%; left: 0; margin-bottom: 8px; background: white; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.15); padding: 8px 0; min-width: 220px; z-index: 1000;">
+                                <div style="padding: 8px 16px; color: #6b7280; font-size: 0.75rem; font-weight: 500; text-transform: uppercase;">
+                                    {{'chat.responseMode' | translate}}
+                                </div>
+                                <a href="javascript:void(0)" 
+                                   (click)="chatMode = 'fast'; showChatOptions = false"
+                                   style="display: flex; align-items: center; padding: 10px 16px; color: #374151; text-decoration: none; transition: background 0.15s;"
+                                   [style.background]="chatMode === 'fast' ? '#f3f4f6' : 'transparent'"
+                                   (mouseenter)="$event.target.style.background='#f3f4f6'"
+                                   (mouseleave)="$event.target.style.background = chatMode === 'fast' ? '#f3f4f6' : 'transparent'">
+                                    <span style="width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; margin-right: 12px;">⚡</span>
+                                    <span style="flex: 1;">{{'chat.fastMode' | translate}}</span>
+                                    <span style="color: #9ca3af; font-size: 0.8rem;">~15s</span>
+                                    <em *ngIf="chatMode === 'fast'" class="fa fa-check ml-2" style="color: #10b981;"></em>
+                                </a>
+                                <a href="javascript:void(0)" 
+                                   (click)="chatMode = 'advanced'; showChatOptions = false"
+                                   style="display: flex; align-items: center; padding: 10px 16px; color: #374151; text-decoration: none; transition: background 0.15s;"
+                                   [style.background]="chatMode === 'advanced' ? '#f3f4f6' : 'transparent'"
+                                   (mouseenter)="$event.target.style.background='#f3f4f6'"
+                                   (mouseleave)="$event.target.style.background = chatMode === 'advanced' ? '#f3f4f6' : 'transparent'">
+                                    <span style="width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; margin-right: 12px;">🧠</span>
+                                    <span style="flex: 1;">{{'chat.advancedMode' | translate}}</span>
+                                    <span style="color: #9ca3af; font-size: 0.8rem;">~2min</span>
+                                    <em *ngIf="chatMode === 'advanced'" class="fa fa-check ml-2" style="color: #10b981;"></em>
+                                </a>
+                                <div style="height: 1px; background: #e5e7eb; margin: 8px 0;"></div>
+                                <a href="javascript:void(0)" 
+                                   (click)="openOptionsFiles(contentviewSelectFile); showChatOptions = false"
+                                   style="display: flex; align-items: center; padding: 10px 16px; color: #374151; text-decoration: none; transition: background 0.15s;"
+                                   (mouseenter)="$event.target.style.background='#f3f4f6'"
+                                   (mouseleave)="$event.target.style.background='transparent'">
+                                    <span style="width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; margin-right: 12px;">📎</span>
+                                    <span>{{'generics.Upload' | translate}}</span>
+                                </a>
+                            </div>
+                            <!-- Overlay para cerrar el menú -->
+                            <div *ngIf="showChatOptions" 
+                                 (click)="showChatOptions = false" 
+                                 style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 999;"></div>
                             <textarea [(ngModel)]="message" [disabled]="callingOpenai || chatRecording"
                                 placeholder="{{'generics.Write a message' | translate }}..."
                                 (keydown.enter)="onChatInputKeydown($event)" 
                                 autoResize
                                 class="mt-0 border-0 mr-2 flex-grow-1 chat-textarea"
                                 rows="1"></textarea>
-                            <button class="mr-1 btn btn-light chat-action-btn" title="{{'generics.Upload' | translate }}"
-                                style="padding: 0.2rem 0.57rem;" [disabled]="callingOpenai || chatRecording"
-                                (click)="openOptionsFiles(contentviewSelectFile)">
-                                <em class="fa fa-paperclip fa-rotate-180 h-4 w-auto" width="1em" height="1em"
-                                    fill="currentColor"></em>
-                            </button>
                             <button *ngIf="chatVoiceSupported" 
                                 class="mr-1 btn chat-action-btn" 
                                 [ngClass]="{'btn-danger': chatRecording, 'btn-light': !chatRecording}"

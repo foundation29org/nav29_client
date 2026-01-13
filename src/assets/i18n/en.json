@@ -790,6 +790,8 @@
     "eventsHaveBeenExtracted": "New medical events have been extracted",
     "appointmentsExtracted": "Appointments extracted",
     "appointmentsHaveBeenExtracted": "New medical appointments have been extracted",
+    "countryNotConfigured": "Country not configured",
+    "countryNotConfiguredDesc": "You can add it from the patient list to get responses more tailored to your healthcare system.",
     "The summary has failed, click to generate it again": "The summary has failed, click to generate it again",
     "doctype1": "Detected to be a medical report",
      "doctype2": "Detected to be medical analysis",
@@ -1248,6 +1250,7 @@
     "Name": "Name",
     "Birth Date": "Date of birth",
     "Gender": "Sex",
+    "Country": "Country",
     "Male": "Male",
     "Female": "Female"
   },
@@ -1363,6 +1366,8 @@
     "middle_eastern": "Middle eastern",
     "pacific_islander": "Pacific islander",
     "multiracial_other": "Multiracial or other",
+    "countryDescription": "Helps us contextualize responses based on your local healthcare system.",
+    "countryPlaceholder": "E.g., United States, Spain, Mexico...",
     "gender": "Sex assigned at birth",
     "genderImpact": "Biological sex can impact risk for certain conditions and response to treatments.",
     "male": "Male",
@@ -1413,7 +1418,8 @@
     "genericsSave": "Save",
     "genericsRequired": "Required",
     "genericsNumeric": "Numeric",
-    "Select": "Seleccionar",
+    "Select": "Select",
+    "notSpecified": "Not specified",
     "placeholderchronicConditions": "e.g., diabetes, high blood pressure, heart attack 2 years ago",
     "placeholderfamilyHealthHistory": "e.g., mother with diabetes, father had heart disease, sibling with asthma",
     "placeholderknownAllergies": "e.g., peanut allergy, Penicillin allergy, tree and grass pollen",
@@ -1695,6 +1701,7 @@
     "quickMessage": "Prepare me for my next medical consultation. Make a summary of my current situation, my recent symptoms and my medications so I can take it to the appointment."
   },
   "navigator": {
+    "processing": "Processing...",
     "detecting_intent": "Analyzing your question...",
     "intent_detected": "Question analyzed",
     "retrieving_history": "Retrieving history...",
@@ -1707,5 +1714,12 @@
     "generating_suggestions": "Generating suggestions...",
     "response_generated": "Response generated",
     "suggestions_generated": "Suggestions generated"
+  },
+  "chat": {
+    "fastMode": "Fast",
+    "advancedMode": "Advanced",
+    "fastModeDesc": "~15s",
+    "advancedModeDesc": "~2min",
+    "responseMode": "Response mode"
   }
 }

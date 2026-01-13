@@ -786,6 +786,8 @@
       "eventsHaveBeenExtracted": "Novos eventos médicos foram extraídos",
       "appointmentsExtracted": "Compromissos extraídos",
       "appointmentsHaveBeenExtracted": "Novos compromissos médicos foram extraídos",
+      "countryNotConfigured": "País não configurado",
+      "countryNotConfiguredDesc": "Você pode adicioná-lo na lista de pacientes para obter respostas mais adequadas ao seu sistema de saúde.",
       "The summary has failed, click to generate it again": "O resumo falhou, clique para gerá-lo novamente",
       "doctype1": "Detectado como sendo um relatório médico",
      "doctype2": "Detectado como análise médica",
@@ -1246,6 +1248,7 @@
        "Name":"Nome",
        "Birth Date":"Data de nascimento",
        "Gender":"Sexo",
+       "Country":"País",
        "Male":"Macho",
        "Female":"Fêmea"
     },
@@ -1412,6 +1415,9 @@
       "genericsRequired": "Necessário",
       "genericsNumeric": "Numérico",
       "Select": "Selecionar",
+      "notSpecified": "Não especificado",
+      "countryDescription": "Nos ajuda a contextualizar as respostas de acordo com seu sistema de saúde local.",
+      "countryPlaceholder": "Ex: Brasil, Portugal...",
       "placeholderchronicConditions": "por exemplo, diabetes, pressão alta, ataque cardíaco há 2 anos",
      "placeholderfamilyHealthHistory": "por exemplo, mãe com diabetes, pai com doença cardíaca, irmão com asma",
      "placeholderknownAllergies": "por exemplo, alergia a amendoim, alergia à penicilina, pólen de árvores e gramíneas",
@@ -1677,6 +1683,7 @@
       "comingSoon": "Em breve"
     },
     "navigator": {
+      "processing": "Processando...",
       "detecting_intent": "Analisando sua pergunta...",
       "intent_detected": "Pergunta analisada",
       "retrieving_history": "Recuperando histórico...",
@@ -1689,5 +1696,12 @@
       "generating_suggestions": "Gerando sugestões...",
       "response_generated": "Resposta gerada",
       "suggestions_generated": "Sugestões geradas"
+    },
+    "chat": {
+      "fastMode": "Rápido",
+      "advancedMode": "Avançado",
+      "fastModeDesc": "~15s",
+      "advancedModeDesc": "~2min",
+      "responseMode": "Modo de resposta"
     }
 }

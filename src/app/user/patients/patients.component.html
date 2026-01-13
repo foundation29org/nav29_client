@@ -58,6 +58,7 @@
                 <th>{{'personalinfo.Name' | translate}}</th>
                 <th>{{'personalinfo.Birth Date' | translate}}</th>
                 <th>{{'personalinfo.Gender' | translate}}</th>
+                <th>{{'personalinfo.Country' | translate}}</th>
                 <th>{{'events.Actions' | translate}}</th>
             </tr>
         </thead>
@@ -87,6 +88,20 @@
                             <mat-option value="male">{{'steps.male' | translate }}</mat-option>
                             <mat-option value="female">{{'steps.female' | translate }}</mat-option>
                             <mat-option value="other">{{'steps.other' | translate }}</mat-option>
+                        </mat-select>
+                    </mat-form-field>
+                </td>
+
+                <td *ngIf="!patient.editing" class="patient-country">
+                  {{ patient.country || '-' }}
+                </td>
+                <td *ngIf="patient.editing">
+                    <mat-form-field class="example-full-width">
+                        <mat-select placeholder="{{'personalinfo.Country' | translate}}" [(ngModel)]="patient.country">
+                            <mat-option value="">{{'steps.notSpecified' | translate }}</mat-option>
+                            <mat-option *ngFor="let country of countries" [value]="country.name">
+                                {{ country.name }}
+                            </mat-option>
                         </mat-select>
                     </mat-form-field>
                 </td>
@@ -175,6 +190,7 @@
             <th>{{'personalinfo.Name' | translate}}</th>
             <th>{{'personalinfo.Birth Date' | translate}}</th>
             <th>{{'personalinfo.Gender' | translate}}</th>
+            <th>{{'personalinfo.Country' | translate}}</th>
             <th>{{'events.Actions' | translate}}</th>
           </tr>
         </thead>
@@ -183,6 +199,7 @@
             <td class="patient-name">{{ patient.patientName }}</td>
             <td class="patient-date">{{ patient.birthDate | date }}</td>
             <td class="patient-gender">{{ patient.gender ? ('steps.' + patient.gender | translate) : ('generics.Unknown' | translate) }}</td>
+            <td class="patient-country">{{ patient.country || '-' }}</td>
             <td class="patient-actions" (click)="$event.stopPropagation()">
               <button (click)="selectPatient(patient)" class="btn-action btn-view">
                 <i class="fa fa-eye"></i> <span class="d-none d-lg-inline">{{'patients.View patient' | translate}}</span>

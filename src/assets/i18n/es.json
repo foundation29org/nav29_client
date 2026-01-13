@@ -777,6 +777,8 @@
     "eventsHaveBeenExtracted": "Se han extraído nuevos eventos médicos",
     "appointmentsExtracted": "Citas extraídas",
     "appointmentsHaveBeenExtracted": "Se han extraído nuevas citas médicas",
+    "countryNotConfigured": "País no configurado",
+    "countryNotConfiguredDesc": "Puedes añadirlo desde la lista de pacientes para obtener respuestas más contextualizadas a tu sistema de salud.",
     "The summary has failed, click to generate it again": "El resumen ha fallado, haz click para generarlo de nuevo",
     "doctype1": "Se ha detectado que es informe médico",
     "doctype2": "Se ha detectado que es analisis médico",
@@ -1243,6 +1245,7 @@
     "Name": "Nombre",
     "Birth Date": "Fecha de nacimiento",
     "Gender": "Sexo",
+    "Country": "País",
     "Male": "Masculino",
     "Female": "Femenino"
   },
@@ -1358,6 +1361,8 @@
     "middle_eastern": "Del Medio Oriente",
     "pacific_islander": "Isleño del Pacífico",
     "multiracial_other": "Multirracial u otro",
+    "countryDescription": "Nos ayuda a contextualizar las respuestas según tu sistema de salud local.",
+    "countryPlaceholder": "Ej: España, México, Argentina...",
     "gender": "Sexo asignado al nacer",
     "genderImpact": "El sexo biológico puede impactar el riesgo de ciertas condiciones y la respuesta a tratamientos.",
     "male": "Masculino",
@@ -1409,6 +1414,7 @@
     "genericsRequired": "Requerido",
     "genericsNumeric": "Numérico",
     "Select": "Seleccionar",
+    "notSpecified": "No especificado",
     "placeholderchronicConditions": "por ejemplo, diabetes, hipertensión arterial, infarto hace 2 años",
     "placeholderfamilyHealthHistory": "por ejemplo, madre con diabetes, padre con enfermedad cardíaca, hermano/a con asma",
     "placeholderknownAllergies": "por ejemplo, alergia a los cacahuetes, alergia a la penicilina, polen de árboles y gramíneas",
@@ -1690,6 +1696,7 @@
     "quickMessage": "Prepárame para mi próxima consulta médica. Haz un resumen de mi situación actual, mis síntomas recientes y mis medicamentos para que pueda llevarlo a la cita."
   },
   "navigator": {
+    "processing": "Procesando...",
     "detecting_intent": "Analizando tu pregunta...",
     "intent_detected": "Pregunta analizada",
     "retrieving_history": "Recuperando historial...",
@@ -1702,5 +1709,12 @@
     "generating_suggestions": "Generando sugerencias...",
     "response_generated": "Respuesta generada",
     "suggestions_generated": "Sugerencias generadas"
+  },
+  "chat": {
+    "fastMode": "Rápido",
+    "advancedMode": "Avanzado",
+    "fastModeDesc": "~15s",
+    "advancedModeDesc": "~2min",
+    "responseMode": "Modo de respuesta"
   }
 }

@@ -786,6 +786,8 @@
       "eventsHaveBeenExtracted": "Sono stati estratti nuovi eventi medici",
       "appointmentsExtracted": "Appuntamenti estratti",
       "appointmentsHaveBeenExtracted": "Sono stati estratti nuovi appuntamenti medici",
+      "countryNotConfigured": "Paese non configurato",
+      "countryNotConfiguredDesc": "Puoi aggiungerlo dalla lista dei pazienti per ottenere risposte più adatte al tuo sistema sanitario.",
       "The summary has failed, click to generate it again": "Il riepilogo è fallito, clicca per generarlo di nuovo",
       "doctype1": "Rilevato come referto medico",
      "doctype2": "Rilevato come analisi medica",
@@ -1245,6 +1247,7 @@
        "Name":"Nome",
        "Birth Date":"Data di nascita",
        "Gender":"Sesso",
+       "Country":"Paese",
        "Male":"Maschio",
        "Female":"Femmina"
     },
@@ -1411,6 +1414,9 @@
       "genericsRequired": "Richiesto",
       "genericsNumeric": "Numerico",
       "Select": "Seleziona",
+      "notSpecified": "Non specificato",
+      "countryDescription": "Ci aiuta a contestualizzare le risposte in base al tuo sistema sanitario locale.",
+      "countryPlaceholder": "Es: Italia, Svizzera...",
       "placeholderchronicConditions": "ad es. diabete, pressione alta, infarto 2 anni fa",
      "placeholderfamilyHealthHistory": "ad esempio, madre con diabete, padre con malattie cardiache, fratello con asma",
      "placeholderknownAllergies": "ad es. allergia alle arachidi, allergia alla penicillina, polline di alberi ed erbe",
@@ -1674,6 +1680,7 @@
       "comingSoon": "Prossimamente disponibile"
     },
     "navigator": {
+      "processing": "Elaborazione...",
       "detecting_intent": "Analizzo la tua domanda...",
       "intent_detected": "Domanda analizzata",
       "retrieving_history": "Recupero dello storico...",
@@ -1686,5 +1693,12 @@
       "generating_suggestions": "Generazione dei suggerimenti...",
       "response_generated": "Risposta generata",
       "suggestions_generated": "Suggerimenti generati"
+    },
+    "chat": {
+      "fastMode": "Veloce",
+      "advancedMode": "Avanzato",
+      "fastModeDesc": "~15s",
+      "advancedModeDesc": "~2min",
+      "responseMode": "Modalità risposta"
     }
   }

@@ -11,6 +11,7 @@ import { InsightsService } from 'app/shared/services/azureInsights.service';
 import { PatientService } from 'app/shared/services/patient.service';
 import { Router} from '@angular/router';
 import Swal from 'sweetalert2';
+import * as countriesData from '../../../assets/jsons/countries.json';
 
 @Component({
     selector: 'app-patients',
@@ -33,6 +34,7 @@ export class PatientsComponent implements OnInit, OnDestroy {
   loaded = false;
   role: string;
   searchTerm: string = '';
+  countries: any[] = (countriesData as any).default || countriesData;
 
   constructor(private router: Router, private http: HttpClient, private authService: AuthService, public toastr: ToastrService, public translate: TranslateService, public insightsService: InsightsService, private patientService: PatientService,private modalService: NgbModal
   ) {

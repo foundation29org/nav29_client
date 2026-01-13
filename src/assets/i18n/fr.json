@@ -787,6 +787,8 @@
       "eventsHaveBeenExtracted": "De nouveaux événements médicaux ont été extraits",
       "appointmentsExtracted": "Rendez-vous extraits",
       "appointmentsHaveBeenExtracted": "De nouveaux rendez-vous médicaux ont été extraits",
+      "countryNotConfigured": "Pays non configuré",
+      "countryNotConfiguredDesc": "Vous pouvez l'ajouter depuis la liste des patients pour obtenir des réponses plus adaptées à votre système de santé.",
       "The summary has failed, click to generate it again": "Le résumé a échoué, cliquez pour le générer à nouveau",
       "doctype1": "Détecté comme étant un rapport médical",
      "doctype2": "Détecté comme étant une analyse médicale",
@@ -1246,6 +1248,7 @@
        "Name":"Nom",
        "Birth Date":"Date de naissance",
        "Gender":"Sexe",
+       "Country":"Pays",
        "Male":"Homme",
        "Female":"Femelle"
     },
@@ -1412,6 +1415,9 @@
       "genericsRequired": "Requis",
       "genericsNumeric": "Numérique",
       "Select": "Sélectionner",
+      "notSpecified": "Non spécifié",
+      "countryDescription": "Nous aide à contextualiser les réponses selon votre système de santé local.",
+      "countryPlaceholder": "Ex : France, Belgique, Canada...",
       "placeholderchronicConditions": "par exemple, diabète, hypertension artérielle, crise cardiaque il y a 2 ans",
      "placeholderfamilyHealthHistory": "par exemple, mère diabétique, père souffrant d'une maladie cardiaque, frère ou sœur souffrant d'asthme",
      "placeholderknownAllergies": "par exemple, allergie aux arachides, allergie à la pénicilline, pollen d'arbres et de graminées",
@@ -1677,6 +1683,7 @@
       "comingSoon": "Bientôt disponible"
     },
     "navigator": {
+      "processing": "Traitement...",
       "detecting_intent": "Analyse de votre question...",
       "intent_detected": "Question analysée",
       "retrieving_history": "Récupération de l'historique...",
@@ -1689,5 +1696,12 @@
       "generating_suggestions": "Génération des suggestions...",
       "response_generated": "Réponse générée",
       "suggestions_generated": "Suggestions générées"
+    },
+    "chat": {
+      "fastMode": "Rapide",
+      "advancedMode": "Avancé",
+      "fastModeDesc": "~15s",
+      "advancedModeDesc": "~2min",
+      "responseMode": "Mode de réponse"
     }
   }
