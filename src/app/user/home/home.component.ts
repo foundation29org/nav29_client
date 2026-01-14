@@ -6173,7 +6173,8 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
         cancelButtonText: this.translate.instant('dxgpt.chooseMethod.withEvents') || 'Analizar con eventos y documentos',
         confirmButtonColor: '#3085d6',
         cancelButtonColor: '#6c757d',
-        reverseButtons: true
+        reverseButtons: true,
+        showCloseButton: true
       });
 
       if (result.isConfirmed) {
@@ -6182,6 +6183,9 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
       } else if (result.dismiss === Swal.DismissReason.cancel) {
         // Usuario quiere usar eventos y documentos
         this.executeFetchDxGptResults(true);
+      } else {
+        // Usuario cerró el modal (Escape, clic fuera, etc.) - no hacer nada
+        return;
       }
     } else {
       // Si no tiene resumen, preguntar al usuario
@@ -6209,10 +6213,11 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
           icon: 'info',
           confirmButtonText: 'OK'
         });
-      } else {
-        // Usuario quiere continuar sin resumen (usará el flujo actual)
+      } else if (result.dismiss === Swal.DismissReason.cancel) {
+        // Usuario quiere continuar sin resumen (clic en botón "Continuar sin resumen")
         this.executeFetchDxGptResults();
       }
+      // Si cerró con Escape o clic fuera, no hacer nada
     }
   }
 
