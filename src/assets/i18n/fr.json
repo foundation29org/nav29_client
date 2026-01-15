@@ -151,7 +151,19 @@
      "Export to PDF": "Exporter en PDF",
      "Timeline copied to clipboard": "Chronologie copiée dans le presse-papiers",
      "Date": "Date",
-     "Exported on": "Exporté le"
+     "Exported on": "Exporté le",
+    "Consolidated": "Consolidé",
+    "All events": "Tous les événements",
+    "Regenerate": "Régénérer",
+    "Generating consolidated timeline": "Génération de la chronologie consolidée",
+    "Show all events instead": "Afficher tous les événements à la place",
+    "events consolidated into": "événements consolidés en",
+    "milestones": "jalons",
+    "cached": "mis en cache",
+    "Chronic conditions": "Conditions chroniques",
+    "Current medications": "Médicaments actuels",
+    "Undated": "Sans date",
+    "No milestones found": "Aucun jalon trouvé"
     },
     "voice":{
       "Stop recording": "Arrêter l'enregistrement",

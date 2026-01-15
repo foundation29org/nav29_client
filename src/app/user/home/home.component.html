@@ -1103,8 +1103,144 @@
         </button>
     </div>
     <div class="modal-body">
-        <!-- Aquí va todo el contenido del timeline que tenías antes -->
-        <div class="">
+        <!-- Toggle entre vista consolidada y vista de eventos crudos -->
+        <div class="d-flex justify-content-between align-items-center mb-3 px-2">
+            <div class="btn-group btn-group-sm" role="group">
+                <button type="button" class="btn" 
+                    [class.btn-primary]="showConsolidatedView" 
+                    [class.btn-outline-primary]="!showConsolidatedView"
+                    (click)="showConsolidatedView = true; loadConsolidatedTimeline()">
+                    <i class="fa fa-magic mr-1"></i> {{'timeline.Consolidated' | translate}}
+                </button>
+                <button type="button" class="btn" 
+                    [class.btn-primary]="!showConsolidatedView" 
+                    [class.btn-outline-primary]="showConsolidatedView"
+                    (click)="showConsolidatedView = false">
+                    <i class="fa fa-list mr-1"></i> {{'timeline.All events' | translate}}
+                </button>
+            </div>
+            <button *ngIf="showConsolidatedView && consolidatedTimeline" 
+                class="btn btn-sm btn-outline-secondary" 
+                (click)="regenerateConsolidatedTimeline()"
+                [disabled]="loadingConsolidatedTimeline"
+                title="{{'timeline.Regenerate' | translate}}">
+                <i class="fa fa-refresh" [class.fa-spin]="loadingConsolidatedTimeline"></i>
+            </button>
+        </div>
+
+        <!-- Vista consolidada -->
+        <div *ngIf="showConsolidatedView" class="consolidated-timeline-view">
+            <!-- Loading -->
+            <div *ngIf="loadingConsolidatedTimeline" class="text-center py-5">
+                <i class="fa fa-spinner fa-spin fa-2x text-primary"></i>
+                <p class="mt-2 text-muted">{{'timeline.Generating consolidated timeline' | translate}}...</p>
+            </div>
+
+            <!-- Error -->
+            <div *ngIf="consolidatedTimelineError && !loadingConsolidatedTimeline" class="alert alert-warning">
+                <i class="fa fa-exclamation-triangle mr-2"></i>
+                {{consolidatedTimelineError}}
+                <button class="btn btn-sm btn-link" (click)="showConsolidatedView = false">
+                    {{'timeline.Show all events instead' | translate}}
+                </button>
+            </div>
+
+            <!-- Timeline consolidado -->
+            <div *ngIf="consolidatedTimeline && !loadingConsolidatedTimeline">
+                <!-- Toolbar -->
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <!-- Stats -->
+                    <small class="text-muted" *ngIf="consolidatedTimeline.stats">
+                        <i class="fa fa-info-circle mr-1"></i>
+                        {{consolidatedTimeline.stats.rawEvents}} → {{consolidatedTimeline.stats.consolidatedMilestones}} {{'timeline.milestones' | translate}}
+                        <span *ngIf="consolidatedTimeline.fromCache" class="ml-1">
+                            ({{'timeline.cached' | translate}})
+                        </span>
+                    </small>
+                    <!-- Export options -->
+                    <div class="d-flex gap-2">
+                        <div ngbDropdown class="btn-group" placement="bottom-right" container="body" role="group">
+                            <button type="button" class="btn btn-sm btn-white" ngbDropdownToggle>
+                                <i class="fa fa-download"></i> {{'timeline.Export' | translate }}
+                            </button>
+                            <div ngbDropdownMenu>
+                                <button class="dropdown-item" (click)="copyConsolidatedTimelineToClipboard()">
+                                    <i class="fa fa-copy mr-2"></i> {{'timeline.Copy to clipboard' | translate }}
+                                </button>
+                                <button class="dropdown-item" (click)="exportConsolidatedTimelineToPDF()">
+                                    <i class="fa fa-file-pdf mr-2"></i> {{'timeline.Export to PDF' | translate }}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Condiciones crónicas -->
+                <div *ngIf="consolidatedTimeline.chronicConditions?.length > 0" class="mb-4">
+                    <h6 class="text-muted mb-2">
+                        <i class="fa fa-heartbeat mr-1"></i> {{'timeline.Chronic conditions' | translate}}
+                    </h6>
+                    <div class="d-flex flex-wrap gap-2">
+                        <span *ngFor="let condition of consolidatedTimeline.chronicConditions" 
+                            class="badge badge-secondary py-1 px-2 mr-1 mb-1">
+                            {{condition.name}}
+                            <small *ngIf="condition.since" class="text-muted ml-1">({{condition.since}})</small>
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Medicación actual -->
+                <div *ngIf="consolidatedTimeline.currentMedications?.length > 0" class="mb-4">
+                    <h6 class="text-muted mb-2">
+                        <i class="fa fa-pills mr-1"></i> {{'timeline.Current medications' | translate}}
+                    </h6>
+                    <div class="d-flex flex-wrap gap-2">
+                        <span *ngFor="let med of consolidatedTimeline.currentMedications" 
+                            class="badge badge-info py-1 px-2 mr-1 mb-1">
+                            💊 {{med.name}}
+                            <small *ngIf="med.since" class="ml-1" style="opacity: 0.8;">({{med.since}})</small>
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Hitos del timeline -->
+                <div class="timeline" *ngIf="consolidatedTimeline.milestones?.length > 0">
+                    <div *ngFor="let milestone of consolidatedTimeline.milestones" class="mb-3">
+                        <div class="timeline-month-title">
+                            <ng-container *ngIf="milestone.month">
+                                {{getMonthName(milestone.month)}} {{milestone.year}}
+                            </ng-container>
+                            <ng-container *ngIf="!milestone.month && milestone.year">
+                                {{milestone.year}}
+                            </ng-container>
+                            <ng-container *ngIf="!milestone.year">
+                                <span class="text-muted">{{'timeline.Undated' | translate}}</span>
+                            </ng-container>
+                        </div>
+                        <div class="timeline-item" *ngFor="let event of milestone.events">
+                            <div class="timeline-dot"></div>
+                            <div class="timeline-content">
+                                <p class="mb-0">
+                                    <span>{{event.icon || '📌'}}</span>
+                                    {{event.title}}
+                                </p>
+                                <small *ngIf="event.details" class="text-muted d-block">
+                                    {{event.details}}
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div *ngIf="consolidatedTimeline.milestones?.length === 0" class="text-center text-muted py-4">
+                    <i class="fa fa-calendar-o fa-2x mb-2"></i>
+                    <p>{{'timeline.No milestones found' | translate}}</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Vista de eventos crudos (original) -->
+        <div *ngIf="!showConsolidatedView" class="">
             <div class="card-content" style="background-color: #d9d9d9;">
                 <div class="card-body py-0">
                     <div class="media">
@@ -1257,7 +1393,7 @@
                 </div>
             </div>
         </div>
-    </div>
+        </div><!-- Cierre de vista de eventos crudos -->
 </ng-template>
 <ng-template #contentSummaryDoc id="contentSummaryDoc" let-c="close" let-d="dismiss" appendTo="body">
     <a id="contentHeader"></a>

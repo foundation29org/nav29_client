@@ -153,7 +153,19 @@
    "Export to PDF": "Export to PDF",
    "Timeline copied to clipboard": "Timeline copied to clipboard",
    "Date": "Date",
-   "Exported on": "Exported on"
+   "Exported on": "Exported on",
+   "Consolidated": "Consolidated",
+   "All events": "All events",
+   "Regenerate": "Regenerate",
+   "Generating consolidated timeline": "Generating consolidated timeline",
+   "Show all events instead": "Show all events instead",
+   "events consolidated into": "events consolidated into",
+   "milestones": "milestones",
+   "cached": "cached",
+   "Chronic conditions": "Chronic conditions",
+   "Current medications": "Current medications",
+   "Undated": "Undated",
+   "No milestones found": "No milestones found"
   },
   "voice":{
     "Start Voice Recognition": "Start Voice Recognition",

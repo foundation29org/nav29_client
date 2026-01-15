@@ -311,6 +311,12 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
 
   timeline: any = [];
   eventsNeedingReviewCount: number = 0;
+  
+  // Timeline consolidado
+  consolidatedTimeline: any = null;
+  loadingConsolidatedTimeline: boolean = false;
+  showConsolidatedView: boolean = true; // Por defecto mostrar vista consolidada
+  consolidatedTimelineError: string = null;
 
   updateNeedingReviewCount(): void {
     if (!this.allEvents || this.allEvents.length === 0) {
@@ -1960,7 +1966,7 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     // Protección contra respuestas duplicadas: usar timestamp + answer como ID único
     const answerId = `${parsedData.time || Date.now()}_${parsedData.answer?.substring(0, 50) || ''}`;
     if (this.lastProcessedAnswerId === answerId) {
-      console.warn('⚠️ Respuesta duplicada detectada, ignorando:', answerId);
+      console.warn('⚠️ Respuesta duplicada detectada (mismo ID), ignorando:', answerId);
       return;
     }
     this.lastProcessedAnswerId = answerId;
@@ -1969,17 +1975,6 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     this.callingOpenai = false;
     this.gettingSuggestions = false;
     this.actualStatus = '';
-    
-    // Verificar si esta respuesta ya está en los mensajes cargados (evitar duplicados)
-    const answerPreview = parsedData.answer?.substring(0, 100) || '';
-    const isDuplicate = this.messages.some(msg => 
-      !msg.isUser && msg.text && msg.text.includes(answerPreview)
-    );
-    
-    if (isDuplicate) {
-      console.log('⚠️ Respuesta ya existe en los mensajes, ignorando duplicado');
-      return;
-    }
     
     // Si el mensaje NO viene de notificación, añadir también la pregunta al contexto
     const isFromNotification = parsedData.fromNotification === true;
@@ -6228,6 +6223,209 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
       scrollable: true,
       backdrop: 'static'
     });
+    
+    // Cargar timeline consolidado si no está cargado
+    if (!this.consolidatedTimeline && this.showConsolidatedView) {
+      this.loadConsolidatedTimeline();
+    }
+  }
+
+  async loadConsolidatedTimeline(forceRegenerate: boolean = false) {
+    this.loadingConsolidatedTimeline = true;
+    this.consolidatedTimelineError = null;
+    
+    try {
+      const lang = this.authService.getLang() || 'es';
+      const url = `${environment.api}/api/timeline/consolidated/${this.currentPatient}?lang=${lang}${forceRegenerate ? '&regenerate=true' : ''}`;
+      
+      const response: any = await this.http.get(url).toPromise();
+      
+      if (response && response.success) {
+        this.consolidatedTimeline = response;
+        console.log('[Timeline] Consolidado cargado:', response.stats);
+      } else {
+        throw new Error(response?.message || 'Error loading timeline');
+      }
+    } catch (error) {
+      console.error('[Timeline] Error:', error);
+      this.consolidatedTimelineError = error.message || 'Error loading consolidated timeline';
+      // Fallback: mostrar vista de eventos crudos
+      this.showConsolidatedView = false;
+    } finally {
+      this.loadingConsolidatedTimeline = false;
+    }
+  }
+
+  toggleTimelineView() {
+    this.showConsolidatedView = !this.showConsolidatedView;
+    
+    if (this.showConsolidatedView && !this.consolidatedTimeline) {
+      this.loadConsolidatedTimeline();
+    }
+  }
+
+  regenerateConsolidatedTimeline() {
+    this.loadConsolidatedTimeline(true);
+  }
+
+  getMonthName(monthNum: number): string {
+    if (!monthNum || monthNum < 1 || monthNum > 12) return '';
+    const date = new Date(2000, monthNum - 1, 1);
+    return date.toLocaleString(this.translate.currentLang || 'en', { month: 'short' });
+  }
+
+  copyConsolidatedTimelineToClipboard() {
+    if (!this.consolidatedTimeline) return;
+    
+    let text = '';
+    
+    // Chronic conditions
+    if (this.consolidatedTimeline.chronicConditions?.length > 0) {
+      text += '📋 ' + this.translate.instant('timeline.Chronic conditions') + ':\n';
+      this.consolidatedTimeline.chronicConditions.forEach(c => {
+        text += `  • ${c.name}${c.since ? ' (' + c.since + ')' : ''}\n`;
+      });
+      text += '\n';
+    }
+    
+    // Current medications
+    if (this.consolidatedTimeline.currentMedications?.length > 0) {
+      text += '💊 ' + this.translate.instant('timeline.Current medications') + ':\n';
+      this.consolidatedTimeline.currentMedications.forEach(m => {
+        text += `  • ${m.name}${m.since ? ' (' + m.since + ')' : ''}\n`;
+      });
+      text += '\n';
+    }
+    
+    // Milestones
+    if (this.consolidatedTimeline.milestones?.length > 0) {
+      text += '📅 ' + this.translate.instant('timeline.Timeline') + ':\n';
+      this.consolidatedTimeline.milestones.forEach(milestone => {
+        const dateStr = milestone.month 
+          ? `${this.getMonthName(milestone.month)} ${milestone.year}` 
+          : (milestone.year || this.translate.instant('timeline.Undated'));
+        text += `\n${dateStr}:\n`;
+        milestone.events?.forEach(e => {
+          text += `  ${e.icon || '•'} ${e.title}${e.details ? ' - ' + e.details : ''}\n`;
+        });
+      });
+    }
+    
+    this.clipboard.copy(text);
+    this.toastr.success(this.translate.instant('timeline.Timeline copied to clipboard'));
+  }
+
+  exportConsolidatedTimelineToPDF() {
+    if (!this.consolidatedTimeline) return;
+    
+    const doc = new jsPDF();
+    let y = 20;
+    const lineHeight = 7;
+    const pageHeight = doc.internal.pageSize.height;
+    const maxWidth = 170; // Max text width before wrapping
+    
+    // Helper to remove emojis (jsPDF doesn't support them)
+    const removeEmojis = (text: string): string => {
+      if (!text) return '';
+      return text.replace(/[\u{1F300}-\u{1F9FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]|[\u{1F600}-\u{1F64F}]|[\u{1F680}-\u{1F6FF}]|[\u{1F1E0}-\u{1F1FF}]/gu, '').trim();
+    };
+    
+    const checkPageBreak = (neededSpace: number) => {
+      if (y + neededSpace > pageHeight - 20) {
+        doc.addPage();
+        y = 20;
+      }
+    };
+
+    // Helper to wrap and print text
+    const printWrappedText = (text: string, x: number, maxW: number) => {
+      const lines = doc.splitTextToSize(text, maxW);
+      lines.forEach((line: string) => {
+        checkPageBreak(lineHeight);
+        doc.text(line, x, y);
+        y += lineHeight;
+      });
+    };
+    
+    // Title
+    doc.setFontSize(18);
+    doc.text(this.translate.instant('timeline.Timeline') + ' - ' + this.translate.instant('timeline.Consolidated'), 14, y);
+    y += 15;
+    
+    // Chronic conditions
+    if (this.consolidatedTimeline.chronicConditions?.length > 0) {
+      checkPageBreak(20);
+      doc.setFontSize(14);
+      doc.text(this.translate.instant('timeline.Chronic conditions'), 14, y);
+      y += 10;
+      doc.setFontSize(10);
+      this.consolidatedTimeline.chronicConditions.forEach(c => {
+        checkPageBreak(lineHeight);
+        const text = `- ${c.name}${c.since ? ' (' + c.since + ')' : ''}`;
+        printWrappedText(text, 20, maxWidth - 20);
+      });
+      y += 5;
+    }
+    
+    // Current medications
+    if (this.consolidatedTimeline.currentMedications?.length > 0) {
+      checkPageBreak(20);
+      doc.setFontSize(14);
+      doc.text(this.translate.instant('timeline.Current medications'), 14, y);
+      y += 10;
+      doc.setFontSize(10);
+      this.consolidatedTimeline.currentMedications.forEach(m => {
+        checkPageBreak(lineHeight);
+        const text = `- ${m.name}${m.since ? ' (' + m.since + ')' : ''}`;
+        printWrappedText(text, 20, maxWidth - 20);
+      });
+      y += 5;
+    }
+    
+    // Milestones
+    if (this.consolidatedTimeline.milestones?.length > 0) {
+      checkPageBreak(20);
+      doc.setFontSize(14);
+      doc.text(this.translate.instant('timeline.milestones'), 14, y);
+      y += 10;
+      
+      this.consolidatedTimeline.milestones.forEach(milestone => {
+        checkPageBreak(15);
+        const dateStr = milestone.month 
+          ? `${this.getMonthName(milestone.month)} ${milestone.year}` 
+          : (milestone.year?.toString() || this.translate.instant('timeline.Undated'));
+        doc.setFontSize(11);
+        doc.setFont(undefined, 'bold');
+        doc.text(dateStr, 14, y);
+        y += lineHeight;
+        doc.setFont(undefined, 'normal');
+        doc.setFontSize(10);
+        
+        milestone.events?.forEach(e => {
+          checkPageBreak(lineHeight * 2);
+          const title = `- ${removeEmojis(e.title)}`;
+          printWrappedText(title, 20, maxWidth - 20);
+          if (e.details) {
+            doc.setTextColor(100);
+            printWrappedText(removeEmojis(e.details), 25, maxWidth - 25);
+            doc.setTextColor(0);
+          }
+        });
+        y += 3;
+      });
+    }
+    
+    // Footer on all pages
+    const pageCount = doc.internal.pages.length - 1;
+    for (let i = 1; i <= pageCount; i++) {
+      doc.setPage(i);
+      doc.setFontSize(8);
+      doc.setTextColor(150);
+      doc.text(`${this.translate.instant('timeline.Exported on')}: ${new Date().toLocaleDateString()}`, 14, pageHeight - 10);
+      doc.text(`${i}/${pageCount}`, pageHeight - 20, pageHeight - 10);
+    }
+    
+    doc.save('timeline-consolidated.pdf');
   }
 
   getEventTypeIcon(type: string): string {

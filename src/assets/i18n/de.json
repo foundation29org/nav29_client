@@ -150,7 +150,19 @@
     "Export to PDF": "Als PDF exportieren",
     "Timeline copied to clipboard": "Zeitleiste in Zwischenablage kopiert",
     "Date": "Datum",
-    "Exported on": "Exportiert am"
+    "Exported on": "Exportiert am",
+    "Consolidated": "Konsolidiert",
+    "All events": "Alle Ereignisse",
+    "Regenerate": "Neu generieren",
+    "Generating consolidated timeline": "Konsolidierte Zeitleiste wird generiert",
+    "Show all events instead": "Stattdessen alle Ereignisse anzeigen",
+    "events consolidated into": "Ereignisse konsolidiert in",
+    "milestones": "Meilensteine",
+    "cached": "zwischengespeichert",
+    "Chronic conditions": "Chronische Erkrankungen",
+    "Current medications": "Aktuelle Medikamente",
+    "Undated": "Ohne Datum",
+    "No milestones found": "Keine Meilensteine gefunden"
    },
    "voice":{
      "Stop recording": "Aufnahme stoppen",

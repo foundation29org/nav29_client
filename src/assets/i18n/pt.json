@@ -150,7 +150,19 @@
      "Export to PDF": "Exportar para PDF",
      "Timeline copied to clipboard": "Linha do tempo copiada para a área de transferência",
      "Date": "Data",
-     "Exported on": "Exportado em"
+     "Exported on": "Exportado em",
+    "Consolidated": "Consolidado",
+    "All events": "Todos os eventos",
+    "Regenerate": "Regenerar",
+    "Generating consolidated timeline": "Gerando linha do tempo consolidada",
+    "Show all events instead": "Mostrar todos os eventos",
+    "events consolidated into": "eventos consolidados em",
+    "milestones": "marcos",
+    "cached": "em cache",
+    "Chronic conditions": "Condições crônicas",
+    "Current medications": "Medicamentos atuais",
+    "Undated": "Sem data",
+    "No milestones found": "Nenhum marco encontrado"
     },
     "voice":{
       "Stop recording": "Parar gravação",
