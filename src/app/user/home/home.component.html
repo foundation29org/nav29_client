@@ -1633,7 +1633,7 @@
                     {{'generics.Copy' | translate }}
                 </button>
 
-                <button class="btn btn-sm btn-white mb-2" (click)="downloadPDF()" [disabled]="generatingPDF">
+                <button class="btn btn-sm btn-white mb-2 mr-2" (click)="downloadPDF()" [disabled]="generatingPDF">
                     <span *ngIf="!generatingPDF">
                         <em class="fa fa-download"></em>
                         {{'generics.Download' | translate }} PDF
@@ -1641,6 +1641,18 @@
                     <span *ngIf="generatingPDF">
                         <i class="fa fa-spinner fa-spin fa-fw primary"></i>
                         {{'generics.Please wait' | translate }} PDF
+                    </span>
+                </button>
+
+                <button class="btn btn-sm btn-outline-secondary mb-2" (click)="regenerateSummary()" 
+                    [disabled]="regeneratingSummary" title="{{'messages.m6.4' | translate }}">
+                    <span *ngIf="!regeneratingSummary">
+                        <em class="fa fa-refresh mr-1"></em>
+                        {{'messages.m6.4' | translate }}
+                    </span>
+                    <span *ngIf="regeneratingSummary">
+                        <i class="fa fa-spinner fa-spin fa-fw"></i>
+                        {{'generics.Please wait' | translate }}
                     </span>
                 </button>
             </div>

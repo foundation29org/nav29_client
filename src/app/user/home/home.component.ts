@@ -268,6 +268,7 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
   loadingDoc: boolean = false;
   summaryDate: Date = null;
   generatingPDF: boolean = false;
+  regeneratingSummary: boolean = false;
   msgDownload: string;
   msgtoDownload: string;
   actualStatus: string = '';
@@ -847,6 +848,12 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
       this.additionalNeeds = [];
       this.rarescopeError = null;
       this.isLoadingRarescope = false;
+      
+      // Limpiar timeline cuando cambias de paciente
+      this.timeline = [];
+      this.consolidatedTimeline = null;
+      this.loadingConsolidatedTimeline = false;
+      this.consolidatedTimelineError = null;
     } else {
       // No hay paciente
       this.currentPatientId = null;
@@ -4038,6 +4045,20 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     this.generatingPDF = false;
   }
 
+  regenerateSummary() {
+    this.regeneratingSummary = true;
+    this.closeModal();
+    this.getPatientSummary(true);
+    this.regeneratingSummary = false;
+    // Show info message that the summary is being regenerated
+    /*Swal.fire({
+      icon: 'info',
+      title: this.translate.instant("messages.m6.1"),
+      text: this.translate.instant("messages.m6.3"),
+      showConfirmButton: true
+    });*/
+  }
+
   copymsg(msg: any) {
     console.log('Received msg:', msg);
 
@@ -6271,7 +6292,7 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
   getMonthName(monthNum: number): string {
     if (!monthNum || monthNum < 1 || monthNum > 12) return '';
     const date = new Date(2000, monthNum - 1, 1);
-    return date.toLocaleString(this.translate.currentLang || 'en', { month: 'short' });
+    return date.toLocaleString(this.translate.currentLang || 'en', { month: 'long' });
   }
 
   copyConsolidatedTimelineToClipboard() {
