@@ -6453,7 +6453,7 @@ ${this.soapData.result.plan}
     this.consolidatedTimelineError = null;
     
     try {
-      const lang = this.authService.getLang() || 'es';
+      const lang = this.preferredResponseLanguage || localStorage.getItem('lang') || 'en';
       const url = `${environment.api}/api/timeline/consolidated/${this.currentPatient}?lang=${lang}${forceRegenerate ? '&regenerate=true' : ''}`;
       
       const response: any = await this.http.get(url).toPromise();
