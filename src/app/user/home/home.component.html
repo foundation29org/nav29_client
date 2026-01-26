@@ -845,8 +845,8 @@
                                 <span class="tool-name">{{'trialgpt.button' | translate}}</span>
                             </button>
                             
-                            <!-- Preparar Consulta -->
-                            <div class="tool-card tool-card-purple tool-card-with-edit">
+                            <!-- Preparar Consulta (para usuarios no-Clinical) -->
+                            <div class="tool-card tool-card-purple tool-card-with-edit" *ngIf="role !== 'Clinical'">
                                 <div class="tool-card-main" (click)="sendQuickPrepareConsult()" 
                                      title="{{'prepareConsult.button' | translate}}">
                                     <i class="fa fa-calendar-check-o tool-icon"></i>
@@ -857,6 +857,14 @@
                                     <i class="fa fa-pencil"></i>
                                 </button>
                             </div>
+                            
+                            <!-- SOAP Notes (para Clinical) -->
+                            <button class="tool-card tool-card-purple" *ngIf="role === 'Clinical'"
+                                    (click)="openSoapModal()" 
+                                    title="{{'soap.title' | translate}}">
+                                <i class="fa fa-medkit tool-icon"></i>
+                                <span class="tool-name">{{'soap.button' | translate}}</span>
+                            </button>
                         </div>
                         
                         <!-- Enlace a Ideas y sugerencias -->
@@ -1037,8 +1045,8 @@
                                 <span class="tool-name">{{'trialgpt.button' | translate}}</span>
                             </button>
                             
-                            <!-- Preparar Consulta -->
-                            <div class="tool-card tool-card-purple tool-card-with-edit">
+                            <!-- Preparar Consulta (para usuarios no-Clinical) -->
+                            <div class="tool-card tool-card-purple tool-card-with-edit" *ngIf="role !== 'Clinical'">
                                 <div class="tool-card-main" (click)="sendQuickPrepareConsult()" 
                                      title="{{'prepareConsult.button' | translate}}">
                                     <i class="fa fa-calendar-check-o tool-icon"></i>
@@ -1049,6 +1057,14 @@
                                     <i class="fa fa-pencil"></i>
                                 </button>
                             </div>
+                            
+                            <!-- SOAP Notes (para Clinical) -->
+                            <button class="tool-card tool-card-purple" *ngIf="role === 'Clinical'"
+                                    (click)="openSoapModal()" 
+                                    title="{{'soap.title' | translate}}">
+                                <i class="fa fa-medkit tool-icon"></i>
+                                <span class="tool-name">{{'soap.button' | translate}}</span>
+                            </button>
                         </div>
                         
                         <!-- Enlace a Ideas y sugerencias -->
@@ -3010,6 +3026,132 @@
                 [disabled]="!prepareConsultData.specialist && !prepareConsultData.comments">
             <i class="fa fa-magic mr-2"></i>
             {{'prepareConsult.generate' | translate}}
+        </button>
+    </div>
+</ng-template>
+
+<!-- Modal SOAP Notes (para Clinical) -->
+<ng-template #soapModal let-modal>
+    <div class="modal-header soap-header">
+        <div class="d-flex align-items-center">
+            <i class="fa fa-medkit mr-2" style="font-size: 1.5rem; color: #7c4dff;"></i>
+            <h4 class="modal-title mb-0">{{'soap.title' | translate}}</h4>
+        </div>
+        <button type="button" class="close" aria-label="Close" (click)="modal.dismiss('Cross click')">
+            <span aria-hidden="true">&times;</span>
+        </button>
+    </div>
+    <div class="modal-body soap-body">
+        <div class="soap-content">
+            <!-- Paso 1: Síntomas del paciente -->
+            <div class="soap-step" *ngIf="soapStep === 1">
+                <h5 class="soap-step-title">
+                    <span class="step-number">1</span>
+                    {{'soap.step1Title' | translate}}
+                </h5>
+                <p class="soap-description">{{'soap.step1Description' | translate}}</p>
+                
+                <div class="soap-input-group">
+                    <label class="soap-label">
+                        <i class="fa fa-comment-o mr-2"></i>
+                        {{'soap.patientSymptoms' | translate}}
+                    </label>
+                    <textarea class="form-control soap-textarea"
+                              [(ngModel)]="soapData.patientSymptoms"
+                              [placeholder]="'soap.symptomsPlaceholder' | translate"
+                              rows="4"></textarea>
+                </div>
+            </div>
+            
+            <!-- Paso 2: Preguntas sugeridas -->
+            <div class="soap-step" *ngIf="soapStep === 2">
+                <h5 class="soap-step-title">
+                    <span class="step-number">2</span>
+                    {{'soap.step2Title' | translate}}
+                </h5>
+                <p class="soap-description">{{'soap.step2Description' | translate}}</p>
+                
+                <div class="soap-questions-list" *ngIf="soapData.suggestedQuestions.length > 0">
+                    <div class="soap-question-item" *ngFor="let question of soapData.suggestedQuestions; let i = index">
+                        <div class="soap-question-header">
+                            <span class="question-number">Q{{i + 1}}</span>
+                            <span class="question-text">{{question.question}}</span>
+                        </div>
+                        <textarea class="form-control soap-answer-input"
+                                  [(ngModel)]="question.answer"
+                                  [placeholder]="'soap.answerPlaceholder' | translate"
+                                  rows="2"></textarea>
+                    </div>
+                </div>
+                
+                <div class="soap-loading" *ngIf="soapLoading">
+                    <i class="fa fa-spinner fa-spin mr-2"></i>
+                    {{'soap.generatingQuestions' | translate}}
+                </div>
+            </div>
+            
+            <!-- Paso 3: Resultado SOAP -->
+            <div class="soap-step" *ngIf="soapStep === 3">
+                <h5 class="soap-step-title">
+                    <span class="step-number">3</span>
+                    {{'soap.step3Title' | translate}}
+                </h5>
+                
+                <div class="soap-result" *ngIf="soapData.result">
+                    <div class="soap-section">
+                        <h6 class="soap-section-title"><i class="fa fa-user mr-2"></i>{{'soap.subjective' | translate}}</h6>
+                        <div class="soap-section-content" [innerHTML]="soapData.result.subjective"></div>
+                    </div>
+                    <div class="soap-section">
+                        <h6 class="soap-section-title"><i class="fa fa-stethoscope mr-2"></i>{{'soap.objective' | translate}}</h6>
+                        <div class="soap-section-content" [innerHTML]="soapData.result.objective"></div>
+                    </div>
+                    <div class="soap-section">
+                        <h6 class="soap-section-title"><i class="fa fa-lightbulb-o mr-2"></i>{{'soap.assessment' | translate}}</h6>
+                        <div class="soap-section-content" [innerHTML]="soapData.result.assessment"></div>
+                    </div>
+                    <div class="soap-section">
+                        <h6 class="soap-section-title"><i class="fa fa-list-ul mr-2"></i>{{'soap.plan' | translate}}</h6>
+                        <div class="soap-section-content" [innerHTML]="soapData.result.plan"></div>
+                    </div>
+                </div>
+                
+                <div class="soap-loading" *ngIf="soapLoading">
+                    <i class="fa fa-spinner fa-spin mr-2"></i>
+                    {{'soap.generatingReport' | translate}}
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="modal-footer soap-footer">
+        <button type="button" class="btn btn-outline-secondary" (click)="modal.dismiss('Close click')">
+            {{'generics.Cancel' | translate}}
+        </button>
+        
+        <!-- Botón Paso 1 -> 2 -->
+        <button type="button" *ngIf="soapStep === 1"
+                class="btn btn-primary"
+                (click)="generateSoapQuestions()"
+                [disabled]="!soapData.patientSymptoms || soapLoading">
+            <i class="fa fa-magic mr-2"></i>
+            {{'soap.suggestQuestions' | translate}}
+        </button>
+        
+        <!-- Botón Paso 2 -> 3 -->
+        <button type="button" *ngIf="soapStep === 2"
+                class="btn btn-primary"
+                (click)="generateSoapReport()"
+                [disabled]="soapLoading">
+            <i class="fa fa-file-text-o mr-2"></i>
+            {{'soap.generateReport' | translate}}
+        </button>
+        
+        <!-- Botón Paso 3: Copiar/Descargar -->
+        <button type="button" *ngIf="soapStep === 3 && soapData.result"
+                class="btn btn-success"
+                (click)="copySoapReport()">
+            <i class="fa fa-copy mr-2"></i>
+            {{'soap.copyReport' | translate}}
         </button>
     </div>
 </ng-template>

@@ -222,7 +222,8 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
   @ViewChild('diaryModal', { static: false }) diaryModal: TemplateRef<any>;
   @ViewChild('timelineModal', { static: false }) timelineModal: TemplateRef<any>;
   @ViewChild('prepareConsultModal', { static: false }) prepareConsultModal: TemplateRef<any>;
-  
+  @ViewChild('soapModal', { static: false }) soapModal: TemplateRef<any>;
+
   // Variables para Preparar Consulta
   prepareConsultData = {
     specialist: '',
@@ -233,6 +234,15 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     specialist: false,
     consultDate: false,
     comments: false
+  };
+  
+  // Variables para SOAP Notes (Clinical)
+  soapStep = 1;
+  soapLoading = false;
+  soapData = {
+    patientSymptoms: '',
+    suggestedQuestions: [] as Array<{question: string, answer: string}>,
+    result: null as {subjective: string, objective: string, assessment: string, plan: string} | null
   };
   
   tasksUpload: any[] = [];
@@ -5795,6 +5805,120 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     // Enviar el mensaje al chat
     this.message = messageToSend;
     this.sendMessage();
+  }
+
+  // ========== SOAP Notes Methods (Clinical) ==========
+  
+  openSoapModal() {
+    // Resetear datos del formulario
+    this.soapStep = 1;
+    this.soapLoading = false;
+    this.soapData = {
+      patientSymptoms: '',
+      suggestedQuestions: [],
+      result: null
+    };
+    
+    let ngbModalOptions: NgbModalOptions = {
+      backdrop: 'static',
+      keyboard: false,
+      windowClass: 'ModalClass-lg',
+      size: 'lg'
+    };
+    
+    if (this.modalReference != undefined) {
+      this.modalReference.close();
+    }
+    this.modalReference = this.modalService.open(this.soapModal, ngbModalOptions);
+  }
+
+  generateSoapQuestions() {
+    if (!this.soapData.patientSymptoms || this.soapLoading) return;
+    
+    this.soapLoading = true;
+    const info = {
+      userId: this.authService.getIdUser(),
+      lang: this.preferredResponseLanguage || localStorage.getItem('lang') || 'en',
+      patientSymptoms: this.soapData.patientSymptoms
+    };
+    
+    this.subscription.add(this.http.post(environment.api + '/api/ai/soap/questions/' + this.currentPatient, info)
+      .pipe(timeout(120000))
+      .subscribe((res: any) => {
+        this.soapLoading = false;
+        
+        if (res.success && res.questions) {
+          this.soapData.suggestedQuestions = res.questions.map((q: string) => ({
+            question: q,
+            answer: ''
+          }));
+          this.soapStep = 2;
+        } else {
+          this.toastr.error('', res.error || this.translate.instant('soap.errorQuestions'));
+        }
+      }, (err) => {
+        this.soapLoading = false;
+        console.log('[SOAP] Error generating questions:', err);
+        this.insightsService.trackException(err);
+        this.toastr.error('', this.translate.instant("generics.error try again"));
+      }));
+  }
+
+  generateSoapReport() {
+    if (this.soapLoading) return;
+    
+    this.soapLoading = true;
+    const info = {
+      userId: this.authService.getIdUser(),
+      lang: this.preferredResponseLanguage || localStorage.getItem('lang') || 'en',
+      patientSymptoms: this.soapData.patientSymptoms,
+      questionsAndAnswers: this.soapData.suggestedQuestions
+    };
+    
+    this.subscription.add(this.http.post(environment.api + '/api/ai/soap/report/' + this.currentPatient, info)
+      .pipe(timeout(180000))
+      .subscribe((res: any) => {
+        this.soapLoading = false;
+        
+        if (res.success && res.soap) {
+          this.soapData.result = res.soap;
+          this.soapStep = 3;
+        } else {
+          this.toastr.error('', res.error || this.translate.instant('soap.errorReport'));
+        }
+      }, (err) => {
+        this.soapLoading = false;
+        console.log('[SOAP] Error generating report:', err);
+        this.insightsService.trackException(err);
+        this.toastr.error('', this.translate.instant("generics.error try again"));
+      }));
+  }
+
+  copySoapReport() {
+    if (!this.soapData.result) return;
+    
+    const soapText = `SOAP NOTES
+================
+
+SUBJECTIVE:
+${this.soapData.result.subjective}
+
+OBJECTIVE:
+${this.soapData.result.objective}
+
+ASSESSMENT:
+${this.soapData.result.assessment}
+
+PLAN:
+${this.soapData.result.plan}
+`;
+    
+    navigator.clipboard.writeText(soapText).then(() => {
+      this.toastr.success('', this.translate.instant('soap.copied'));
+    }).catch(err => {
+      console.error('Error copying to clipboard:', err);
+      this.toastr.error('', this.translate.instant('generics.error try again'));
+    });
   }
 
   getNotes() {
