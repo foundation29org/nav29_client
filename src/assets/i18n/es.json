@@ -1654,11 +1654,11 @@
     "There are new messages in the diary": "Hay nuevos mensajes en el diario"
   },
   "infographic": {
-    "title": "Infografía de Salud",
+    "title": "Infografía de salud",
     "clickToGenerate": "Haz clic para ver",
     "download": "Descargar",
     "error": "Error al generar la infografía",
-    "generating": "Generando tu infografía de salud...",
+    "generating": "Generando tu infografía...",
     "noData": "No hay suficientes datos para generar una infografía",
     "generatedOn": "Generada el",
     "cached": "en caché",

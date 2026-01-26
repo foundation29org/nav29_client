@@ -1656,11 +1656,11 @@
       "There are new messages in the diary": "Il y a de nouveaux messages dans le journal"
     },
     "infographic": {
-      "title": "Infographie de Santé",
+      "title": "Infographie de santé",
       "clickToGenerate": "Cliquez pour voir",
       "download": "Télécharger",
       "error": "Erreur lors de la génération de l'infographie",
-      "generating": "Génération de votre infographie de santé...",
+      "generating": "Génération de votre infographie...",
       "noData": "Pas assez de données pour générer une infographie",
       "generatedOn": "Générée le",
       "cached": "en cache",

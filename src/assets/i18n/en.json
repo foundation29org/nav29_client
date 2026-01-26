@@ -1659,11 +1659,11 @@
     "There are new messages in the diary": "There are new messages in the diary"
   },
   "infographic": {
-    "title": "Health Infographic",
+    "title": "Health infographic",
     "clickToGenerate": "Click to view",
     "download": "Download",
     "error": "Error generating infographic",
-    "generating": "Generating your health infographic...",
+    "generating": "Generating your infographic...",
     "noData": "Not enough data to generate an infographic",
     "generatedOn": "Generated on",
     "cached": "cached",
