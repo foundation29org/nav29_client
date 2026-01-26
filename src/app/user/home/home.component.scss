@@ -2732,6 +2732,15 @@ display: none !important;
           color: #00695c;
         }
       }
+      
+      &.result-icon-infographic {
+        background: #f3e5f5;
+        border: 1px solid #e1bee7;
+        
+        i {
+          color: #7b1fa2;
+        }
+      }
     }
     
     .collapsed-separator {
@@ -3177,6 +3186,12 @@ display: none !important;
     background: #e0f2f1;
     border-color: #b2dfdb;
     color: #00695c;
+  }
+  
+  &.result-card-infographic .result-card-icon {
+    background: #f3e5f5;
+    border-color: #e1bee7;
+    color: #7b1fa2;
   }
   
   .result-card-content {

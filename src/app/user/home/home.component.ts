@@ -35,7 +35,7 @@ declare var webkitSpeechRecognition: any;
 import * as hopscotch from 'hopscotch';
 import { HighlightService } from 'app/shared/services/highlight.service';
 import { interval } from 'rxjs';
-import { filter, take } from 'rxjs/operators';
+import { filter, take, timeout } from 'rxjs/operators';
 import { ActivityService } from 'app/shared/services/activity.service';
 
 // Interfaces para tipar los datos (como dataclasses en Python)
@@ -339,6 +339,8 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
   isOldestFirst = false;
   userId = '';
   openingSummary = false;
+  generatingInfographic = false;
+  infographicImageData: string = null;
   role = 'Unknown';
   medicalLevel: string = '1';
   valueGeneralFeedback: string = '';
@@ -3886,6 +3888,77 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
           this.toastr.error('', this.translate.instant("generics.error try again"));
         }));
     });
+  }
+
+  getPatientInfographic(regenerate: boolean = false) {
+    if (this.generatingInfographic) return;
+    
+    this.generatingInfographic = true;
+    const info = { 
+      userId: this.authService.getIdUser(),
+      lang: this.preferredResponseLanguage || localStorage.getItem('lang') || 'en',
+      regenerate: regenerate
+    };
+    
+    // Timeout extendido para generación de imágenes (3 minutos)
+    this.subscription.add(this.http.post(environment.api + '/api/ai/infographic/' + this.currentPatient, info)
+      .pipe(timeout(180000))
+      .subscribe((res: any) => {
+        this.generatingInfographic = false;
+        console.log('[Infographic] Response received:', res);
+        
+        if (res.success && (res.imageUrl || res.imageData)) {
+          // Determinar la fuente de la imagen (URL o base64)
+          const imageSrc = res.imageUrl || `data:${res.mimeType || 'image/png'};base64,${res.imageData}`;
+          this.infographicImageData = res.imageData || null;
+          
+          // Formatear la fecha de generación
+          let dateInfo = '';
+          if (res.generatedAt) {
+            const genDate = new Date(res.generatedAt);
+            dateInfo = `<p style="font-size: 0.85rem; color: #666; margin-bottom: 10px;">
+              ${this.translate.instant('infographic.generatedOn')}: ${genDate.toLocaleDateString()} ${genDate.toLocaleTimeString()}
+              ${res.cached ? `<span style="color: #28a745; margin-left: 8px;">(${this.translate.instant('infographic.cached')})</span>` : ''}
+            </p>`;
+          }
+          
+          Swal.fire({
+            title: this.translate.instant('infographic.title'),
+            html: `${dateInfo}
+                   <img src="${imageSrc}" 
+                   style="max-width: 100%; max-height: 65vh; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);" 
+                   alt="Patient Infographic"/>`,
+            width: '90%',
+            showCloseButton: true,
+            showConfirmButton: true,
+            confirmButtonText: this.translate.instant('infographic.download'),
+            showCancelButton: true,
+            cancelButtonText: this.translate.instant('generics.Close'),
+            showDenyButton: true,
+            denyButtonText: this.translate.instant('infographic.regenerate'),
+            denyButtonColor: '#6c757d',
+          }).then((result) => {
+            if (result.isConfirmed) {
+              // Descargar la imagen
+              const link = document.createElement('a');
+              link.href = imageSrc;
+              link.download = `patient_infographic_${Date.now()}.png`;
+              link.target = '_blank';
+              link.click();
+            } else if (result.isDenied) {
+              // Regenerar la infografía
+              this.getPatientInfographic(true);
+            }
+          });
+        } else {
+          this.toastr.error('', res.error || this.translate.instant('infographic.error'));
+        }
+      }, (err) => {
+        this.generatingInfographic = false;
+        console.log('[Infographic] Error:', err);
+        this.insightsService.trackException(err);
+        this.toastr.error('', this.translate.instant("generics.error try again"));
+      }));
   }
 
   checkDocs(): Promise<boolean> {

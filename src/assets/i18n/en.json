@@ -1658,6 +1658,17 @@
     "Type your message...": "Type your message...",
     "There are new messages in the diary": "There are new messages in the diary"
   },
+  "infographic": {
+    "title": "Health Infographic",
+    "clickToGenerate": "Click to view",
+    "download": "Download",
+    "error": "Error generating infographic",
+    "generating": "Generating your health infographic...",
+    "noData": "Not enough data to generate an infographic",
+    "generatedOn": "Generated on",
+    "cached": "cached",
+    "regenerate": "Regenerate"
+  },
   "welcome": {
     "welcomeTitle": "Welcome to Nav29!",
     "settingsSaved": "Profile configured!",

@@ -1654,6 +1654,17 @@
       "Type your message...": "Geben Sie Ihre Nachricht ein...",
       "There are new messages in the diary": "Es gibt neue Nachrichten im Tagebuch"
     },
+    "infographic": {
+      "title": "Gesundheits-Infografik",
+      "clickToGenerate": "Klicken zum Ansehen",
+      "download": "Herunterladen",
+      "error": "Fehler beim Erstellen der Infografik",
+      "generating": "Ihre Gesundheits-Infografik wird erstellt...",
+      "noData": "Nicht genügend Daten für eine Infografik",
+      "generatedOn": "Erstellt am",
+      "cached": "zwischengespeichert",
+      "regenerate": "Neu generieren"
+    },
     "welcome": {
       "welcomeTitle": "Willkommen bei Nav29!",
       "settingsSaved": "Profil konfiguriert!",

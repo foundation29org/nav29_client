@@ -812,6 +812,11 @@
                             title="{{'diary.title' | translate}}">
                         <i class="fa fa-calendar"></i>
                     </button>
+                    <button class="collapsed-icon-btn result-icon-infographic" (click)="getPatientInfographic()" 
+                            [disabled]="generatingInfographic"
+                            title="{{'infographic.title' | translate}}">
+                        <i class="fa" [ngClass]="generatingInfographic ? 'fa-spinner fa-spin' : 'fa-image'"></i>
+                    </button>
                 </div>
                 
                 <div class="right-sidebar-content" *ngIf="!rightSidebarCollapsed">
@@ -916,6 +921,25 @@
                             </div>
                             <div class="result-card-arrow">
                                 <i class="fa fa-chevron-right"></i>
+                            </div>
+                        </div>
+                        
+                        <!-- Infografía del Paciente -->
+                        <div class="result-card result-card-infographic" (click)="getPatientInfographic()" [class.disabled]="generatingInfographic">
+                            <div class="result-card-icon">
+                                <i class="fa" [ngClass]="generatingInfographic ? 'fa-spinner fa-spin' : 'fa-image'"></i>
+                            </div>
+                            <div class="result-card-content">
+                                <h6 class="result-card-title">{{'infographic.title' | translate}}</h6>
+                                <p class="result-card-preview" *ngIf="generatingInfographic">
+                                    {{'generics.Loading' | translate}}...
+                                </p>
+                                <p class="result-card-preview" *ngIf="!generatingInfographic">
+                                    {{'infographic.clickToGenerate' | translate}}
+                                </p>
+                            </div>
+                            <div class="result-card-arrow">
+                                <i class="fa" [ngClass]="generatingInfographic ? 'fa-spinner fa-spin' : 'fa-chevron-right'"></i>
                             </div>
                         </div>
                     </div>
@@ -979,6 +1003,11 @@
                             title="{{'diary.title' | translate}}">
                         <i class="fa fa-calendar"></i>
                     </button>
+                    <button class="collapsed-icon-btn result-icon-infographic" (click)="getPatientInfographic()" 
+                            [disabled]="generatingInfographic"
+                            title="{{'infographic.title' | translate}}">
+                        <i class="fa" [ngClass]="generatingInfographic ? 'fa-spinner fa-spin' : 'fa-image'"></i>
+                    </button>
                 </div>
                 
                 <div class="right-sidebar-content" *ngIf="!rightSidebarCollapsed">
@@ -1084,6 +1113,25 @@
                             </div>
                             <div class="result-card-arrow">
                                 <i class="fa fa-chevron-right"></i>
+                            </div>
+                        </div>
+                        
+                        <!-- Infografía del Paciente -->
+                        <div class="result-card result-card-infographic" (click)="getPatientInfographic()" [class.disabled]="generatingInfographic">
+                            <div class="result-card-icon">
+                                <i class="fa" [ngClass]="generatingInfographic ? 'fa-spinner fa-spin' : 'fa-image'"></i>
+                            </div>
+                            <div class="result-card-content">
+                                <h6 class="result-card-title">{{'infographic.title' | translate}}</h6>
+                                <p class="result-card-preview" *ngIf="generatingInfographic">
+                                    {{'generics.Loading' | translate}}...
+                                </p>
+                                <p class="result-card-preview" *ngIf="!generatingInfographic">
+                                    {{'infographic.clickToGenerate' | translate}}
+                                </p>
+                            </div>
+                            <div class="result-card-arrow">
+                                <i class="fa" [ngClass]="generatingInfographic ? 'fa-spinner fa-spin' : 'fa-chevron-right'"></i>
                             </div>
                         </div>
                     </div>
