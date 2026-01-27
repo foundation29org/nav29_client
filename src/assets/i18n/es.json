@@ -1662,7 +1662,9 @@
     "noData": "No hay suficientes datos para generar una infografía",
     "generatedOn": "Generada el",
     "cached": "en caché",
-    "regenerate": "Regenerar"
+    "regenerate": "Regenerar",
+    "inProgress": "La infografía se está generando, por favor espera...",
+    "basicWarning": "Infografía básica - genera el resumen del paciente para obtener una versión más completa"
   },
   "welcome": {
     "welcomeTitle": "¡Bienvenido a Nav29!",

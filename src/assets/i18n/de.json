@@ -1663,7 +1663,9 @@
       "noData": "Nicht genügend Daten für eine Infografik",
       "generatedOn": "Erstellt am",
       "cached": "zwischengespeichert",
-      "regenerate": "Neu generieren"
+      "regenerate": "Neu generieren",
+      "inProgress": "Die Infografik wird erstellt, bitte warten...",
+      "basicWarning": "Basis-Infografik - erstellen Sie die Patientenzusammenfassung für eine vollständigere Version"
     },
     "soap": {
       "title": "SOAP-Notizen",

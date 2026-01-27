@@ -1664,7 +1664,9 @@
       "noData": "Dados insuficientes para gerar um infográfico",
       "generatedOn": "Gerado em",
       "cached": "em cache",
-      "regenerate": "Regenerar"
+      "regenerate": "Regenerar",
+      "inProgress": "O infográfico está sendo gerado, por favor aguarde...",
+      "basicWarning": "Infográfico básico - gere o resumo do paciente para uma versão mais completa"
     },
     "soap": {
       "title": "Notas SOAP",

@@ -1667,7 +1667,9 @@
     "noData": "Not enough data to generate an infographic",
     "generatedOn": "Generated on",
     "cached": "cached",
-    "regenerate": "Regenerate"
+    "regenerate": "Regenerate",
+    "inProgress": "Infographic is being generated, please wait...",
+    "basicWarning": "Basic infographic - generate the patient summary for a more complete version"
   },
   "welcome": {
     "welcomeTitle": "Welcome to Nav29!",

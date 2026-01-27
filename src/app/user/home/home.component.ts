@@ -3900,10 +3900,25 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     });
   }
 
+  private lastInfographicRequestTime = 0;
+  
   getPatientInfographic(regenerate: boolean = false) {
-    if (this.generatingInfographic) return;
+    // Protección contra doble click - verificar si ya está generando
+    if (this.generatingInfographic) {
+      console.log('[Infographic] Already generating, ignoring duplicate request');
+      return;
+    }
+    
+    // Debounce: ignorar peticiones muy cercanas (menos de 2 segundos)
+    const now = Date.now();
+    if (now - this.lastInfographicRequestTime < 2000) {
+      console.log('[Infographic] Request too soon after previous, ignoring (debounce)');
+      return;
+    }
+    this.lastInfographicRequestTime = now;
     
     this.generatingInfographic = true;
+    console.log('[Infographic] Starting request, regenerate:', regenerate);
     const info = { 
       userId: this.authService.getIdUser(),
       lang: this.preferredResponseLanguage || localStorage.getItem('lang') || 'en',
@@ -3932,9 +3947,18 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
             </p>`;
           }
           
+          // Aviso si es infografía básica (sin resumen completo del paciente)
+          let basicWarning = '';
+          if (res.isBasic) {
+            basicWarning = `<p style="font-size: 0.85rem; color: #856404; background-color: #fff3cd; padding: 8px 12px; border-radius: 4px; margin-bottom: 10px; border: 1px solid #ffeeba;">
+              <i class="fa fa-info-circle" style="margin-right: 6px;"></i>
+              ${this.translate.instant('infographic.basicWarning')}
+            </p>`;
+          }
+          
           Swal.fire({
             title: this.translate.instant('infographic.title'),
-            html: `${dateInfo}
+            html: `${dateInfo}${basicWarning}
                    <img src="${imageSrc}" 
                    style="max-width: 100%; max-height: 65vh; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);" 
                    alt="Patient Infographic"/>`,
@@ -3964,8 +3988,18 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
           this.toastr.error('', res.error || this.translate.instant('infographic.error'));
         }
       }, (err) => {
-        this.generatingInfographic = false;
         console.log('[Infographic] Error:', err);
+        
+        // Si es 429 (Too Many Requests), la generación está en progreso - esperar
+        if (err.status === 429) {
+          console.log('[Infographic] Generation in progress, waiting...');
+          // No resetear generatingInfographic, dejar que la otra petición termine
+          // Mostrar mensaje informativo en lugar de error
+          this.toastr.info('', this.translate.instant('infographic.inProgress') || 'Generation in progress, please wait...');
+          return;
+        }
+        
+        this.generatingInfographic = false;
         this.insightsService.trackException(err);
         this.toastr.error('', this.translate.instant("generics.error try again"));
       }));

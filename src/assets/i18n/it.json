@@ -1661,7 +1661,9 @@
       "noData": "Dati insufficienti per generare un'infografica",
       "generatedOn": "Generata il",
       "cached": "in cache",
-      "regenerate": "Rigenera"
+      "regenerate": "Rigenera",
+      "inProgress": "L'infografica è in fase di generazione, attendere...",
+      "basicWarning": "Infografica di base - genera il riepilogo del paziente per una versione più completa"
     },
     "soap": {
       "title": "Note SOAP",
