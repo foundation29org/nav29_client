@@ -23,6 +23,7 @@ import { jsPDFService } from 'app/shared/services/jsPDF.service'
 import { Clipboard } from "@angular/cdk/clipboard"
 import { jsPDF } from "jspdf";
 import { Chart, registerables, ChartConfiguration } from 'chart.js';
+import 'chartjs-adapter-date-fns';
 Chart.register(...registerables);
 
 import { InsightsService } from 'app/shared/services/azureInsights.service';
@@ -256,6 +257,23 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
   isDragOver = false;
   trackingEvolutionChart: any = null;
   trackingTimeChart: any = null;
+  trackingCombinedChart: any = null;
+  
+  // Filtros para tracking
+  trackingFilters = {
+    groupBy: 'month' as 'day' | 'month' | 'year',
+    dateRange: 'all' as 'all' | '1year' | '6months' | '3months' | '1month' | 'custom',
+    customStartDate: '',
+    customEndDate: '',
+    seizureType: 'all',
+    maxSeizureScale: null as number | null,
+    maxMedicationScale: null as number | null,
+    showMedicationChanges: true,
+    selectedYears: [] as number[]  // Años seleccionados para filtrar
+  };
+  availableSeizureTypes: string[] = [];
+  availableYears: number[] = [];  // Años disponibles para el slicer
+  
   trackingData = {
     patientId: '',
     conditionType: 'epilepsy' as 'epilepsy' | 'diabetes' | 'migraine' | 'custom',
@@ -6078,6 +6096,8 @@ ${this.soapData.result.plan}
                 this.trackingInsights = res.data.insights;
               }
               this.calculateTrackingStats();
+              this.populateSeizureTypes();
+              this.populateAvailableYears();
               if (this.trackingData.entries.length > 0) {
                 this.trackingStep = 4;
                 // Usar setTimeout con retry para esperar a que Angular renderice el DOM
@@ -6236,6 +6256,8 @@ ${this.soapData.result.plan}
                 date: new Date(e.date)
               }));
               this.calculateTrackingStats();
+              this.populateSeizureTypes();
+              this.populateAvailableYears();
               this.trackingStep = 4;
               this.initTrackingChartsWithRetry();
             } else {
@@ -6418,6 +6440,20 @@ ${this.soapData.result.plan}
       return;
     }
     
+    // Verificar y destruir charts existentes en canvas
+    const existingEvolutionChart = Chart.getChart(canvas);
+    if (existingEvolutionChart) {
+      existingEvolutionChart.destroy();
+    }
+    
+    const timeCanvas = document.getElementById('trackingTimeChart') as HTMLCanvasElement;
+    if (timeCanvas) {
+      const existingTimeChart = Chart.getChart(timeCanvas);
+      if (existingTimeChart) {
+        existingTimeChart.destroy();
+      }
+    }
+    
     const entries = this.trackingData.entries;
     if (!entries || entries.length === 0) {
       console.warn('initTrackingCharts: no hay entries');
@@ -6486,7 +6522,6 @@ ${this.soapData.result.plan}
     }
     
     // Gráfico de distribución horaria (solo para epilepsia)
-    const timeCanvas = document.getElementById('trackingTimeChart') as HTMLCanvasElement;
     if (this.trackingData.conditionType === 'epilepsy' && timeCanvas) {
       const hourlyData = new Array(24).fill(0);
       entries.forEach(entry => {
@@ -6528,6 +6563,419 @@ ${this.soapData.result.plan}
         console.error('initTrackingCharts: error creando chart horario', err);
       }
     }
+    
+    // Crear gráfico combinado de crisis vs medicación
+    this.initCombinedChart();
+  }
+
+  // Poblar tipos de crisis disponibles para el filtro
+  populateSeizureTypes() {
+    const types = new Set<string>();
+    this.trackingData.entries.forEach(entry => {
+      if (entry.type) types.add(entry.type);
+    });
+    this.availableSeizureTypes = Array.from(types);
+  }
+
+  // Poblar años disponibles para el slicer
+  populateAvailableYears() {
+    const years = new Set<number>();
+    this.trackingData.entries.forEach(entry => {
+      const year = new Date(entry.date).getFullYear();
+      if (!isNaN(year)) years.add(year);
+    });
+    this.availableYears = Array.from(years).sort((a, b) => a - b);
+    // Por defecto seleccionar todos los años
+    if (this.trackingFilters.selectedYears.length === 0) {
+      this.trackingFilters.selectedYears = [...this.availableYears];
+    }
+  }
+
+  // Toggle selección de año individual
+  toggleYearSelection(year: number) {
+    const idx = this.trackingFilters.selectedYears.indexOf(year);
+    if (idx > -1) {
+      this.trackingFilters.selectedYears.splice(idx, 1);
+    } else {
+      this.trackingFilters.selectedYears.push(year);
+    }
+    this.onTrackingFilterChange();
+  }
+
+  // Seleccionar/deseleccionar todos los años
+  toggleAllYears() {
+    if (this.trackingFilters.selectedYears.length === this.availableYears.length) {
+      this.trackingFilters.selectedYears = [];
+    } else {
+      this.trackingFilters.selectedYears = [...this.availableYears];
+    }
+    this.onTrackingFilterChange();
+  }
+
+  // Verificar si un año está seleccionado
+  isYearSelected(year: number): boolean {
+    return this.trackingFilters.selectedYears.includes(year);
+  }
+
+  // Obtener rango de fechas según filtro
+  getFilteredDateRange(): { startDate: Date; endDate: Date } {
+    const now = new Date();
+    let startDate = new Date(0); // Fecha mínima
+    let endDate = new Date();
+    
+    switch (this.trackingFilters.dateRange) {
+      case '1year':
+        startDate = new Date(now.getFullYear() - 1, now.getMonth(), now.getDate());
+        break;
+      case '6months':
+        startDate = new Date(now.getFullYear(), now.getMonth() - 6, now.getDate());
+        break;
+      case '3months':
+        startDate = new Date(now.getFullYear(), now.getMonth() - 3, now.getDate());
+        break;
+      case '1month':
+        startDate = new Date(now.getFullYear(), now.getMonth() - 1, now.getDate());
+        break;
+      case 'custom':
+        if (this.trackingFilters.customStartDate) {
+          startDate = new Date(this.trackingFilters.customStartDate);
+        }
+        if (this.trackingFilters.customEndDate) {
+          endDate = new Date(this.trackingFilters.customEndDate);
+        }
+        break;
+      case 'all':
+      default:
+        // Usar el rango completo de los datos
+        if (this.trackingData.entries.length > 0) {
+          const dates = this.trackingData.entries.map(e => new Date(e.date).getTime());
+          startDate = new Date(Math.min(...dates));
+          endDate = new Date(Math.max(...dates));
+        }
+        break;
+    }
+    
+    return { startDate, endDate };
+  }
+
+  // Filtrar entries según filtros activos
+  getFilteredEntries(): Array<any> {
+    const { startDate, endDate } = this.getFilteredDateRange();
+    
+    return this.trackingData.entries.filter(entry => {
+      const entryDate = new Date(entry.date);
+      
+      // Filtro por fecha
+      if (entryDate < startDate || entryDate > endDate) return false;
+      
+      // Filtro por años seleccionados
+      if (this.trackingFilters.selectedYears.length > 0 && 
+          this.trackingFilters.selectedYears.length < this.availableYears.length) {
+        const year = entryDate.getFullYear();
+        if (!this.trackingFilters.selectedYears.includes(year)) return false;
+      }
+      
+      // Filtro por tipo de crisis
+      if (this.trackingFilters.seizureType !== 'all' && entry.type !== this.trackingFilters.seizureType) {
+        return false;
+      }
+      
+      return true;
+    });
+  }
+
+  // Actualizar gráficos cuando cambian filtros
+  onTrackingFilterChange() {
+    this.initTrackingCharts();
+  }
+
+  // Manejar cambio de rango de fechas
+  onDateRangeChange() {
+    // Habilitar/deshabilitar campos de fecha personalizada
+    if (this.trackingFilters.dateRange === 'custom') {
+      // Establecer fechas por defecto si no están definidas
+      if (!this.trackingFilters.customStartDate && this.trackingData.entries.length > 0) {
+        const dates = this.trackingData.entries.map(e => new Date(e.date).getTime());
+        const minDate = new Date(Math.min(...dates));
+        this.trackingFilters.customStartDate = minDate.toISOString().split('T')[0];
+        this.trackingFilters.customEndDate = new Date().toISOString().split('T')[0];
+      }
+    }
+    this.onTrackingFilterChange();
+  }
+
+  // Inicializar gráfico combinado de Crisis vs Medicación
+  initCombinedChart() {
+    // Destruir chart existente si lo hay
+    if (this.trackingCombinedChart) {
+      this.trackingCombinedChart.destroy();
+      this.trackingCombinedChart = null;
+    }
+    
+    const canvas = document.getElementById('trackingCombinedChart') as HTMLCanvasElement;
+    if (!canvas) {
+      console.warn('initCombinedChart: canvas no disponible');
+      return;
+    }
+    
+    // También verificar si hay un chart existente en el canvas usando Chart.getChart
+    const existingChart = Chart.getChart(canvas);
+    if (existingChart) {
+      existingChart.destroy();
+    }
+    
+    const entries = this.getFilteredEntries();
+    const medications = this.trackingData.medications || [];
+    const { startDate, endDate } = this.getFilteredDateRange();
+    
+    if (entries.length === 0) {
+      console.warn('initCombinedChart: no hay entries filtradas');
+      return;
+    }
+    
+    // Agrupar crisis según el filtro
+    const groupedData: { [key: string]: number } = {};
+    entries.forEach(entry => {
+      const date = new Date(entry.date);
+      let key: string;
+      
+      switch (this.trackingFilters.groupBy) {
+        case 'day':
+          key = date.toISOString().split('T')[0];
+          break;
+        case 'year':
+          key = `${date.getFullYear()}`;
+          break;
+        case 'month':
+        default:
+          key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+          break;
+      }
+      
+      groupedData[key] = (groupedData[key] || 0) + 1;
+    });
+    
+    const sortedKeys = Object.keys(groupedData).sort();
+    const seizureLabels = sortedKeys;
+    const seizureValues = sortedKeys.map(k => groupedData[k]);
+    
+    // Convertir labels a fechas para el eje X
+    const seizureDataPoints = sortedKeys.map((k, idx) => {
+      let date: Date;
+      if (this.trackingFilters.groupBy === 'day') {
+        date = new Date(k);
+      } else if (this.trackingFilters.groupBy === 'year') {
+        date = new Date(parseInt(k), 0, 1);
+      } else {
+        const [year, month] = k.split('-');
+        date = new Date(parseInt(year), parseInt(month) - 1, 1);
+      }
+      return { x: date, y: seizureValues[idx] };
+    });
+    
+    // Preparar datasets de medicación
+    const medDatasets: any[] = [];
+    const medChanges: Array<{ date: Date; medication: string; dose: number; type: string }> = [];
+    const colors = ['#4caf50', '#ffc107', '#2196f3', '#9c27b0', '#00bcd4', '#ff5722', '#795548'];
+    
+    // Agrupar medicamentos por nombre
+    const medGroups: { [key: string]: any[] } = {};
+    medications.forEach(med => {
+      const medStartDate = new Date(med.startDate);
+      const medEndDate = med.endDate ? new Date(med.endDate) : new Date();
+      
+      // Filtrar por rango de fechas
+      if (this.trackingFilters.dateRange !== 'all') {
+        if (medEndDate < startDate || medStartDate > endDate) return;
+      }
+      
+      // Filtrar por años seleccionados
+      if (this.trackingFilters.selectedYears.length > 0 && 
+          this.trackingFilters.selectedYears.length < this.availableYears.length) {
+        const medStartYear = medStartDate.getFullYear();
+        const medEndYear = medEndDate.getFullYear();
+        // Incluir si el medicamento cubre alguno de los años seleccionados
+        const overlapsSelectedYears = this.trackingFilters.selectedYears.some(
+          year => year >= medStartYear && year <= medEndYear
+        );
+        if (!overlapsSelectedYears) return;
+      }
+      
+      if (!medGroups[med.name]) medGroups[med.name] = [];
+      medGroups[med.name].push({
+        ...med,
+        startDate: medStartDate,
+        endDate: medEndDate,
+        dailyDose: this.parseDose(med.dose)
+      });
+    });
+    
+    let colorIdx = 0;
+    Object.keys(medGroups).forEach(medName => {
+      const meds = medGroups[medName].sort((a: any, b: any) => a.startDate - b.startDate);
+      const dataPoints: any[] = [];
+      
+      meds.forEach((med: any, idx: number) => {
+        let visibleStartDate = med.startDate;
+        let visibleEndDate = med.endDate;
+        
+        if (this.trackingFilters.dateRange !== 'all') {
+          if (visibleStartDate < startDate) visibleStartDate = startDate;
+          if (visibleEndDate > endDate) visibleEndDate = endDate;
+        }
+        
+        // Marcar cambios de medicación
+        if (idx === 0 || meds[idx - 1].dailyDose !== med.dailyDose) {
+          medChanges.push({ date: visibleStartDate, medication: medName, dose: med.dailyDose, type: 'change' });
+        }
+        
+        dataPoints.push({ x: visibleStartDate, y: med.dailyDose });
+        dataPoints.push({ x: visibleEndDate, y: med.dailyDose });
+        dataPoints.push({ x: visibleEndDate, y: null }); // Romper línea
+      });
+      
+      medDatasets.push({
+        label: medName,
+        data: dataPoints,
+        borderColor: colors[colorIdx % colors.length],
+        backgroundColor: 'transparent',
+        borderWidth: 3,
+        stepped: true,
+        yAxisID: 'y1',
+        pointRadius: 0,
+        pointHoverRadius: 4
+      });
+      colorIdx++;
+    });
+    
+    // Calcular escalas
+    const maxSeizure = Math.max(...seizureValues);
+    const userMaxSeizure = this.trackingFilters.maxSeizureScale;
+    const maxSeizureScale = userMaxSeizure || Math.ceil(maxSeizure * 1.1);
+    
+    let autoMaxMedScale = 100;
+    medDatasets.forEach(ds => {
+      ds.data.forEach((point: any) => {
+        if (point.y && point.y > autoMaxMedScale) autoMaxMedScale = point.y;
+      });
+    });
+    const maxMedScale = this.trackingFilters.maxMedicationScale || Math.ceil(autoMaxMedScale * 1.1);
+    
+    // Preparar anotaciones para cambios de medicación
+    const annotations: any = {};
+    if (this.trackingFilters.showMedicationChanges) {
+      medChanges.forEach((change, idx) => {
+        annotations[`line${idx}`] = {
+          type: 'line',
+          xMin: change.date,
+          xMax: change.date,
+          borderColor: 'rgba(255, 99, 132, 0.5)',
+          borderWidth: 2,
+          borderDash: [6, 6],
+          label: {
+            display: true,
+            content: `${change.medication}: ${change.dose}mg`,
+            position: 'start',
+            backgroundColor: 'rgba(255, 99, 132, 0.8)',
+            color: 'white',
+            font: { size: 10 }
+          }
+        };
+      });
+    }
+    
+    try {
+      this.trackingCombinedChart = new Chart(canvas, {
+        type: 'line',
+        data: {
+          datasets: [
+            {
+              label: this.translate.instant('tracking.crisisFrequency'),
+              data: seizureDataPoints,
+              borderColor: '#dc3545',
+              backgroundColor: 'rgba(220, 53, 69, 0.1)',
+              borderWidth: 2,
+              fill: true,
+              tension: 0.4,
+              yAxisID: 'y',
+              order: 2
+            },
+            ...medDatasets
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: {
+            mode: 'index',
+            intersect: false,
+          },
+          plugins: {
+            legend: {
+              position: 'top',
+              labels: { usePointStyle: true }
+            },
+            tooltip: {
+              callbacks: {
+                label: (context: any) => {
+                  let label = context.dataset.label || '';
+                  if (label) label += ': ';
+                  if (context.dataset.yAxisID === 'y1') {
+                    label += context.parsed.y + ' mg';
+                  } else {
+                    label += context.parsed.y + ' ' + this.translate.instant('tracking.crisis');
+                  }
+                  return label;
+                }
+              }
+            }
+          },
+          scales: {
+            x: {
+              type: 'time',
+              time: {
+                unit: this.trackingFilters.groupBy === 'day' ? 'day' : (this.trackingFilters.groupBy === 'year' ? 'year' : 'month'),
+                displayFormats: {
+                  day: 'dd/MM',
+                  month: 'MMM yyyy',
+                  year: 'yyyy'
+                }
+              },
+              title: { display: true, text: this.translate.instant('tracking.date') },
+              min: startDate.getTime(),
+              max: this.trackingFilters.dateRange === 'all' ? new Date().getTime() : endDate.getTime()
+            },
+            y: {
+              type: 'linear',
+              display: true,
+              position: 'left',
+              title: { display: true, text: this.translate.instant('tracking.crisisFrequency') },
+              beginAtZero: true,
+              max: maxSeizureScale
+            },
+            y1: {
+              type: 'linear',
+              display: true,
+              position: 'right',
+              title: { display: true, text: this.translate.instant('tracking.medicationDose') },
+              grid: { drawOnChartArea: false },
+              beginAtZero: true,
+              max: maxMedScale
+            }
+          }
+        }
+      });
+      console.log('initCombinedChart: gráfico combinado creado');
+    } catch (err) {
+      console.error('initCombinedChart: error creando gráfico combinado', err);
+    }
+  }
+
+  // Parsear dosis de medicamento (ej: "1200mg" -> 1200)
+  parseDose(doseStr: string): number {
+    if (!doseStr) return 0;
+    const match = doseStr.toString().match(/(\d+)/);
+    return match ? parseInt(match[1]) : 0;
   }
 
   generateTrackingInsights() {

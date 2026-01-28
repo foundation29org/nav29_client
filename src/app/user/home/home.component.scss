@@ -4809,6 +4809,66 @@ display: none !important;
   }
 }
 
+// Filtros del tracking
+.tracking-filters-card {
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 12px;
+  margin-bottom: 1.5rem;
+  
+  .filters-header {
+    display: flex;
+    align-items: center;
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid #e9ecef;
+    background: white;
+    border-radius: 12px 12px 0 0;
+    
+    h6 {
+      font-weight: 600;
+      color: #333;
+    }
+  }
+  
+  .filters-body {
+    padding: 1rem;
+  }
+  
+  .filter-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #6c757d;
+    text-transform: uppercase;
+    margin-bottom: 0.25rem;
+    display: block;
+  }
+  
+  .form-control-sm {
+    font-size: 0.875rem;
+  }
+}
+
+.chart-combined {
+  background: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 12px;
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+  
+  .chart-title {
+    margin: 0 0 1rem 0;
+    font-size: 0.9375rem;
+    font-weight: 600;
+    color: #333;
+    display: flex;
+    align-items: center;
+  }
+  
+  .chart-wrapper {
+    position: relative;
+  }
+}
+
 .tracking-stats {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));

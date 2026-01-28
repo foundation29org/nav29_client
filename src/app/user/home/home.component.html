@@ -3176,7 +3176,7 @@
 <ng-template #trackingModal let-modal>
     <div class="modal-header tracking-header">
         <div class="d-flex align-items-center">
-            <i class="fa fa-line-chart mr-2" style="font-size: 1.5rem; color: #00897b;"></i>
+            <i class="fa fa-heartbeat mr-2" style="font-size: 1.5rem;"></i>
             <h4 class="modal-title mb-0">{{'tracking.title' | translate}}</h4>
         </div>
         <button type="button" class="close" aria-label="Close" (click)="modal.dismiss('Cross click')">
@@ -3425,15 +3425,143 @@
                     </div>
                 </div>
                 
+                <!-- Filtros y Configuración -->
+                <div class="tracking-filters-card">
+                    <div class="filters-header">
+                        <i class="fa fa-filter text-primary mr-2"></i>
+                        <h6 class="mb-0">{{'tracking.filtersConfig' | translate}}</h6>
+                    </div>
+                    <div class="filters-body">
+                        <div class="row">
+                            <div class="col-md-2 col-sm-6 mb-2">
+                                <label class="filter-label">{{'tracking.groupBy' | translate}}</label>
+                                <select class="form-control form-control-sm" 
+                                        [(ngModel)]="trackingFilters.groupBy" 
+                                        (change)="onTrackingFilterChange()">
+                                    <option value="day">{{'tracking.day' | translate}}</option>
+                                    <option value="month">{{'tracking.month' | translate}}</option>
+                                    <option value="year">{{'tracking.year' | translate}}</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2 col-sm-6 mb-2">
+                                <label class="filter-label">{{'tracking.dateRangeLabel' | translate}}</label>
+                                <select class="form-control form-control-sm" 
+                                        [(ngModel)]="trackingFilters.dateRange" 
+                                        (change)="onDateRangeChange()">
+                                    <option value="all">{{'tracking.allHistory' | translate}}</option>
+                                    <option value="1year">{{'tracking.lastYear' | translate}}</option>
+                                    <option value="6months">{{'tracking.last6Months' | translate}}</option>
+                                    <option value="3months">{{'tracking.last3Months' | translate}}</option>
+                                    <option value="1month">{{'tracking.lastMonth' | translate}}</option>
+                                    <option value="custom">{{'tracking.custom' | translate}}</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2 col-sm-6 mb-2">
+                                <label class="filter-label">{{'tracking.from' | translate}}</label>
+                                <input type="date" class="form-control form-control-sm" 
+                                       [(ngModel)]="trackingFilters.customStartDate"
+                                       [disabled]="trackingFilters.dateRange !== 'custom'"
+                                       (change)="onTrackingFilterChange()">
+                            </div>
+                            <div class="col-md-2 col-sm-6 mb-2">
+                                <label class="filter-label">{{'tracking.to' | translate}}</label>
+                                <input type="date" class="form-control form-control-sm" 
+                                       [(ngModel)]="trackingFilters.customEndDate"
+                                       [disabled]="trackingFilters.dateRange !== 'custom'"
+                                       (change)="onTrackingFilterChange()">
+                            </div>
+                            <div class="col-md-2 col-sm-6 mb-2" *ngIf="trackingData.conditionType === 'epilepsy'">
+                                <label class="filter-label">{{'tracking.crisisType' | translate}}</label>
+                                <select class="form-control form-control-sm" 
+                                        [(ngModel)]="trackingFilters.seizureType" 
+                                        (change)="onTrackingFilterChange()">
+                                    <option value="all">{{'tracking.allTypes' | translate}}</option>
+                                    <option *ngFor="let type of availableSeizureTypes" [value]="type">{{type}}</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2 col-sm-6 mb-2">
+                                <label class="filter-label">{{'tracking.crisisScale' | translate}}</label>
+                                <input type="number" class="form-control form-control-sm" 
+                                       [(ngModel)]="trackingFilters.maxSeizureScale"
+                                       [placeholder]="'Auto'"
+                                       min="1"
+                                       (change)="onTrackingFilterChange()">
+                            </div>
+                        </div>
+                        <div class="row mt-2">
+                            <div class="col-md-2 col-sm-6 mb-2">
+                                <label class="filter-label">{{'tracking.medScale' | translate}}</label>
+                                <input type="number" class="form-control form-control-sm" 
+                                       [(ngModel)]="trackingFilters.maxMedicationScale"
+                                       [placeholder]="'Auto'"
+                                       min="1"
+                                       (change)="onTrackingFilterChange()">
+                            </div>
+                            <div class="col-md-10 d-flex align-items-end mb-2">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" 
+                                           id="showMedicationChanges"
+                                           [(ngModel)]="trackingFilters.showMedicationChanges"
+                                           (change)="onTrackingFilterChange()">
+                                    <label class="form-check-label filter-label" for="showMedicationChanges">
+                                        {{'tracking.markMedicationChanges' | translate}}
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Slicer de Años -->
+                        <div class="row mt-2" *ngIf="availableYears.length > 1">
+                            <div class="col-12">
+                                <label class="filter-label mb-2">
+                                    <i class="fa fa-calendar mr-1"></i>{{'tracking.selectYears' | translate}}
+                                    <span class="text-muted ml-2">({{trackingFilters.selectedYears.length}}/{{availableYears.length}})</span>
+                                </label>
+                                <div class="year-slicer d-flex flex-wrap align-items-center">
+                                    <button class="btn btn-sm mr-2 mb-1" 
+                                            [ngClass]="trackingFilters.selectedYears.length === availableYears.length ? 'btn-primary' : 'btn-outline-primary'"
+                                            (click)="toggleAllYears()">
+                                        {{'tracking.allYears' | translate}}
+                                    </button>
+                                    <button *ngFor="let year of availableYears"
+                                            class="btn btn-sm mr-1 mb-1"
+                                            [ngClass]="isYearSelected(year) ? 'btn-secondary' : 'btn-outline-secondary'"
+                                            (click)="toggleYearSelection(year)">
+                                        {{year}}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Gráfico Combinado Crisis vs Medicación -->
+                <div class="chart-container chart-combined" [hidden]="!trackingData.medications || trackingData.medications.length === 0">
+                    <h6 class="chart-title">
+                        <i class="fa fa-layer-group mr-2"></i>{{'tracking.combinedChart' | translate}}
+                    </h6>
+                    <div class="chart-wrapper" style="height: 350px;">
+                        <canvas id="trackingCombinedChart"></canvas>
+                    </div>
+                </div>
+                <!-- Mensaje si no hay medicamentos -->
+                <div class="alert alert-info" *ngIf="!trackingData.medications || trackingData.medications.length === 0">
+                    <i class="fa fa-info-circle mr-2"></i>
+                    {{'tracking.noMedicationsInfo' | translate}}
+                </div>
+                
                 <!-- Charts -->
                 <div class="tracking-charts">
                     <div class="chart-container">
                         <h6 class="chart-title"><i class="fa fa-area-chart mr-2"></i>{{'tracking.evolutionChart' | translate}}</h6>
-                        <canvas id="trackingEvolutionChart"></canvas>
+                        <div class="chart-wrapper" style="height: 250px;">
+                            <canvas id="trackingEvolutionChart"></canvas>
+                        </div>
                     </div>
                     <div class="chart-container" *ngIf="trackingData.conditionType === 'epilepsy'">
                         <h6 class="chart-title"><i class="fa fa-clock-o mr-2"></i>{{'tracking.timeDistribution' | translate}}</h6>
-                        <canvas id="trackingTimeChart"></canvas>
+                        <div class="chart-wrapper" style="height: 250px;">
+                            <canvas id="trackingTimeChart"></canvas>
+                        </div>
                     </div>
                 </div>
                 
