@@ -22,6 +22,8 @@ import { WebPubSubService } from 'app/shared/services/web-pub-sub.service';
 import { jsPDFService } from 'app/shared/services/jsPDF.service'
 import { Clipboard } from "@angular/cdk/clipboard"
 import { jsPDF } from "jspdf";
+import { Chart, registerables, ChartConfiguration } from 'chart.js';
+Chart.register(...registerables);
 
 import { InsightsService } from 'app/shared/services/azureInsights.service';
 import { LangService } from 'app/shared/services/lang.service';
@@ -223,6 +225,9 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
   @ViewChild('timelineModal', { static: false }) timelineModal: TemplateRef<any>;
   @ViewChild('prepareConsultModal', { static: false }) prepareConsultModal: TemplateRef<any>;
   @ViewChild('soapModal', { static: false }) soapModal: TemplateRef<any>;
+  @ViewChild('trackingModal', { static: false }) trackingModal: TemplateRef<any>;
+  @ViewChild('trackingEvolutionChart', { static: false }) trackingEvolutionChartRef: ElementRef;
+  @ViewChild('trackingTimeChart', { static: false }) trackingTimeChartRef: ElementRef;
 
   // Variables para Preparar Consulta
   prepareConsultData = {
@@ -244,6 +249,69 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     suggestedQuestions: [] as Array<{question: string, answer: string}>,
     result: null as {subjective: string, objective: string, assessment: string, plan: string} | null
   };
+  
+  // Variables para Patient Tracking (Clinical)
+  trackingStep = 1;
+  trackingLoading = false;
+  isDragOver = false;
+  trackingEvolutionChart: any = null;
+  trackingTimeChart: any = null;
+  trackingData = {
+    patientId: '',
+    conditionType: 'epilepsy' as 'epilepsy' | 'diabetes' | 'migraine' | 'custom',
+    entries: [] as Array<{
+      date: Date;
+      type: string;
+      duration?: number;
+      severity?: number;
+      triggers?: string[];
+      notes?: string;
+      value?: number;
+      customFields?: Record<string, any>;
+    }>,
+    medications: [] as Array<{
+      name: string;
+      dose: string;
+      startDate: Date;
+      endDate?: Date;
+      sideEffects?: string[];
+    }>,
+    metadata: {
+      source: 'manual' as 'seizuretracker' | 'manual' | 'other',
+      importDate: new Date(),
+      originalFile: ''
+    }
+  };
+  trackingManualEntry = {
+    conditionType: 'epilepsy' as 'epilepsy' | 'diabetes' | 'migraine' | 'custom',
+    date: '',
+    type: '',
+    duration: 0,
+    severity: 0,
+    triggers: [] as string[],
+    notes: '',
+    value: 0
+  };
+  trackingImportPreview: {
+    type: string;
+    entriesCount: number;
+    medicationsCount: number;
+    dateRange: string;
+    rawData: any;
+  } | null = null;
+  trackingStats = {
+    totalEvents: 0,
+    daysSinceLast: 0,
+    monthlyAvg: 0,
+    trend: '' as 'improving' | 'worsening' | '',
+    trendPercent: 0
+  };
+  trackingInsights: Array<{
+    icon: string;
+    title: string;
+    description: string;
+  }> = [];
+  availableTriggers = ['Stress', 'Sleep deprivation', 'Missed medication', 'Alcohol', 'Illness', 'Hormonal', 'Diet', 'Light sensitivity', 'Overheated', 'Other'];
   
   tasksUpload: any[] = [];
   taskAnonimize: any[] = [];
@@ -3960,7 +4028,7 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
             title: this.translate.instant('infographic.title'),
             html: `${dateInfo}${basicWarning}
                    <img src="${imageSrc}" 
-                   style="max-width: 100%; max-height: 65vh; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);" 
+                   style="display: block; margin: 0 auto; max-width: 100%; max-height: 65vh; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);" 
                    alt="Patient Infographic"/>`,
             width: '90%',
             showCloseButton: true,
@@ -5953,6 +6021,569 @@ ${this.soapData.result.plan}
       console.error('Error copying to clipboard:', err);
       this.toastr.error('', this.translate.instant('generics.error try again'));
     });
+  }
+
+  // ========== Patient Tracking Methods (Clinical) ==========
+  
+  openTrackingModal() {
+    // Resetear datos del formulario
+    this.trackingStep = 1;
+    this.trackingLoading = false;
+    this.trackingImportPreview = null;
+    this.trackingManualEntry = {
+      conditionType: 'epilepsy',
+      date: '',
+      type: '',
+      duration: 0,
+      severity: 0,
+      triggers: [],
+      notes: '',
+      value: 0
+    };
+    
+    let ngbModalOptions: NgbModalOptions = {
+      backdrop: 'static',
+      keyboard: false,
+      windowClass: 'ModalClass-xl',
+      size: 'xl'
+    };
+    
+    if (this.modalReference != undefined) {
+      this.modalReference.close();
+    }
+    this.modalReference = this.modalService.open(this.trackingModal, ngbModalOptions);
+    
+    // Cargar datos existentes del paciente
+    this.loadTrackingData();
+  }
+
+  loadTrackingData() {
+    if (!this.currentPatient) return;
+    
+    this.trackingLoading = true;
+    this.subscription.add(
+      this.http.get(environment.api + '/api/tracking/' + this.currentPatient + '/data')
+        .pipe(timeout(30000))
+        .subscribe({
+          next: (res: any) => {
+            this.trackingLoading = false;
+            if (res.success && res.data) {
+              this.trackingData = res.data;
+              this.trackingData.entries = this.trackingData.entries.map(e => ({
+                ...e,
+                date: new Date(e.date)
+              }));
+              // Cargar insights existentes
+              if (res.data.insights && res.data.insights.length > 0) {
+                this.trackingInsights = res.data.insights;
+              }
+              this.calculateTrackingStats();
+              if (this.trackingData.entries.length > 0) {
+                this.trackingStep = 4;
+                // Usar setTimeout con retry para esperar a que Angular renderice el DOM
+                this.initTrackingChartsWithRetry();
+              }
+            }
+          },
+          error: (err) => {
+            this.trackingLoading = false;
+            console.error('Error loading tracking data:', err);
+          }
+        })
+    );
+  }
+
+  onDragOver(event: DragEvent) {
+    event.preventDefault();
+    event.stopPropagation();
+    this.isDragOver = true;
+  }
+
+  onDragLeave(event: DragEvent) {
+    event.preventDefault();
+    event.stopPropagation();
+    this.isDragOver = false;
+  }
+
+  onTrackingFileDrop(event: DragEvent) {
+    event.preventDefault();
+    event.stopPropagation();
+    this.isDragOver = false;
+    
+    const files = event.dataTransfer?.files;
+    if (files && files.length > 0) {
+      this.processTrackingFile(files[0]);
+    }
+  }
+
+  onTrackingFileSelected(event: Event) {
+    const input = event.target as HTMLInputElement;
+    if (input.files && input.files.length > 0) {
+      this.processTrackingFile(input.files[0]);
+    }
+  }
+
+  processTrackingFile(file: File) {
+    if (!file.name.endsWith('.json')) {
+      this.toastr.error('', this.translate.instant('tracking.invalidFileType'));
+      return;
+    }
+    
+    this.trackingLoading = true;
+    const reader = new FileReader();
+    
+    reader.onload = (e) => {
+      try {
+        const content = e.target?.result as string;
+        const jsonData = JSON.parse(content);
+        
+        // Detectar tipo de archivo
+        const detected = this.detectTrackingFileType(jsonData);
+        
+        this.trackingImportPreview = {
+          type: detected.type,
+          entriesCount: detected.entriesCount,
+          medicationsCount: detected.medicationsCount,
+          dateRange: detected.dateRange,
+          rawData: jsonData
+        };
+        
+        this.trackingLoading = false;
+      } catch (err) {
+        this.trackingLoading = false;
+        this.toastr.error('', this.translate.instant('tracking.parseError'));
+        console.error('Error parsing JSON:', err);
+      }
+    };
+    
+    reader.onerror = () => {
+      this.trackingLoading = false;
+      this.toastr.error('', this.translate.instant('tracking.readError'));
+    };
+    
+    reader.readAsText(file);
+  }
+
+  detectTrackingFileType(data: any): { type: string; entriesCount: number; medicationsCount: number; dateRange: string } {
+    // Detectar SeizureTracker
+    if (data.Seizures && Array.isArray(data.Seizures)) {
+      const seizures = data.Seizures;
+      const medications = data.Medications || [];
+      
+      let dateRange = '-';
+      if (seizures.length > 0) {
+        const dates = seizures
+          .map((s: any) => new Date(s.Date_Time))
+          .filter((d: Date) => !isNaN(d.getTime()))
+          .sort((a: Date, b: Date) => a.getTime() - b.getTime());
+        
+        if (dates.length > 0) {
+          const firstDate = dates[0].toLocaleDateString();
+          const lastDate = dates[dates.length - 1].toLocaleDateString();
+          dateRange = `${firstDate} - ${lastDate}`;
+        }
+      }
+      
+      return {
+        type: 'SeizureTracker (Epilepsy)',
+        entriesCount: seizures.length,
+        medicationsCount: medications.length,
+        dateRange
+      };
+    }
+    
+    // Detectar formato genérico con entries
+    if (data.entries && Array.isArray(data.entries)) {
+      return {
+        type: 'Generic JSON',
+        entriesCount: data.entries.length,
+        medicationsCount: data.medications?.length || 0,
+        dateRange: '-'
+      };
+    }
+    
+    // Formato desconocido
+    return {
+      type: 'Unknown Format',
+      entriesCount: 0,
+      medicationsCount: 0,
+      dateRange: '-'
+    };
+  }
+
+  confirmTrackingImport() {
+    if (!this.trackingImportPreview || !this.currentPatient) return;
+    
+    this.trackingLoading = true;
+    
+    const payload = {
+      userId: this.authService.getIdUser(),
+      rawData: this.trackingImportPreview.rawData,
+      detectedType: this.trackingImportPreview.type
+    };
+    
+    this.subscription.add(
+      this.http.post(environment.api + '/api/tracking/' + this.currentPatient + '/import', payload)
+        .pipe(timeout(60000))
+        .subscribe({
+          next: (res: any) => {
+            this.trackingLoading = false;
+            if (res.success) {
+              this.toastr.success('', this.translate.instant('tracking.importSuccess'));
+              this.trackingData = res.data;
+              this.trackingData.entries = this.trackingData.entries.map(e => ({
+                ...e,
+                date: new Date(e.date)
+              }));
+              this.calculateTrackingStats();
+              this.trackingStep = 4;
+              this.initTrackingChartsWithRetry();
+            } else {
+              this.toastr.error('', res.message || this.translate.instant('tracking.importError'));
+            }
+          },
+          error: (err) => {
+            this.trackingLoading = false;
+            this.toastr.error('', this.translate.instant('tracking.importError'));
+            console.error('Error importing tracking data:', err);
+          }
+        })
+    );
+  }
+
+  toggleTrigger(trigger: string) {
+    const index = this.trackingManualEntry.triggers.indexOf(trigger);
+    if (index === -1) {
+      this.trackingManualEntry.triggers.push(trigger);
+    } else {
+      this.trackingManualEntry.triggers.splice(index, 1);
+    }
+  }
+
+  saveManualEntry() {
+    if (!this.trackingManualEntry.date || !this.currentPatient) return;
+    
+    this.trackingLoading = true;
+    
+    const payload = {
+      userId: this.authService.getIdUser(),
+      entry: {
+        ...this.trackingManualEntry,
+        date: new Date(this.trackingManualEntry.date)
+      }
+    };
+    
+    this.subscription.add(
+      this.http.post(environment.api + '/api/tracking/' + this.currentPatient + '/entry', payload)
+        .pipe(timeout(30000))
+        .subscribe({
+          next: (res: any) => {
+            this.trackingLoading = false;
+            if (res.success) {
+              this.toastr.success('', this.translate.instant('tracking.entrySaved'));
+              // Añadir la entrada a los datos locales
+              this.trackingData.entries.unshift({
+                ...payload.entry,
+                date: new Date(payload.entry.date)
+              });
+              this.trackingData.conditionType = this.trackingManualEntry.conditionType;
+              this.calculateTrackingStats();
+              // Resetear formulario
+              this.trackingManualEntry = {
+                conditionType: this.trackingManualEntry.conditionType,
+                date: '',
+                type: '',
+                duration: 0,
+                severity: 0,
+                triggers: [],
+                notes: '',
+                value: 0
+              };
+              this.trackingStep = 4;
+              this.initTrackingChartsWithRetry();
+            } else {
+              this.toastr.error('', res.message || this.translate.instant('tracking.saveError'));
+            }
+          },
+          error: (err) => {
+            this.trackingLoading = false;
+            this.toastr.error('', this.translate.instant('tracking.saveError'));
+            console.error('Error saving entry:', err);
+          }
+        })
+    );
+  }
+
+  calculateTrackingStats() {
+    const entries = this.trackingData.entries;
+    if (entries.length === 0) {
+      this.trackingStats = {
+        totalEvents: 0,
+        daysSinceLast: 0,
+        monthlyAvg: 0,
+        trend: '',
+        trendPercent: 0
+      };
+      return;
+    }
+    
+    // Total eventos
+    this.trackingStats.totalEvents = entries.length;
+    
+    // Días desde el último evento
+    const sortedEntries = [...entries].sort((a, b) => 
+      new Date(b.date).getTime() - new Date(a.date).getTime()
+    );
+    const lastEventDate = new Date(sortedEntries[0].date);
+    const today = new Date();
+    this.trackingStats.daysSinceLast = Math.floor(
+      (today.getTime() - lastEventDate.getTime()) / (1000 * 60 * 60 * 24)
+    );
+    
+    // Promedio mensual
+    if (entries.length > 1) {
+      const firstDate = new Date(sortedEntries[sortedEntries.length - 1].date);
+      const months = Math.max(1, 
+        (today.getTime() - firstDate.getTime()) / (1000 * 60 * 60 * 24 * 30)
+      );
+      this.trackingStats.monthlyAvg = entries.length / months;
+    } else {
+      this.trackingStats.monthlyAvg = entries.length;
+    }
+    
+    // Calcular tendencia (comparar últimos 3 meses vs 3 meses anteriores)
+    const threeMonthsAgo = new Date();
+    threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+    const sixMonthsAgo = new Date();
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+    
+    const recentCount = entries.filter(e => new Date(e.date) >= threeMonthsAgo).length;
+    const previousCount = entries.filter(e => {
+      const date = new Date(e.date);
+      return date >= sixMonthsAgo && date < threeMonthsAgo;
+    }).length;
+    
+    if (previousCount > 0) {
+      const diff = recentCount - previousCount;
+      this.trackingStats.trendPercent = Math.abs(Math.round((diff / previousCount) * 100));
+      this.trackingStats.trend = diff < 0 ? 'improving' : (diff > 0 ? 'worsening' : '');
+    } else {
+      this.trackingStats.trend = '';
+      this.trackingStats.trendPercent = 0;
+    }
+  }
+
+  initTrackingChartsWithRetry(attempt = 0, maxAttempts = 10) {
+    // Pequeño delay para que el modal renderice el DOM
+    setTimeout(() => {
+      // Buscar canvas por ID (ViewChild no funciona dentro de ng-template/modal)
+      const canvas = document.getElementById('trackingEvolutionChart') as HTMLCanvasElement;
+      if (canvas) {
+        console.log('initTrackingChartsWithRetry: canvas encontrado');
+        this.initTrackingCharts();
+        
+        // Forzar resize después de crear las gráficas
+        setTimeout(() => {
+          if (this.trackingEvolutionChart) {
+            this.trackingEvolutionChart.resize();
+          }
+          if (this.trackingTimeChart) {
+            this.trackingTimeChart.resize();
+          }
+        }, 100);
+      } else if (attempt < maxAttempts) {
+        console.log('initTrackingChartsWithRetry: intento', attempt, '- canvas no disponible');
+        this.initTrackingChartsWithRetry(attempt + 1, maxAttempts);
+      } else {
+        console.warn('No se pudo inicializar gráficos de tracking: canvas no disponible');
+      }
+    }, 200);
+  }
+
+  initTrackingCharts() {
+    // Destruir gráficos existentes
+    if (this.trackingEvolutionChart) {
+      this.trackingEvolutionChart.destroy();
+      this.trackingEvolutionChart = null;
+    }
+    if (this.trackingTimeChart) {
+      this.trackingTimeChart.destroy();
+      this.trackingTimeChart = null;
+    }
+    
+    // Buscar canvas por ID (ViewChild no funciona dentro de ng-template/modal)
+    const canvas = document.getElementById('trackingEvolutionChart') as HTMLCanvasElement;
+    if (!canvas) {
+      console.warn('initTrackingCharts: canvas no disponible');
+      return;
+    }
+    
+    const entries = this.trackingData.entries;
+    if (!entries || entries.length === 0) {
+      console.warn('initTrackingCharts: no hay entries');
+      return;
+    }
+    
+    // Agrupar por mes
+    const monthlyData: { [key: string]: number } = {};
+    entries.forEach(entry => {
+      const date = new Date(entry.date);
+      const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      monthlyData[key] = (monthlyData[key] || 0) + 1;
+    });
+    
+    const sortedMonths = Object.keys(monthlyData).sort();
+    const labels = sortedMonths.map(m => {
+      const [year, month] = m.split('-');
+      return new Date(parseInt(year), parseInt(month) - 1).toLocaleDateString('default', { month: 'short', year: '2-digit' });
+    });
+    const data = sortedMonths.map(m => monthlyData[m]);
+    
+    console.log('initTrackingCharts: creando chart con', { labels, data, entries: entries.length });
+    
+    // Gráfico de evolución - Chart.js v4
+    try {
+      this.trackingEvolutionChart = new Chart(canvas, {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: this.translate.instant('tracking.events'),
+            data: data,
+            borderColor: '#00897b',
+            backgroundColor: 'rgba(0, 137, 123, 0.1)',
+            fill: true,
+            tension: 0.3,
+            pointRadius: 4,
+            pointBackgroundColor: '#00897b'
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false }
+          },
+          scales: {
+            y: { 
+              beginAtZero: true,
+              ticks: {
+                stepSize: 1
+              }
+            },
+            x: {
+              ticks: {
+                autoSkip: true,
+                maxTicksLimit: 12
+              }
+            }
+          }
+        }
+      });
+      console.log('initTrackingCharts: chart de evolución creado', this.trackingEvolutionChart);
+    } catch (err) {
+      console.error('initTrackingCharts: error creando chart de evolución', err);
+    }
+    
+    // Gráfico de distribución horaria (solo para epilepsia)
+    const timeCanvas = document.getElementById('trackingTimeChart') as HTMLCanvasElement;
+    if (this.trackingData.conditionType === 'epilepsy' && timeCanvas) {
+      const hourlyData = new Array(24).fill(0);
+      entries.forEach(entry => {
+        const hour = new Date(entry.date).getHours();
+        hourlyData[hour]++;
+      });
+      
+      try {
+        this.trackingTimeChart = new Chart(timeCanvas, {
+          type: 'bar',
+          data: {
+            labels: Array.from({ length: 24 }, (_, i) => `${i}:00`),
+            datasets: [{
+              label: this.translate.instant('tracking.events'),
+              data: hourlyData,
+              backgroundColor: 'rgba(156, 39, 176, 0.6)',
+              borderColor: '#9c27b0',
+              borderWidth: 1
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: { display: false }
+            },
+            scales: {
+              y: { 
+                beginAtZero: true,
+                ticks: {
+                  stepSize: 1
+                }
+              }
+            }
+          }
+        });
+        console.log('initTrackingCharts: chart horario creado');
+      } catch (err) {
+        console.error('initTrackingCharts: error creando chart horario', err);
+      }
+    }
+  }
+
+  generateTrackingInsights() {
+    if (!this.currentPatient || this.trackingData.entries.length === 0) return;
+    
+    this.trackingLoading = true;
+    
+    const payload = {
+      userId: this.authService.getIdUser(),
+      lang: localStorage.getItem('lang') || 'en'
+    };
+    
+    this.subscription.add(
+      this.http.post(environment.api + '/api/tracking/' + this.currentPatient + '/insights', payload)
+        .pipe(timeout(60000))
+        .subscribe({
+          next: (res: any) => {
+            this.trackingLoading = false;
+            if (res.success && res.insights) {
+              this.trackingInsights = res.insights;
+              this.toastr.success('', this.translate.instant('tracking.insightsGenerated'));
+            }
+          },
+          error: (err) => {
+            this.trackingLoading = false;
+            this.toastr.error('', this.translate.instant('tracking.insightsError'));
+            console.error('Error generating insights:', err);
+          }
+        })
+    );
+  }
+
+  exportTrackingData() {
+    const dataStr = JSON.stringify(this.trackingData, null, 2);
+    const blob = new Blob([dataStr], { type: 'application/json' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `tracking_${this.trackingData.conditionType}_${new Date().toISOString().split('T')[0]}.json`;
+    a.click();
+    window.URL.revokeObjectURL(url);
+    this.toastr.success('', this.translate.instant('tracking.exported'));
+  }
+
+  getConditionIcon(condition: string): string {
+    const icons: { [key: string]: string } = {
+      epilepsy: 'fa fa-brain',
+      diabetes: 'fa fa-tint',
+      migraine: 'fa fa-head-side-virus',
+      custom: 'fa fa-heartbeat'
+    };
+    return icons[condition] || 'fa fa-heartbeat';
+  }
+
+  getConditionLabel(condition: string): string {
+    return this.translate.instant('tracking.conditions.' + condition);
   }
 
   getNotes() {

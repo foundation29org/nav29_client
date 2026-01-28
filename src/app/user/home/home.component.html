@@ -865,6 +865,14 @@
                                 <i class="fa fa-medkit tool-icon"></i>
                                 <span class="tool-name">{{'soap.button' | translate}}</span>
                             </button>
+                            
+                            <!-- Patient Tracking (para Clinical) -->
+                            <button class="tool-card tool-card-teal"
+                                    (click)="openTrackingModal()" 
+                                    title="{{'tracking.title' | translate}}">
+                                <i class="fa fa-heartbeat tool-icon"></i>
+                                <span class="tool-name">{{'tracking.button' | translate}}</span>
+                            </button>
                         </div>
                         
                         <!-- Enlace a Ideas y sugerencias -->
@@ -1064,6 +1072,14 @@
                                     title="{{'soap.title' | translate}}">
                                 <i class="fa fa-medkit tool-icon"></i>
                                 <span class="tool-name">{{'soap.button' | translate}}</span>
+                            </button>
+                            
+                            <!-- Patient Tracking (para Clinical) -->
+                            <button class="tool-card tool-card-teal"
+                                    (click)="openTrackingModal()" 
+                                    title="{{'tracking.title' | translate}}">
+                                <i class="fa fa-heartbeat tool-icon"></i>
+                                <span class="tool-name">{{'tracking.button' | translate}}</span>
                             </button>
                         </div>
                         
@@ -3152,6 +3168,356 @@
                 (click)="copySoapReport()">
             <i class="fa fa-copy mr-2"></i>
             {{'soap.copyReport' | translate}}
+        </button>
+    </div>
+</ng-template>
+
+<!-- Modal de Seguimiento de Paciente (Tracking) -->
+<ng-template #trackingModal let-modal>
+    <div class="modal-header tracking-header">
+        <div class="d-flex align-items-center">
+            <i class="fa fa-line-chart mr-2" style="font-size: 1.5rem; color: #00897b;"></i>
+            <h4 class="modal-title mb-0">{{'tracking.title' | translate}}</h4>
+        </div>
+        <button type="button" class="close" aria-label="Close" (click)="modal.dismiss('Cross click')">
+            <span aria-hidden="true">&times;</span>
+        </button>
+    </div>
+    <div class="modal-body tracking-body">
+        <div class="tracking-content">
+            <!-- Paso 1: Selección de acción -->
+            <div class="tracking-step" *ngIf="trackingStep === 1">
+                <h5 class="tracking-step-title">
+                    <span class="step-number">1</span>
+                    {{'tracking.step1Title' | translate}}
+                </h5>
+                <p class="tracking-description">{{'tracking.step1Description' | translate}}</p>
+                
+                <div class="tracking-options">
+                    <div class="tracking-option-card" (click)="trackingStep = 2">
+                        <div class="option-icon">
+                            <i class="fa fa-upload"></i>
+                        </div>
+                        <div class="option-content">
+                            <h6>{{'tracking.importData' | translate}}</h6>
+                            <p>{{'tracking.importDataDesc' | translate}}</p>
+                        </div>
+                        <i class="fa fa-chevron-right option-arrow"></i>
+                    </div>
+                    
+                    <div class="tracking-option-card" (click)="trackingStep = 3">
+                        <div class="option-icon manual">
+                            <i class="fa fa-plus-circle"></i>
+                        </div>
+                        <div class="option-content">
+                            <h6>{{'tracking.manualEntry' | translate}}</h6>
+                            <p>{{'tracking.manualEntryDesc' | translate}}</p>
+                        </div>
+                        <i class="fa fa-chevron-right option-arrow"></i>
+                    </div>
+                    
+                    <div class="tracking-option-card" (click)="loadTrackingData()" 
+                         *ngIf="trackingData.entries.length > 0">
+                        <div class="option-icon view">
+                            <i class="fa fa-bar-chart"></i>
+                        </div>
+                        <div class="option-content">
+                            <h6>{{'tracking.viewData' | translate}}</h6>
+                            <p>{{'tracking.viewDataDesc' | translate}} ({{trackingData.entries.length}} {{'tracking.entries' | translate}})</p>
+                        </div>
+                        <i class="fa fa-chevron-right option-arrow"></i>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Paso 2: Importar JSON -->
+            <div class="tracking-step" *ngIf="trackingStep === 2">
+                <h5 class="tracking-step-title">
+                    <span class="step-number">2</span>
+                    {{'tracking.step2Title' | translate}}
+                </h5>
+                <p class="tracking-description">{{'tracking.step2Description' | translate}}</p>
+                
+                <div class="tracking-dropzone" 
+                     (drop)="onTrackingFileDrop($event)" 
+                     (dragover)="onDragOver($event)"
+                     (dragleave)="onDragLeave($event)"
+                     [class.dragover]="isDragOver"
+                     (click)="trackingFileInput.click()">
+                    <input type="file" 
+                           #trackingFileInput 
+                           accept=".json" 
+                           (change)="onTrackingFileSelected($event)" 
+                           style="display: none;">
+                    <i class="fa fa-cloud-upload dropzone-icon"></i>
+                    <p class="dropzone-text">{{'tracking.dropzoneText' | translate}}</p>
+                    <p class="dropzone-hint">{{'tracking.dropzoneHint' | translate}}</p>
+                </div>
+                
+                <div class="supported-formats">
+                    <p class="formats-title">{{'tracking.supportedFormats' | translate}}:</p>
+                    <div class="format-badges">
+                        <span class="format-badge"><i class="fa fa-brain mr-1"></i>SeizureTracker</span>
+                        <span class="format-badge"><i class="fa fa-tint mr-1"></i>Diabetes Apps</span>
+                        <span class="format-badge"><i class="fa fa-file-text-o mr-1"></i>Generic JSON</span>
+                    </div>
+                </div>
+                
+                <div class="tracking-loading" *ngIf="trackingLoading">
+                    <i class="fa fa-spinner fa-spin mr-2"></i>
+                    {{'tracking.processingFile' | translate}}
+                </div>
+                
+                <div class="import-preview" *ngIf="trackingImportPreview">
+                    <div class="preview-header">
+                        <i class="fa fa-check-circle text-success mr-2"></i>
+                        <span>{{'tracking.fileDetected' | translate}}: <strong>{{trackingImportPreview.type}}</strong></span>
+                    </div>
+                    <div class="preview-stats">
+                        <div class="preview-stat">
+                            <span class="stat-value">{{trackingImportPreview.entriesCount}}</span>
+                            <span class="stat-label">{{'tracking.entries' | translate}}</span>
+                        </div>
+                        <div class="preview-stat" *ngIf="trackingImportPreview.medicationsCount">
+                            <span class="stat-value">{{trackingImportPreview.medicationsCount}}</span>
+                            <span class="stat-label">{{'tracking.medications' | translate}}</span>
+                        </div>
+                        <div class="preview-stat">
+                            <span class="stat-value">{{trackingImportPreview.dateRange}}</span>
+                            <span class="stat-label">{{'tracking.dateRange' | translate}}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Paso 3: Entrada manual -->
+            <div class="tracking-step" *ngIf="trackingStep === 3">
+                <h5 class="tracking-step-title">
+                    <span class="step-number">+</span>
+                    {{'tracking.step3Title' | translate}}
+                </h5>
+                <p class="tracking-description">{{'tracking.step3Description' | translate}}</p>
+                
+                <div class="manual-entry-form">
+                    <div class="form-row">
+                        <div class="form-group col-md-6">
+                            <label>{{'tracking.conditionType' | translate}}</label>
+                            <select class="form-control" [(ngModel)]="trackingManualEntry.conditionType">
+                                <option value="epilepsy">{{'tracking.conditions.epilepsy' | translate}}</option>
+                                <option value="diabetes">{{'tracking.conditions.diabetes' | translate}}</option>
+                                <option value="migraine">{{'tracking.conditions.migraine' | translate}}</option>
+                                <option value="custom">{{'tracking.conditions.custom' | translate}}</option>
+                            </select>
+                        </div>
+                        <div class="form-group col-md-6">
+                            <label>{{'tracking.eventDate' | translate}}</label>
+                            <input type="datetime-local" class="form-control" [(ngModel)]="trackingManualEntry.date">
+                        </div>
+                    </div>
+                    
+                    <!-- Campos para Epilepsia -->
+                    <div *ngIf="trackingManualEntry.conditionType === 'epilepsy'">
+                        <div class="form-row">
+                            <div class="form-group col-md-6">
+                                <label>{{'tracking.seizureType' | translate}}</label>
+                                <select class="form-control" [(ngModel)]="trackingManualEntry.type">
+                                    <option value="Tonic Clonic">Tonic Clonic</option>
+                                    <option value="Absence">Absence</option>
+                                    <option value="Focal">Focal</option>
+                                    <option value="Myoclonic">Myoclonic</option>
+                                    <option value="Atonic">Atonic</option>
+                                    <option value="Unknown">{{'tracking.unknown' | translate}}</option>
+                                </select>
+                            </div>
+                            <div class="form-group col-md-6">
+                                <label>{{'tracking.duration' | translate}} ({{'tracking.seconds' | translate}})</label>
+                                <input type="number" class="form-control" [(ngModel)]="trackingManualEntry.duration" min="0">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>{{'tracking.triggers' | translate}}</label>
+                            <div class="trigger-checkboxes">
+                                <label class="trigger-checkbox" *ngFor="let trigger of availableTriggers">
+                                    <input type="checkbox" [checked]="trackingManualEntry.triggers.includes(trigger)"
+                                           (change)="toggleTrigger(trigger)">
+                                    {{trigger}}
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Campos para Diabetes -->
+                    <div *ngIf="trackingManualEntry.conditionType === 'diabetes'">
+                        <div class="form-row">
+                            <div class="form-group col-md-6">
+                                <label>{{'tracking.glucoseLevel' | translate}} (mg/dL)</label>
+                                <input type="number" class="form-control" [(ngModel)]="trackingManualEntry.value" min="0">
+                            </div>
+                            <div class="form-group col-md-6">
+                                <label>{{'tracking.measurementType' | translate}}</label>
+                                <select class="form-control" [(ngModel)]="trackingManualEntry.type">
+                                    <option value="Fasting">{{'tracking.fasting' | translate}}</option>
+                                    <option value="Before Meal">{{'tracking.beforeMeal' | translate}}</option>
+                                    <option value="After Meal">{{'tracking.afterMeal' | translate}}</option>
+                                    <option value="Bedtime">{{'tracking.bedtime' | translate}}</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Campos genéricos -->
+                    <div class="form-group">
+                        <label>{{'tracking.notes' | translate}}</label>
+                        <textarea class="form-control" [(ngModel)]="trackingManualEntry.notes" rows="3"
+                                  [placeholder]="'tracking.notesPlaceholder' | translate"></textarea>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Paso 4: Dashboard con datos -->
+            <div class="tracking-step tracking-dashboard" [hidden]="trackingStep !== 4">
+                <div class="dashboard-header">
+                    <div class="condition-badge" [ngClass]="'condition-' + trackingData.conditionType">
+                        <i [class]="getConditionIcon(trackingData.conditionType)"></i>
+                        {{getConditionLabel(trackingData.conditionType)}}
+                    </div>
+                    <div class="dashboard-actions">
+                        <button class="btn btn-sm btn-outline-primary" (click)="trackingStep = 3">
+                            <i class="fa fa-plus mr-1"></i>{{'tracking.addEntry' | translate}}
+                        </button>
+                        <button class="btn btn-sm btn-outline-secondary" (click)="exportTrackingData()">
+                            <i class="fa fa-download mr-1"></i>{{'tracking.export' | translate}}
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Stats Cards -->
+                <div class="tracking-stats">
+                    <div class="stat-card">
+                        <div class="stat-icon"><i class="fa fa-bolt"></i></div>
+                        <div class="stat-info">
+                            <span class="stat-value">{{trackingStats.totalEvents}}</span>
+                            <span class="stat-label">{{'tracking.totalEvents' | translate}}</span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon success"><i class="fa fa-calendar-check-o"></i></div>
+                        <div class="stat-info">
+                            <span class="stat-value">{{trackingStats.daysSinceLast}}</span>
+                            <span class="stat-label">{{'tracking.daysSinceLast' | translate}}</span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon warning"><i class="fa fa-chart-line"></i></div>
+                        <div class="stat-info">
+                            <span class="stat-value">{{trackingStats.monthlyAvg | number:'1.1-1'}}</span>
+                            <span class="stat-label">{{'tracking.monthlyAverage' | translate}}</span>
+                        </div>
+                    </div>
+                    <div class="stat-card" *ngIf="trackingStats.trend">
+                        <div class="stat-icon" [ngClass]="trackingStats.trend === 'improving' ? 'success' : 'danger'">
+                            <i [class]="trackingStats.trend === 'improving' ? 'fa fa-arrow-down' : 'fa fa-arrow-up'"></i>
+                        </div>
+                        <div class="stat-info">
+                            <span class="stat-value">{{trackingStats.trendPercent}}%</span>
+                            <span class="stat-label">{{'tracking.trend' | translate}}</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Charts -->
+                <div class="tracking-charts">
+                    <div class="chart-container">
+                        <h6 class="chart-title"><i class="fa fa-area-chart mr-2"></i>{{'tracking.evolutionChart' | translate}}</h6>
+                        <canvas id="trackingEvolutionChart"></canvas>
+                    </div>
+                    <div class="chart-container" *ngIf="trackingData.conditionType === 'epilepsy'">
+                        <h6 class="chart-title"><i class="fa fa-clock-o mr-2"></i>{{'tracking.timeDistribution' | translate}}</h6>
+                        <canvas id="trackingTimeChart"></canvas>
+                    </div>
+                </div>
+                
+                <!-- AI Insights -->
+                <div class="tracking-insights" *ngIf="trackingInsights.length > 0">
+                    <h6 class="insights-title"><i class="fa fa-lightbulb-o mr-2"></i>{{'tracking.aiInsights' | translate}}</h6>
+                    <div class="insight-cards">
+                        <div class="insight-card" *ngFor="let insight of trackingInsights">
+                            <i [class]="'fa ' + insight.icon + ' insight-icon'"></i>
+                            <div class="insight-content">
+                                <strong>{{insight.title}}</strong>
+                                <p>{{insight.description}}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Recent Events Table -->
+                <div class="tracking-events-table">
+                    <h6 class="table-title"><i class="fa fa-list mr-2"></i>{{'tracking.recentEvents' | translate}}</h6>
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>{{'tracking.date' | translate}}</th>
+                                    <th>{{'tracking.type' | translate}}</th>
+                                    <th>{{'tracking.duration' | translate}}</th>
+                                    <th>{{'tracking.triggers' | translate}}</th>
+                                    <th>{{'tracking.notes' | translate}}</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr *ngFor="let entry of trackingData.entries | slice:0:20">
+                                    <td>{{entry.date | date:'short'}}</td>
+                                    <td><span class="type-badge">{{entry.type}}</span></td>
+                                    <td>{{entry.duration ? (entry.duration + 's') : '-'}}</td>
+                                    <td>{{entry.triggers?.join(', ') || '-'}}</td>
+                                    <td class="notes-cell">{{entry.notes || '-'}}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="modal-footer tracking-footer">
+        <button type="button" class="btn btn-outline-secondary" (click)="modal.dismiss('Close click')">
+            {{'generics.Cancel' | translate}}
+        </button>
+        
+        <!-- Botón volver -->
+        <button type="button" *ngIf="trackingStep > 1 && trackingStep !== 4"
+                class="btn btn-outline-primary"
+                (click)="trackingStep = 1">
+            <i class="fa fa-arrow-left mr-2"></i>
+            {{'generics.Back' | translate}}
+        </button>
+        
+        <!-- Botón importar (Paso 2) -->
+        <button type="button" *ngIf="trackingStep === 2 && trackingImportPreview"
+                class="btn btn-primary"
+                (click)="confirmTrackingImport()"
+                [disabled]="trackingLoading">
+            <i class="fa fa-check mr-2"></i>
+            {{'tracking.confirmImport' | translate}}
+        </button>
+        
+        <!-- Botón guardar entrada manual (Paso 3) -->
+        <button type="button" *ngIf="trackingStep === 3"
+                class="btn btn-primary"
+                (click)="saveManualEntry()"
+                [disabled]="!trackingManualEntry.date || trackingLoading">
+            <i class="fa fa-save mr-2"></i>
+            {{'tracking.saveEntry' | translate}}
+        </button>
+        
+        <!-- Botón generar insights (Paso 4) -->
+        <button type="button" *ngIf="trackingStep === 4"
+                class="btn btn-primary"
+                (click)="generateTrackingInsights()"
+                [disabled]="trackingLoading">
+            <i class="fa fa-magic mr-2"></i>
+            {{'tracking.generateInsights' | translate}}
         </button>
     </div>
 </ng-template>

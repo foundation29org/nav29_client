@@ -395,7 +395,10 @@
          "q2": "What strategies can I use to manage my own stress?",
          "q3": "How can I maintain effective and empathetic communication with the patient and other family members?",
          "q4": "What resources are available for emotional support of the caregiver?",
-         "q5": "How can I detect signs of burnout in myself?"
+         "q5": "How can I detect signs of burnout in myself?",
+         "q6": "Quali raccomandazioni puoi darmi per ripristinare l'equilibrio se ho una crisi emotiva?",
+         "q7": "Quali impatti emotivi possono verificarsi negli altri membri della famiglia?",
+         "q8": "Quali raccomandazioni puoi darmi per gestire l'impatto emotivo sugli altri membri della famiglia?"
        },
        "commuhealth": {
          "q1": "Which specialists should I consult if there is still no clear diagnosis of the patient's illness?",
@@ -492,12 +495,12 @@
    "categoriesNursing":{
      "title": "Nursing",
      "list": {
-       "cat1": "Patient Care and Clinical Management",
-       "cat2": "Patient Communication and Education",
-       "cat3": "Care Coordination and Teamwork",
-       "cat4": "Emergency Management and First Aid",
-       "cat5": "Professional Development and Continuing Education",
-       "cat6": "Personal Wellbeing and Stress Management"
+       "cat1": "Cura del Paziente e Gestione Clinica",
+       "cat2": "Comunicazione e Educazione del Paziente",
+       "cat3": "Coordinamento delle Cure e Lavoro di Squadra",
+       "cat4": "Gestione delle Emergenze e Primo Soccorso",
+       "cat5": "Sviluppo Professionale e Formazione Continua",
+       "cat6": "Benessere Personale e Gestione dello Stress"
      },
      "carepat": {
        "q1": "How can I identify and prioritize the care needs of my patients?",
@@ -528,18 +531,18 @@
        "q5": "How can I ensure the safety of the patient and the team during an emergency?"
      },
      "development": {
-       "q1": "What opportunities are there for professional development in my field?",
-       "q2": "How can I stay updated on best practices and advances in nursing?",
-       "q3": "What additional courses or certifications could benefit my career?",
-       "q4": "How can I participate in research and contribute to nursing knowledge?",
-       "q5": "What strategies can I use to balance my work and continuing education?"
+       "q1": "Quali opportunità ci sono per lo sviluppo professionale nel mio campo?",
+       "q2": "Come posso rimanere aggiornato sulle migliori pratiche e sui progressi in infermieristica?",
+       "q3": "Quali corsi o certificazioni aggiuntive potrebbero beneficiare la mia carriera?",
+       "q4": "Come posso partecipare alla ricerca e contribuire alla conoscenza infermieristica?",
+       "q5": "Quali strategie posso usare per bilanciare il mio lavoro e la formazione continua?"
      },
      "wellbeing": {
-       "q1": "How can I manage stress and avoid burnout at work?",
-       "q2": "What self-care techniques are effective for nurses?",
-       "q3": "How can I maintain a healthy balance between work and personal life?",
-       "q4": "What resources are available to support the mental and emotional health of nurses?",
-       "q5": "How can I build a support network among colleagues?"
+       "q1": "Come posso gestire lo stress ed evitare il burnout al lavoro?",
+       "q2": "Quali tecniche di autocura sono efficaci per gli infermieri?",
+       "q3": "Come posso mantenere un sano equilibrio tra lavoro e vita personale?",
+       "q4": "Quali risorse sono disponibili per supportare la salute mentale ed emotiva degli infermieri?",
+       "q5": "Come posso costruire una rete di supporto tra colleghi?"
      }
    },
    "categoriesResearchers":{
@@ -1688,6 +1691,77 @@
       "objective": "Oggettivo",
       "assessment": "Valutazione",
       "plan": "Piano"
+    },
+    "tracking": {
+      "title": "Monitoraggio Paziente",
+      "button": "Monitoraggio",
+      "step1Title": "Cosa vorresti fare?",
+      "step1Description": "Scegli un'opzione per gestire i dati di monitoraggio del paziente.",
+      "step2Title": "Importa Dati",
+      "step2Description": "Carica un file JSON da un'app di monitoraggio compatibile.",
+      "step3Title": "Inserimento Manuale",
+      "step3Description": "Registra un nuovo evento manualmente.",
+      "importData": "Importa Dati",
+      "importDataDesc": "Carica dati da SeizureTracker, app per diabete o altre fonti.",
+      "manualEntry": "Inserimento Manuale",
+      "manualEntryDesc": "Aggiungi un nuovo evento o misurazione manualmente.",
+      "viewData": "Visualizza Storico",
+      "viewDataDesc": "Rivedi dati passati e insights",
+      "entries": "voci",
+      "medications": "farmaci",
+      "dateRange": "Intervallo Date",
+      "dropzoneText": "Trascina il tuo file JSON qui",
+      "dropzoneHint": "o clicca per selezionare un file",
+      "supportedFormats": "Formati supportati",
+      "processingFile": "Elaborazione file...",
+      "fileDetected": "File rilevato",
+      "confirmImport": "Conferma Importazione",
+      "importSuccess": "Dati importati con successo",
+      "importError": "Errore durante l'importazione",
+      "invalidFileType": "Seleziona un file JSON",
+      "parseError": "Errore nell'analisi del file JSON",
+      "readError": "Errore nella lettura del file",
+      "conditionType": "Tipo di Condizione",
+      "conditions": {
+        "epilepsy": "Epilessia",
+        "diabetes": "Diabete",
+        "migraine": "Emicrania",
+        "custom": "Altro"
+      },
+      "eventDate": "Data e Ora Evento",
+      "seizureType": "Tipo di Crisi",
+      "duration": "Durata",
+      "seconds": "secondi",
+      "triggers": "Fattori Scatenanti",
+      "unknown": "Sconosciuto",
+      "glucoseLevel": "Livello di Glucosio",
+      "measurementType": "Tipo di Misurazione",
+      "fasting": "A digiuno",
+      "beforeMeal": "Prima del pasto",
+      "afterMeal": "Dopo il pasto",
+      "bedtime": "Prima di dormire",
+      "notes": "Note",
+      "notesPlaceholder": "Aggiungi note aggiuntive...",
+      "saveEntry": "Salva Voce",
+      "entrySaved": "Voce salvata con successo",
+      "saveError": "Errore nel salvataggio",
+      "addEntry": "Aggiungi Voce",
+      "export": "Esporta",
+      "exported": "Dati esportati con successo",
+      "totalEvents": "Eventi Totali",
+      "daysSinceLast": "Giorni dall'Ultimo",
+      "monthlyAverage": "Media Mensile",
+      "trend": "Tendenza",
+      "evolutionChart": "Evoluzione Eventi",
+      "timeDistribution": "Distribuzione Oraria",
+      "aiInsights": "Analisi IA",
+      "insightsGenerated": "Analisi generate",
+      "insightsError": "Errore nella generazione delle analisi",
+      "generateInsights": "Genera analisi IA",
+      "recentEvents": "Eventi Recenti",
+      "date": "Data",
+      "type": "Tipo",
+      "events": "Eventi"
     },
     "welcome": {
       "welcomeTitle": "Benvenuto in Nav29!",
