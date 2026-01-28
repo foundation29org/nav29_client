@@ -1855,7 +1855,20 @@
     "crisis": "crisis",
     "selectYears": "Seleccionar años",
     "allYears": "Todos",
-    "noMedicationsInfo": "No hay datos de medicación disponibles. Importa un archivo con información de medicamentos para ver el gráfico combinado."
+    "noMedicationsInfo": "No hay datos de medicación disponibles. Importa un archivo con información de medicamentos para ver el gráfico combinado.",
+    "loadingData": "Cargando datos de seguimiento...",
+    "addCondition": "Añadir condición",
+    "manage": "Gestionar",
+    "manageData": "Gestionar datos",
+    "deleteRange": "Eliminar entradas por rango",
+    "deleteSelectedRange": "Eliminar rango seleccionado",
+    "deleteAllData": "Eliminar todos los datos",
+    "confirmDeleteTitle": "¿Estás seguro?",
+    "confirmDeleteCondition": "Se eliminarán todos los datos de seguimiento de esta condición. Esta acción no se puede deshacer.",
+    "confirmDeleteRange": "Se eliminarán todas las entradas en el rango de fechas seleccionado. Esta acción no se puede deshacer.",
+    "dataDeleted": "Datos eliminados correctamente",
+    "entriesDeleted": "Entradas eliminadas correctamente",
+    "selectDateRange": "Por favor selecciona un rango de fechas válido"
   },
   "navigator": {
     "processing": "Procesando...",

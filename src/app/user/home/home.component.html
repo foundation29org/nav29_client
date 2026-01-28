@@ -3185,8 +3185,16 @@
     </div>
     <div class="modal-body tracking-body">
         <div class="tracking-content">
+            <!-- Loading spinner mientras carga datos -->
+            <div class="tracking-loading-overlay" *ngIf="trackingLoading && trackingStep !== 2">
+                <div class="loading-content">
+                    <i class="fa fa-spinner fa-spin fa-3x text-primary"></i>
+                    <p class="mt-3">{{'tracking.loadingData' | translate}}</p>
+                </div>
+            </div>
+            
             <!-- Paso 1: Selección de acción -->
-            <div class="tracking-step" *ngIf="trackingStep === 1">
+            <div class="tracking-step" *ngIf="trackingStep === 1 && !trackingLoading">
                 <h5 class="tracking-step-title">
                     <span class="step-number">1</span>
                     {{'tracking.step1Title' | translate}}
@@ -3376,6 +3384,22 @@
             
             <!-- Paso 4: Dashboard con datos -->
             <div class="tracking-step tracking-dashboard" [hidden]="trackingStep !== 4">
+                <!-- Selector de condiciones (tabs) -->
+                <div class="condition-tabs" *ngIf="allTrackingConditions.length > 0">
+                    <div class="condition-tab" 
+                         *ngFor="let cond of allTrackingConditions"
+                         [class.active]="cond.conditionType === trackingData.conditionType"
+                         (click)="switchCondition(cond.conditionType)">
+                        <i [class]="getConditionIcon(cond.conditionType)"></i>
+                        <span class="condition-name">{{getConditionLabel(cond.conditionType)}}</span>
+                        <span class="condition-count">({{cond.entriesCount}})</span>
+                    </div>
+                    <div class="condition-tab add-condition" (click)="addNewCondition()">
+                        <i class="fa fa-plus"></i>
+                        <span class="condition-name">{{'tracking.addCondition' | translate}}</span>
+                    </div>
+                </div>
+                
                 <div class="dashboard-header">
                     <div class="condition-badge" [ngClass]="'condition-' + trackingData.conditionType">
                         <i [class]="getConditionIcon(trackingData.conditionType)"></i>
@@ -3385,9 +3409,40 @@
                         <button class="btn btn-sm btn-outline-primary" (click)="trackingStep = 3">
                             <i class="fa fa-plus mr-1"></i>{{'tracking.addEntry' | translate}}
                         </button>
+                        <button class="btn btn-sm btn-outline-primary" (click)="trackingStep = 2">
+                            <i class="fa fa-upload mr-1"></i>{{'tracking.importData' | translate}}
+                        </button>
                         <button class="btn btn-sm btn-outline-secondary" (click)="exportTrackingData()">
                             <i class="fa fa-download mr-1"></i>{{'tracking.export' | translate}}
                         </button>
+                        <div class="dropdown d-inline-block" ngbDropdown placement="bottom-right">
+                            <button class="btn btn-sm btn-outline-danger" ngbDropdownToggle>
+                                <i class="fa fa-cog mr-1"></i>{{'tracking.manage' | translate}}
+                            </button>
+                            <div ngbDropdownMenu class="manage-dropdown-menu">
+                                <div class="dropdown-header">{{'tracking.manageData' | translate}}</div>
+                                <div class="dropdown-divider"></div>
+                                <div class="dropdown-item-form px-3 py-2">
+                                    <label class="small text-muted mb-1">{{'tracking.deleteRange' | translate}}</label>
+                                    <div class="d-flex align-items-center mb-2">
+                                        <input type="date" class="form-control form-control-sm" 
+                                               [(ngModel)]="deleteRangeStart">
+                                        <span class="mx-2">-</span>
+                                        <input type="date" class="form-control form-control-sm" 
+                                               [(ngModel)]="deleteRangeEnd">
+                                    </div>
+                                    <button class="btn btn-sm btn-outline-warning btn-block" 
+                                            (click)="deleteEntriesInRange()"
+                                            [disabled]="!deleteRangeStart || !deleteRangeEnd">
+                                        <i class="fa fa-trash-o mr-1"></i>{{'tracking.deleteSelectedRange' | translate}}
+                                    </button>
+                                </div>
+                                <div class="dropdown-divider"></div>
+                                <button ngbDropdownItem class="text-danger" (click)="deleteCurrentCondition()">
+                                    <i class="fa fa-trash mr-2"></i>{{'tracking.deleteAllData' | translate}}
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 

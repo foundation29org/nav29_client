@@ -274,6 +274,17 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
   availableSeizureTypes: string[] = [];
   availableYears: number[] = [];  // Años disponibles para el slicer
   
+  // Soporte para múltiples condiciones
+  allTrackingConditions: Array<{
+    conditionType: string;
+    entriesCount: number;
+    lastUpdated: Date;
+  }> = [];
+  selectedCondition: string = '';  // Condición actualmente seleccionada
+  showManageMenu = false;  // Mostrar menú de gestión
+  deleteRangeStart = '';
+  deleteRangeEnd = '';
+  
   trackingData = {
     patientId: '',
     conditionType: 'epilepsy' as 'epilepsy' | 'diabetes' | 'migraine' | 'custom',
@@ -6045,8 +6056,7 @@ ${this.soapData.result.plan}
   
   openTrackingModal() {
     // Resetear datos del formulario
-    this.trackingStep = 1;
-    this.trackingLoading = false;
+    this.trackingLoading = true; // Mostrar loading mientras carga
     this.trackingImportPreview = null;
     this.trackingManualEntry = {
       conditionType: 'epilepsy',
@@ -6076,17 +6086,35 @@ ${this.soapData.result.plan}
   }
 
   loadTrackingData() {
-    if (!this.currentPatient) return;
+    if (!this.currentPatient) {
+      this.trackingLoading = false;
+      this.trackingStep = 1;
+      return;
+    }
     
     this.trackingLoading = true;
+    
+    // Build URL with optional condition filter
+    let url = environment.api + '/api/tracking/' + this.currentPatient + '/data';
+    if (this.selectedCondition) {
+      url += '?conditionType=' + this.selectedCondition;
+    }
+    
     this.subscription.add(
-      this.http.get(environment.api + '/api/tracking/' + this.currentPatient + '/data')
+      this.http.get(url)
         .pipe(timeout(30000))
         .subscribe({
           next: (res: any) => {
             this.trackingLoading = false;
+            
+            // Store all conditions for the selector
+            if (res.allConditions) {
+              this.allTrackingConditions = res.allConditions;
+            }
+            
             if (res.success && res.data) {
               this.trackingData = res.data;
+              this.selectedCondition = res.data.conditionType;
               this.trackingData.entries = this.trackingData.entries.map(e => ({
                 ...e,
                 date: new Date(e.date)
@@ -6098,15 +6126,23 @@ ${this.soapData.result.plan}
               this.calculateTrackingStats();
               this.populateSeizureTypes();
               this.populateAvailableYears();
+              // Si hay datos, ir directo al dashboard (paso 4)
               if (this.trackingData.entries.length > 0) {
                 this.trackingStep = 4;
                 // Usar setTimeout con retry para esperar a que Angular renderice el DOM
                 this.initTrackingChartsWithRetry();
+              } else {
+                // Sin datos, mostrar menú de opciones
+                this.trackingStep = 1;
               }
+            } else {
+              this.allTrackingConditions = [];
+              this.trackingStep = 1;
             }
           },
           error: (err) => {
             this.trackingLoading = false;
+            this.trackingStep = 1;
             console.error('Error loading tracking data:', err);
           }
         })
@@ -7018,6 +7054,122 @@ ${this.soapData.result.plan}
     a.click();
     window.URL.revokeObjectURL(url);
     this.toastr.success('', this.translate.instant('tracking.exported'));
+  }
+
+  // Cambiar a otra condición
+  switchCondition(conditionType: string) {
+    this.selectedCondition = conditionType;
+    this.loadTrackingData();
+  }
+
+  // Añadir nueva condición
+  addNewCondition() {
+    this.selectedCondition = '';
+    this.trackingStep = 1;
+  }
+
+  // Toggle menú de gestión
+  toggleManageMenu() {
+    this.showManageMenu = !this.showManageMenu;
+  }
+
+  // Eliminar todos los datos de la condición actual
+  deleteCurrentCondition() {
+    Swal.fire({
+      title: this.translate.instant('tracking.confirmDeleteTitle'),
+      text: this.translate.instant('tracking.confirmDeleteCondition'),
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#d33',
+      cancelButtonColor: '#3085d6',
+      confirmButtonText: this.translate.instant('generics.Delete'),
+      cancelButtonText: this.translate.instant('generics.Cancel')
+    }).then((result) => {
+      if (result.isConfirmed) {
+        this.trackingLoading = true;
+        const url = environment.api + '/api/tracking/' + this.currentPatient + 
+                    '?conditionType=' + this.trackingData.conditionType;
+        
+        this.subscription.add(
+          this.http.delete(url)
+            .pipe(timeout(30000))
+            .subscribe({
+              next: (res: any) => {
+                this.trackingLoading = false;
+                if (res.success) {
+                  this.toastr.success('', this.translate.instant('tracking.dataDeleted'));
+                  this.showManageMenu = false;
+                  this.selectedCondition = '';
+                  this.loadTrackingData();
+                }
+              },
+              error: (err) => {
+                this.trackingLoading = false;
+                this.toastr.error('', this.translate.instant('generics.error try again'));
+                console.error('Error deleting tracking data:', err);
+              }
+            })
+        );
+      }
+    });
+  }
+
+  // Eliminar entradas en un rango de fechas
+  deleteEntriesInRange() {
+    if (!this.deleteRangeStart || !this.deleteRangeEnd) {
+      this.toastr.warning('', this.translate.instant('tracking.selectDateRange'));
+      return;
+    }
+
+    Swal.fire({
+      title: this.translate.instant('tracking.confirmDeleteTitle'),
+      text: this.translate.instant('tracking.confirmDeleteRange'),
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#d33',
+      cancelButtonColor: '#3085d6',
+      confirmButtonText: this.translate.instant('generics.Delete'),
+      cancelButtonText: this.translate.instant('generics.Cancel')
+    }).then((result) => {
+      if (result.isConfirmed) {
+        this.trackingLoading = true;
+        const payload = {
+          conditionType: this.trackingData.conditionType,
+          startDate: this.deleteRangeStart,
+          endDate: this.deleteRangeEnd
+        };
+        
+        this.subscription.add(
+          this.http.post(environment.api + '/api/tracking/' + this.currentPatient + '/delete-range', payload)
+            .pipe(timeout(30000))
+            .subscribe({
+              next: (res: any) => {
+                this.trackingLoading = false;
+                if (res.success) {
+                  this.toastr.success('', this.translate.instant('tracking.entriesDeleted'));
+                  this.trackingData = res.data;
+                  this.trackingData.entries = this.trackingData.entries.map(e => ({
+                    ...e,
+                    date: new Date(e.date)
+                  }));
+                  this.calculateTrackingStats();
+                  this.populateSeizureTypes();
+                  this.populateAvailableYears();
+                  this.initTrackingChartsWithRetry();
+                  this.deleteRangeStart = '';
+                  this.deleteRangeEnd = '';
+                  this.showManageMenu = false;
+                }
+              },
+              error: (err) => {
+                this.trackingLoading = false;
+                this.toastr.error('', this.translate.instant('generics.error try again'));
+                console.error('Error deleting entries:', err);
+              }
+            })
+        );
+      }
+    });
   }
 
   getConditionIcon(condition: string): string {

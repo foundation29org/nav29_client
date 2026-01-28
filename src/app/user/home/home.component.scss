@@ -4767,11 +4767,90 @@ display: none !important;
 }
 
 .tracking-dashboard {
+  // Tabs para múltiples condiciones
+  .condition-tabs {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 2px solid #e9ecef;
+    flex-wrap: wrap;
+    
+    .condition-tab {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.5rem 1rem;
+      border-radius: 20px;
+      cursor: pointer;
+      background: #f8f9fa;
+      border: 1px solid #dee2e6;
+      transition: all 0.2s ease;
+      font-size: 0.9rem;
+      
+      &:hover {
+        background: #e9ecef;
+      }
+      
+      &.active {
+        background: #00897b;
+        color: white;
+        border-color: #00897b;
+      }
+      
+      &.add-condition {
+        background: transparent;
+        border-style: dashed;
+        color: #6c757d;
+        
+        &:hover {
+          background: #f8f9fa;
+          border-color: #00897b;
+          color: #00897b;
+        }
+      }
+      
+      .condition-name {
+        font-weight: 500;
+      }
+      
+      .condition-count {
+        font-size: 0.8rem;
+        opacity: 0.8;
+      }
+    }
+  }
+  
+  // Loading overlay
+  .tracking-loading-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(255, 255, 255, 0.9);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+    
+    .loading-content {
+      text-align: center;
+      
+      p {
+        color: #6c757d;
+        font-size: 0.95rem;
+      }
+    }
+  }
+  
   .dashboard-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
     margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+    gap: 1rem;
   }
   
   .condition-badge {
@@ -4806,6 +4885,43 @@ display: none !important;
   .dashboard-actions {
     display: flex;
     gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+}
+
+// Dropdown de gestión (fuera del contenedor para evitar overflow issues)
+.manage-dropdown-menu {
+  min-width: 320px !important;
+  padding: 0 !important;
+  border-radius: 8px !important;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.15) !important;
+  
+  .dropdown-header {
+    padding: 0.75rem 1rem;
+    font-weight: 600;
+    color: #333;
+    background: #f8f9fa;
+    border-radius: 8px 8px 0 0;
+  }
+  
+  .dropdown-divider {
+    margin: 0;
+  }
+  
+  .dropdown-item-form {
+    background: white;
+    
+    label {
+      display: block;
+    }
+  }
+  
+  .dropdown-item, button.dropdown-item {
+    padding: 0.75rem 1rem;
+    
+    &.text-danger:hover {
+      background: #fff5f5 !important;
+    }
   }
 }
 
