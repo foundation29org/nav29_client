@@ -560,4 +560,45 @@ export class PatientService {
       );
     }
 
+    // ==================== WHATSAPP METHODS ====================
+
+    getWhatsAppStatus() {
+      return this.http.get(environment.api + '/api/whatsapp/status').pipe(
+        map((res: any) => {
+          return res;
+        }),
+        catchError((err) => {
+          console.log(err);
+          this.insightsService.trackException(err);
+          return err;
+        })
+      );
+    }
+
+    generateWhatsAppCode() {
+      return this.http.post(environment.api + '/api/whatsapp/generate-code', {}).pipe(
+        map((res: any) => {
+          return res;
+        }),
+        catchError((err) => {
+          console.log(err);
+          this.insightsService.trackException(err);
+          throw err;
+        })
+      );
+    }
+
+    unlinkWhatsApp() {
+      return this.http.delete(environment.api + '/api/whatsapp/unlink').pipe(
+        map((res: any) => {
+          return res;
+        }),
+        catchError((err) => {
+          console.log(err);
+          this.insightsService.trackException(err);
+          throw err;
+        })
+      );
+    }
+
 }
