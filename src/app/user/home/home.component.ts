@@ -24,7 +24,8 @@ import { Clipboard } from "@angular/cdk/clipboard"
 import { jsPDF } from "jspdf";
 import { Chart, registerables, ChartConfiguration } from 'chart.js';
 import 'chartjs-adapter-date-fns';
-Chart.register(...registerables);
+import annotationPlugin from 'chartjs-plugin-annotation';
+Chart.register(...registerables, annotationPlugin);
 
 import { InsightsService } from 'app/shared/services/azureInsights.service';
 import { LangService } from 'app/shared/services/lang.service';
@@ -274,20 +275,13 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
   availableSeizureTypes: string[] = [];
   availableYears: number[] = [];  // Años disponibles para el slicer
   
-  // Soporte para múltiples condiciones
-  allTrackingConditions: Array<{
-    conditionType: string;
-    entriesCount: number;
-    lastUpdated: Date;
-  }> = [];
-  selectedCondition: string = '';  // Condición actualmente seleccionada
-  showManageMenu = false;  // Mostrar menú de gestión
+  // Variables para gestión de datos
   deleteRangeStart = '';
   deleteRangeEnd = '';
   
   trackingData = {
     patientId: '',
-    conditionType: 'epilepsy' as 'epilepsy' | 'diabetes' | 'migraine' | 'custom',
+    conditionType: 'epilepsy' as 'epilepsy',  // Solo epilepsia
     entries: [] as Array<{
       date: Date;
       type: string;
@@ -312,14 +306,13 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     }
   };
   trackingManualEntry = {
-    conditionType: 'epilepsy' as 'epilepsy' | 'diabetes' | 'migraine' | 'custom',
+    conditionType: 'epilepsy' as 'epilepsy',  // Solo epilepsia
     date: '',
-    type: '',
+    type: 'Tonic Clonic',  // Tipo por defecto
     duration: 0,
-    severity: 0,
+    severity: 5,  // Severidad por defecto
     triggers: [] as string[],
-    notes: '',
-    value: 0
+    notes: ''
   };
   trackingImportPreview: {
     type: string;
@@ -6061,12 +6054,11 @@ ${this.soapData.result.plan}
     this.trackingManualEntry = {
       conditionType: 'epilepsy',
       date: '',
-      type: '',
+      type: 'Tonic Clonic',
       duration: 0,
-      severity: 0,
+      severity: 5,
       triggers: [],
-      notes: '',
-      value: 0
+      notes: ''
     };
     
     let ngbModalOptions: NgbModalOptions = {
@@ -6095,10 +6087,7 @@ ${this.soapData.result.plan}
     this.trackingLoading = true;
     
     // Build URL with optional condition filter
-    let url = environment.api + '/api/tracking/' + this.currentPatient + '/data';
-    if (this.selectedCondition) {
-      url += '?conditionType=' + this.selectedCondition;
-    }
+    const url = environment.api + '/api/tracking/' + this.currentPatient + '/data';
     
     this.subscription.add(
       this.http.get(url)
@@ -6107,14 +6096,8 @@ ${this.soapData.result.plan}
           next: (res: any) => {
             this.trackingLoading = false;
             
-            // Store all conditions for the selector
-            if (res.allConditions) {
-              this.allTrackingConditions = res.allConditions;
-            }
-            
             if (res.success && res.data) {
               this.trackingData = res.data;
-              this.selectedCondition = res.data.conditionType;
               this.trackingData.entries = this.trackingData.entries.map(e => ({
                 ...e,
                 date: new Date(e.date)
@@ -6136,7 +6119,6 @@ ${this.soapData.result.plan}
                 this.trackingStep = 1;
               }
             } else {
-              this.allTrackingConditions = [];
               this.trackingStep = 1;
             }
           },
@@ -6352,10 +6334,9 @@ ${this.soapData.result.plan}
                 date: '',
                 type: '',
                 duration: 0,
-                severity: 0,
+                severity: 5,
                 triggers: [],
-                notes: '',
-                value: 0
+                notes: ''
               };
               this.trackingStep = 4;
               this.initTrackingChartsWithRetry();
@@ -6694,6 +6675,32 @@ ${this.soapData.result.plan}
     return { startDate, endDate };
   }
 
+  // Calcular fecha mínima para el gráfico considerando años seleccionados
+  getChartMinDate(fallbackDate: Date): Date {
+    // Si hay años seleccionados y no son todos, usar el primer año seleccionado
+    if (this.trackingFilters.selectedYears.length > 0 && 
+        this.trackingFilters.selectedYears.length < this.availableYears.length) {
+      const minYear = Math.min(...this.trackingFilters.selectedYears);
+      return new Date(minYear, 0, 1);
+    }
+    return fallbackDate;
+  }
+
+  // Calcular fecha máxima para el gráfico considerando años seleccionados
+  getChartMaxDate(fallbackDate: Date): Date {
+    // Si hay años seleccionados y no son todos, usar el último año seleccionado
+    if (this.trackingFilters.selectedYears.length > 0 && 
+        this.trackingFilters.selectedYears.length < this.availableYears.length) {
+      const maxYear = Math.max(...this.trackingFilters.selectedYears);
+      return new Date(maxYear, 11, 31);
+    }
+    // Si es todo el historial, usar fecha actual como máximo
+    if (this.trackingFilters.dateRange === 'all') {
+      return new Date();
+    }
+    return fallbackDate;
+  }
+
   // Filtrar entries según filtros activos
   getFilteredEntries(): Array<any> {
     const { startDate, endDate } = this.getFilteredDateRange();
@@ -6964,6 +6971,9 @@ ${this.soapData.result.plan}
                   return label;
                 }
               }
+            },
+            annotation: {
+              annotations: annotations
             }
           },
           scales: {
@@ -6978,8 +6988,8 @@ ${this.soapData.result.plan}
                 }
               },
               title: { display: true, text: this.translate.instant('tracking.date') },
-              min: startDate.getTime(),
-              max: this.trackingFilters.dateRange === 'all' ? new Date().getTime() : endDate.getTime()
+              min: this.getChartMinDate(startDate).getTime(),
+              max: this.getChartMaxDate(endDate).getTime()
             },
             y: {
               type: 'linear',
@@ -7056,28 +7066,11 @@ ${this.soapData.result.plan}
     this.toastr.success('', this.translate.instant('tracking.exported'));
   }
 
-  // Cambiar a otra condición
-  switchCondition(conditionType: string) {
-    this.selectedCondition = conditionType;
-    this.loadTrackingData();
-  }
-
-  // Añadir nueva condición
-  addNewCondition() {
-    this.selectedCondition = '';
-    this.trackingStep = 1;
-  }
-
-  // Toggle menú de gestión
-  toggleManageMenu() {
-    this.showManageMenu = !this.showManageMenu;
-  }
-
-  // Eliminar todos los datos de la condición actual
+  // Eliminar todos los datos de epilepsia
   deleteCurrentCondition() {
     Swal.fire({
-      title: this.translate.instant('tracking.confirmDeleteTitle'),
-      text: this.translate.instant('tracking.confirmDeleteCondition'),
+      title: this.translate.instant('epilepsy.confirmDeleteCondition'),
+      text: this.translate.instant('epilepsy.confirmDeleteCondition'),
       icon: 'warning',
       showCancelButton: true,
       confirmButtonColor: '#d33',
@@ -7087,8 +7080,7 @@ ${this.soapData.result.plan}
     }).then((result) => {
       if (result.isConfirmed) {
         this.trackingLoading = true;
-        const url = environment.api + '/api/tracking/' + this.currentPatient + 
-                    '?conditionType=' + this.trackingData.conditionType;
+        const url = environment.api + '/api/tracking/' + this.currentPatient;
         
         this.subscription.add(
           this.http.delete(url)
@@ -7098,9 +7090,11 @@ ${this.soapData.result.plan}
                 this.trackingLoading = false;
                 if (res.success) {
                   this.toastr.success('', this.translate.instant('tracking.dataDeleted'));
-                  this.showManageMenu = false;
-                  this.selectedCondition = '';
-                  this.loadTrackingData();
+                  // Resetear datos locales
+                  this.trackingData.entries = [];
+                  this.trackingData.medications = [];
+                  this.trackingInsights = [];
+                  this.trackingStep = 1;
                 }
               },
               error: (err) => {
@@ -7158,7 +7152,6 @@ ${this.soapData.result.plan}
                   this.initTrackingChartsWithRetry();
                   this.deleteRangeStart = '';
                   this.deleteRangeEnd = '';
-                  this.showManageMenu = false;
                 }
               },
               error: (err) => {
