@@ -57,6 +57,8 @@ export class UserProfilePageComponent implements OnInit, AfterViewInit, OnDestro
   codeCopied: boolean = false;
   nav29WhatsAppNumber: string = '+34 644 097 457';
   nav29WhatsAppNumberClean: string = '34644097457';
+  private visibilityChangeHandler: () => void;
+  private whatsappPollingInterval: any = null;
 
   constructor(private configService: ConfigService, private cdr: ChangeDetectorRef, private http: HttpClient, private authService: AuthService, public toastr: ToastrService, public translate: TranslateService, private authGuard: AuthGuard, private langService:LangService, private inj: Injector, public authServiceFirebase: AuthServiceFirebase, public insightsService: InsightsService, private patientService: PatientService, private router: Router) {
     this.config = this.configService.templateConf;
@@ -167,6 +169,14 @@ export class UserProfilePageComponent implements OnInit, AfterViewInit, OnDestro
       // Limpiar interval del countdown de WhatsApp
       if (this.countdownInterval) {
         clearInterval(this.countdownInterval);
+      }
+
+      // Limpiar polling de WhatsApp
+      this.stopWhatsAppPolling();
+
+      // Remover listener de visibilidad
+      if (this.visibilityChangeHandler) {
+        document.removeEventListener('visibilitychange', this.visibilityChangeHandler);
       }
 
       this.subscription.unsubscribe();
@@ -391,10 +401,17 @@ export class UserProfilePageComponent implements OnInit, AfterViewInit, OnDestro
       this.subscription.add(
         this.patientService.getWhatsAppStatus().subscribe(
           (res: any) => {
+            const wasNotLinked = !this.whatsappLinked;
             if (res && res.linked) {
               this.whatsappLinked = true;
               this.whatsappPhone = res.phone || '';
               this.whatsappLinkedAt = res.linkedAt ? new Date(res.linkedAt) : null;
+              // Si acabamos de detectar la vinculación, limpiar el código
+              if (wasNotLinked) {
+                this.linkCode = '';
+                this.linkCodeExpires = null;
+                this.stopWhatsAppPolling();
+              }
             } else {
               this.whatsappLinked = false;
               this.whatsappPhone = '';
@@ -408,6 +425,58 @@ export class UserProfilePageComponent implements OnInit, AfterViewInit, OnDestro
           }
         )
       );
+      
+      // Configurar listener para detectar cuando el usuario vuelve a la pestaña
+      if (!this.visibilityChangeHandler) {
+        this.visibilityChangeHandler = () => {
+          if (document.visibilityState === 'visible' && !this.whatsappLinked) {
+            // Usuario volvió a la pestaña y no está vinculado, verificar estado
+            this.checkWhatsAppStatusQuietly();
+          }
+        };
+        document.addEventListener('visibilitychange', this.visibilityChangeHandler);
+      }
+    }
+
+    // Verificar estado sin mostrar errores (para polling silencioso)
+    checkWhatsAppStatusQuietly() {
+      this.patientService.getWhatsAppStatus().subscribe(
+        (res: any) => {
+          if (res && res.linked) {
+            this.whatsappLinked = true;
+            this.whatsappPhone = res.phone || '';
+            this.whatsappLinkedAt = res.linkedAt ? new Date(res.linkedAt) : null;
+            this.linkCode = '';
+            this.linkCodeExpires = null;
+            this.stopWhatsAppPolling();
+            this.cdr.detectChanges();
+          }
+        },
+        (err) => {
+          // Silencioso - no hacer nada en caso de error
+        }
+      );
+    }
+
+    // Iniciar polling mientras hay código activo
+    startWhatsAppPolling() {
+      if (this.whatsappPollingInterval) return;
+      
+      // Verificar cada 5 segundos
+      this.whatsappPollingInterval = setInterval(() => {
+        if (this.whatsappLinked || !this.linkCode) {
+          this.stopWhatsAppPolling();
+          return;
+        }
+        this.checkWhatsAppStatusQuietly();
+      }, 5000);
+    }
+
+    stopWhatsAppPolling() {
+      if (this.whatsappPollingInterval) {
+        clearInterval(this.whatsappPollingInterval);
+        this.whatsappPollingInterval = null;
+      }
     }
 
     generateWhatsAppCode() {
@@ -420,6 +489,8 @@ export class UserProfilePageComponent implements OnInit, AfterViewInit, OnDestro
               this.linkCode = res.code;
               this.linkCodeExpires = new Date(res.expiresAt);
               this.startCountdown();
+              // Iniciar polling para detectar cuando se vincule
+              this.startWhatsAppPolling();
             }
           },
           (err) => {
