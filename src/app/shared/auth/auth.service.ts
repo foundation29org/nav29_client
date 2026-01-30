@@ -370,9 +370,9 @@ export class AuthService implements OnInit, OnDestroy {
       this.isLoadingPatients = false;
       if(res.listpatients && res.listpatients.length>0){
         this.setPatientList(res.listpatients);
-        if(this.getCurrentPatient()== null){
-          this.setCurrentPatient(res.listpatients[0]);
-        }
+        // NO auto-seleccionar aquí - dejar que el navbar decida
+        // considerando tanto pacientes propios como compartidos
+        // para evitar seleccionar automáticamente cuando hay múltiples pacientes
       }else{
         this.setPatientList([]);
       }

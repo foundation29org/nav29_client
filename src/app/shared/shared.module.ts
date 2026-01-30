@@ -11,6 +11,7 @@ import { ClickOutsideModule } from 'ng-click-outside';
 
 import { AutocompleteModule } from './components/autocomplete/autocomplete.module';
 import { VeriffComponent } from './components/veriff/veriff.component';
+import { InactivityWarningComponent } from './components/inactivity-warning/inactivity-warning.component';
 import { PipeModule } from 'app/shared/pipes/pipe.module';
 import {FirstCharacterDotPipe} from 'app/shared/pipes/first-character-dot.pipe';
 import {FirstCharacterHyphenPipe} from 'app/shared/pipes/first-character-hyphen.pipe';
@@ -71,6 +72,7 @@ import { AutoFocusDirective } from './directives/auto-focus.directive';
         FirstCharacterHyphenPipe,
         AutoResizeDirective,
         VeriffComponent,
+        InactivityWarningComponent,
         ShareModalComponent,
         LanguageSelectModalComponent,
         AutoFocusDirective
@@ -115,6 +117,7 @@ import { AutoFocusDirective } from './directives/auto-focus.directive';
         FirstCharacterHyphenPipe,
         AutoResizeDirective,
         VeriffComponent,
+        InactivityWarningComponent,
         ShareModalComponent,
         LanguageSelectModalComponent,
         AutoFocusDirective

@@ -11,7 +11,6 @@ import { LoginPageComponent } from "./login/login-page.component";
 import { RegisterPageComponent } from "./register/register-page.component";
 import { LoginCompPageComponent } from "./logincomp/logincomp-page.component";
 import { TermsConditionsPageComponent } from "./terms-conditions/terms-conditions-page.component";
-import { PrivacyPolicyPageComponent } from "./privacy-policy/privacy-policy.component";
 import { DataProcessingAgreementComponent } from "./data-processing-agreement/data-processing-agreement.component";
 import { SharedModule } from "app/shared/shared.module";
 import { PolicyComponent } from "./policy/policy.component";
@@ -70,7 +69,6 @@ export function createTranslateLoader(http: HttpClient) {
     LoginCompPageComponent,
     TermsConditionsPageComponent,
     DataProcessingAgreementComponent,
-    PrivacyPolicyPageComponent,
     MyFilterPipe,
     PolicyComponent
   ],

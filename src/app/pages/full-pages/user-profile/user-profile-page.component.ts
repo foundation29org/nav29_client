@@ -44,6 +44,22 @@ export class UserProfilePageComponent implements OnInit, AfterViewInit, OnDestro
   isLoginFailed: boolean = false;
   showTryAgain: boolean = false;
 
+  // WhatsApp linking
+  whatsappLinked: boolean = false;
+  whatsappPhone: string = '';
+  whatsappLinkedAt: Date = null;
+  linkCode: string = '';
+  linkCodeExpires: Date = null;
+  countdownInterval: any = null;
+  countdownDisplay: string = '';
+  generatingCode: boolean = false;
+  unlinkingWhatsApp: boolean = false;
+  codeCopied: boolean = false;
+  nav29WhatsAppNumber: string = '+34 644 097 457';
+  nav29WhatsAppNumberClean: string = '34644097457';
+  private visibilityChangeHandler: () => void;
+  private whatsappPollingInterval: any = null;
+
   constructor(private configService: ConfigService, private cdr: ChangeDetectorRef, private http: HttpClient, private authService: AuthService, public toastr: ToastrService, public translate: TranslateService, private authGuard: AuthGuard, private langService:LangService, private inj: Injector, public authServiceFirebase: AuthServiceFirebase, public insightsService: InsightsService, private patientService: PatientService, private router: Router) {
     this.config = this.configService.templateConf;
 
@@ -79,6 +95,8 @@ export class UserProfilePageComponent implements OnInit, AfterViewInit, OnDestro
         this.user = res.user;
         this.userCopy = JSON.parse(JSON.stringify(res.user));
         this.loading = false;
+        // Cargar estado de WhatsApp
+        this.loadWhatsAppStatus();
        }, (err) => {
          console.log(err);
          this.insightsService.trackException(err);
@@ -148,6 +166,19 @@ export class UserProfilePageComponent implements OnInit, AfterViewInit, OnDestro
         this.layoutSub.unsubscribe();
       }
 
+      // Limpiar interval del countdown de WhatsApp
+      if (this.countdownInterval) {
+        clearInterval(this.countdownInterval);
+      }
+
+      // Limpiar polling de WhatsApp
+      this.stopWhatsAppPolling();
+
+      // Remover listener de visibilidad
+      if (this.visibilityChangeHandler) {
+        document.removeEventListener('visibilitychange', this.visibilityChangeHandler);
+      }
+
       this.subscription.unsubscribe();
     }
 
@@ -166,9 +197,6 @@ export class UserProfilePageComponent implements OnInit, AfterViewInit, OnDestro
         this.subscription.add( this.http.put(environment.api+'/api/users/lang/'+this.authService.getIdUser(), data)
         .subscribe( (res : any) => {
 
-          if(this.user.lang != this.userCopy.lang){
-            this.saveMessages();
-          }
           this.user.lang = res.user.lang;
           this.userCopy = JSON.parse(JSON.stringify(res.user));
           this.authService.setLang(this.user.lang);
@@ -176,7 +204,6 @@ export class UserProfilePageComponent implements OnInit, AfterViewInit, OnDestro
           var eventsLang = this.inj.get(EventsService);
           eventsLang.broadcast('changelang', this.authService.getLang());
           this.sending = false;
-          //this.toastr.success('', this.msgDataSavedOk);
           this.showSaveStatus();
          }, (err) => {
            console.log(err);
@@ -193,9 +220,32 @@ export class UserProfilePageComponent implements OnInit, AfterViewInit, OnDestro
 
     onChangePreferredResponseLanguage(newValue) {
       console.log(newValue)
+      const previousLang = this.userCopy.preferredResponseLanguage;
+      const langChanged = previousLang && previousLang !== newValue;
+      
       this.patientService.updatePreferredLang(newValue).subscribe((res3) => {
-        this.showSaveStatus();
+        this.userCopy.preferredResponseLanguage = newValue;
+        
+        if(langChanged){
+          // Mostrar mensaje informativo sobre el cambio de idioma
+          this.showLangChangeInfo();
+        } else {
+          this.showSaveStatus();
+        }
       });
+    }
+
+    showLangChangeInfo(){
+      Swal.fire({
+          icon: 'success',
+          html: this.translate.instant("generics.Data saved successfully") + '<br><br><small>' + this.translate.instant("profile.Language change info") + '</small>',
+          showCancelButton: false,
+          showConfirmButton: false,
+          allowOutsideClick: false
+      })
+      setTimeout(function () {
+          Swal.close();
+      }, 3000);
     }
 
     onRoleChange(role: string) {
@@ -239,16 +289,6 @@ export class UserProfilePageComponent implements OnInit, AfterViewInit, OnDestro
       }, 2000);
     }
 
-    saveMessages(){
-      var info = { 'messages': [] };
-      console.log(this.authService.getCurrentPatient())
-      this.subscription.add(this.http.post(environment.api + '/api/messages/' + this.authService.getIdUser() + '/' + this.authService.getCurrentPatient().sub, info)
-        .subscribe((res: any) => {
-        }, (err) => {
-          console.log(err);
-          this.insightsService.trackException(err);
-        }));
-    }
 
     deleteAccount(){
       this.showPanelDelete = true;
@@ -346,12 +386,207 @@ export class UserProfilePageComponent implements OnInit, AfterViewInit, OnDestro
     }
 
     goBack(){
-      if(this.user.role == 'Clinical'){
-        this.router.navigate(['/patients']);
-      }else{
+      // Si hay un paciente seleccionado, ir a home
+      // Si no hay paciente seleccionado, ir a la lista de pacientes (seguro para cualquier rol)
+      if(this.authService.getCurrentPatient()){
         this.router.navigate(['/home']);
+      }else{
+        this.router.navigate(['/patients']);
       }
     }
 
+    // ==================== WHATSAPP METHODS ====================
+
+    loadWhatsAppStatus() {
+      this.subscription.add(
+        this.patientService.getWhatsAppStatus().subscribe(
+          (res: any) => {
+            const wasNotLinked = !this.whatsappLinked;
+            if (res && res.linked) {
+              this.whatsappLinked = true;
+              this.whatsappPhone = res.phone || '';
+              this.whatsappLinkedAt = res.linkedAt ? new Date(res.linkedAt) : null;
+              // Si acabamos de detectar la vinculación, limpiar el código
+              if (wasNotLinked) {
+                this.linkCode = '';
+                this.linkCodeExpires = null;
+                this.stopWhatsAppPolling();
+              }
+            } else {
+              this.whatsappLinked = false;
+              this.whatsappPhone = '';
+              this.whatsappLinkedAt = null;
+            }
+          },
+          (err) => {
+            console.log('Error loading WhatsApp status:', err);
+            // Si hay error, asumimos no vinculado
+            this.whatsappLinked = false;
+          }
+        )
+      );
+      
+      // Configurar listener para detectar cuando el usuario vuelve a la pestaña
+      if (!this.visibilityChangeHandler) {
+        this.visibilityChangeHandler = () => {
+          if (document.visibilityState === 'visible' && !this.whatsappLinked) {
+            // Usuario volvió a la pestaña y no está vinculado, verificar estado
+            this.checkWhatsAppStatusQuietly();
+          }
+        };
+        document.addEventListener('visibilitychange', this.visibilityChangeHandler);
+      }
+    }
+
+    // Verificar estado sin mostrar errores (para polling silencioso)
+    checkWhatsAppStatusQuietly() {
+      this.patientService.getWhatsAppStatus().subscribe(
+        (res: any) => {
+          if (res && res.linked) {
+            this.whatsappLinked = true;
+            this.whatsappPhone = res.phone || '';
+            this.whatsappLinkedAt = res.linkedAt ? new Date(res.linkedAt) : null;
+            this.linkCode = '';
+            this.linkCodeExpires = null;
+            this.stopWhatsAppPolling();
+            this.cdr.detectChanges();
+          }
+        },
+        (err) => {
+          // Silencioso - no hacer nada en caso de error
+        }
+      );
+    }
+
+    // Iniciar polling mientras hay código activo
+    startWhatsAppPolling() {
+      if (this.whatsappPollingInterval) return;
+      
+      // Verificar cada 5 segundos
+      this.whatsappPollingInterval = setInterval(() => {
+        if (this.whatsappLinked || !this.linkCode) {
+          this.stopWhatsAppPolling();
+          return;
+        }
+        this.checkWhatsAppStatusQuietly();
+      }, 5000);
+    }
+
+    stopWhatsAppPolling() {
+      if (this.whatsappPollingInterval) {
+        clearInterval(this.whatsappPollingInterval);
+        this.whatsappPollingInterval = null;
+      }
+    }
+
+    generateWhatsAppCode() {
+      this.generatingCode = true;
+      this.subscription.add(
+        this.patientService.generateWhatsAppCode().subscribe(
+          (res: any) => {
+            this.generatingCode = false;
+            if (res && res.code) {
+              this.linkCode = res.code;
+              this.linkCodeExpires = new Date(res.expires);
+              this.startCountdown();
+              // Iniciar polling para detectar cuando se vincule
+              this.startWhatsAppPolling();
+            }
+          },
+          (err) => {
+            this.generatingCode = false;
+            console.log('Error generating WhatsApp code:', err);
+            this.toastr.error('', this.translate.instant('whatsapp.error_generating_code'));
+          }
+        )
+      );
+    }
+
+    startCountdown() {
+      // Limpiar interval anterior si existe
+      if (this.countdownInterval) {
+        clearInterval(this.countdownInterval);
+      }
+
+      const updateCountdown = () => {
+        if (!this.linkCodeExpires) {
+          this.countdownDisplay = '';
+          return;
+        }
+
+        const now = new Date().getTime();
+        const expires = this.linkCodeExpires.getTime();
+        const diff = expires - now;
+
+        if (diff <= 0) {
+          // Código expirado
+          this.linkCode = '';
+          this.linkCodeExpires = null;
+          this.countdownDisplay = '';
+          if (this.countdownInterval) {
+            clearInterval(this.countdownInterval);
+            this.countdownInterval = null;
+          }
+          return;
+        }
+
+        const minutes = Math.floor(diff / 60000);
+        const seconds = Math.floor((diff % 60000) / 1000);
+        this.countdownDisplay = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+      };
+
+      // Actualizar inmediatamente y luego cada segundo
+      updateCountdown();
+      this.countdownInterval = setInterval(updateCountdown, 1000);
+    }
+
+    copyCodeToClipboard() {
+      if (this.linkCode) {
+        navigator.clipboard.writeText(this.linkCode).then(() => {
+          this.codeCopied = true;
+          this.toastr.success('', this.translate.instant('whatsapp.code_copied'));
+          setTimeout(() => {
+            this.codeCopied = false;
+          }, 2000);
+        }).catch(err => {
+          console.log('Error copying to clipboard:', err);
+        });
+      }
+    }
+
+    unlinkWhatsApp() {
+      Swal.fire({
+        title: this.translate.instant('whatsapp.unlink_confirm_title'),
+        text: this.translate.instant('whatsapp.unlink_confirm'),
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: this.translate.instant('whatsapp.unlink_button'),
+        cancelButtonText: this.translate.instant('generics.Cancel')
+      }).then((result) => {
+        if (result.isConfirmed) {
+          this.unlinkingWhatsApp = true;
+          this.subscription.add(
+            this.patientService.unlinkWhatsApp().subscribe(
+              (res: any) => {
+                this.unlinkingWhatsApp = false;
+                this.whatsappLinked = false;
+                this.whatsappPhone = '';
+                this.whatsappLinkedAt = null;
+                this.linkCode = '';
+                this.linkCodeExpires = null;
+                this.toastr.success('', this.translate.instant('whatsapp.unlink_success'));
+              },
+              (err) => {
+                this.unlinkingWhatsApp = false;
+                console.log('Error unlinking WhatsApp:', err);
+                this.toastr.error('', this.translate.instant('whatsapp.error_unlinking'));
+              }
+            )
+          );
+        }
+      });
+    }
 
 }

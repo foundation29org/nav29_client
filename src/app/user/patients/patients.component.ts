@@ -11,6 +11,7 @@ import { InsightsService } from 'app/shared/services/azureInsights.service';
 import { PatientService } from 'app/shared/services/patient.service';
 import { Router} from '@angular/router';
 import Swal from 'sweetalert2';
+import * as countriesData from '../../../assets/jsons/countries.json';
 
 @Component({
     selector: 'app-patients',
@@ -33,6 +34,7 @@ export class PatientsComponent implements OnInit, OnDestroy {
   loaded = false;
   role: string;
   searchTerm: string = '';
+  countries: any[] = (countriesData as any).default || countriesData;
 
   constructor(private router: Router, private http: HttpClient, private authService: AuthService, public toastr: ToastrService, public translate: TranslateService, public insightsService: InsightsService, private patientService: PatientService,private modalService: NgbModal
   ) {
@@ -231,17 +233,79 @@ export class PatientsComponent implements OnInit, OnDestroy {
     }
   
     deletePatient(sub: string): void {
+      // Paso 1: Preguntar el motivo de la eliminación de forma empática
       Swal.fire({
-        title: this.translate.instant('patients.msgdelete'),
-        text: this.translate.instant('patients.msgdelete2'),
-        icon: 'warning',
+        title: this.translate.instant('patients.deleteReasonTitle'),
+        text: this.translate.instant('patients.deleteReasonText'),
+        icon: 'question',
+        input: 'select',
+        inputOptions: {
+          'deceased': this.translate.instant('patients.reasonDeceased'),
+          'no_longer_following': this.translate.instant('patients.reasonNoLongerFollowing'),
+          'duplicate': this.translate.instant('patients.reasonDuplicate'),
+          'other': this.translate.instant('patients.reasonOther')
+        },
+        inputPlaceholder: this.translate.instant('patients.selectReason'),
         showCancelButton: true,
-        confirmButtonText: this.translate.instant('patients.Yes, delete it!'),
-        cancelButtonText: this.translate.instant('patients.No, keep it')
-      }).then((result) => {
-        if (result.value) {
-          this.deletePatientConfirmed(sub);
+        confirmButtonText: this.translate.instant('generics.Continue'),
+        cancelButtonText: this.translate.instant('generics.Cancel'),
+        inputValidator: (value) => {
+          return new Promise((resolve) => {
+            if (value) {
+              resolve(null);
+            } else {
+              resolve(this.translate.instant('patients.pleaseSelectReason'));
+            }
+          });
         }
+      }).then((result) => {
+        if (result.isConfirmed && result.value) {
+          this.handleDeleteReason(sub, result.value);
+        }
+      });
+    }
+
+    private handleDeleteReason(sub: string, reason: string): void {
+      if (reason === 'deceased') {
+        // Mostrar mensaje de pésame y confirmar con empatía
+        Swal.fire({
+          title: this.translate.instant('patients.condolencesTitle'),
+          html: this.translate.instant('patients.condolencesText'),
+          icon: 'info',
+          showCancelButton: true,
+          confirmButtonText: this.translate.instant('patients.confirmDeleteDeceased'),
+          cancelButtonText: this.translate.instant('patients.No, keep it'),
+          confirmButtonColor: '#6c757d'
+        }).then((result) => {
+          if (result.isConfirmed) {
+            this.deletePatientConfirmed(sub);
+            this.showCondolencesFinal();
+          }
+        });
+      } else {
+        // Para otros motivos, confirmar normalmente
+        Swal.fire({
+          title: this.translate.instant('patients.msgdelete'),
+          text: this.translate.instant('patients.msgdelete2'),
+          icon: 'warning',
+          showCancelButton: true,
+          confirmButtonText: this.translate.instant('patients.Yes, delete it!'),
+          cancelButtonText: this.translate.instant('patients.No, keep it')
+        }).then((result) => {
+          if (result.isConfirmed) {
+            this.deletePatientConfirmed(sub);
+          }
+        });
+      }
+    }
+
+    private showCondolencesFinal(): void {
+      Swal.fire({
+        title: this.translate.instant('patients.condolencesFinalTitle'),
+        text: this.translate.instant('patients.condolencesFinalText'),
+        icon: 'success',
+        confirmButtonText: this.translate.instant('generics.Close'),
+        confirmButtonColor: '#6c757d'
       });
     }
 
@@ -316,7 +380,11 @@ export class PatientsComponent implements OnInit, OnDestroy {
     }
 
     backToHome(): void {
-      this.router.navigate(['/home']);
+      // Si hay paciente seleccionado, ir a home; si no, quedarse en patients
+      if (this.authService.getCurrentPatient()) {
+        this.router.navigate(['/home']);
+      }
+      // Si no hay paciente, no navegar (ya estamos en patients)
     }
 
 }

@@ -22,6 +22,10 @@ import { WebPubSubService } from 'app/shared/services/web-pub-sub.service';
 import { jsPDFService } from 'app/shared/services/jsPDF.service'
 import { Clipboard } from "@angular/cdk/clipboard"
 import { jsPDF } from "jspdf";
+import { Chart, registerables, ChartConfiguration } from 'chart.js';
+import 'chartjs-adapter-date-fns';
+import annotationPlugin from 'chartjs-plugin-annotation';
+Chart.register(...registerables, annotationPlugin);
 
 import { InsightsService } from 'app/shared/services/azureInsights.service';
 import { LangService } from 'app/shared/services/lang.service';
@@ -35,7 +39,7 @@ declare var webkitSpeechRecognition: any;
 import * as hopscotch from 'hopscotch';
 import { HighlightService } from 'app/shared/services/highlight.service';
 import { interval } from 'rxjs';
-import { filter, take } from 'rxjs/operators';
+import { filter, take, timeout } from 'rxjs/operators';
 import { ActivityService } from 'app/shared/services/activity.service';
 
 // Interfaces para tipar los datos (como dataclasses en Python)
@@ -140,7 +144,6 @@ interface DxGptResponse {
 export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
   private subscription: Subscription = new Subscription();
   eventsForm: FormGroup;
-  appointmentsForm: FormGroup;
   dataFile: any = {};
   tempDocs: any = [];
   submitted = false;
@@ -166,6 +169,8 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
   message = '';
   callingOpenai: boolean = false;
   chatRecording: boolean = false;
+  chatMode: 'fast' | 'advanced' = 'fast'; // Modo de respuesta: fast (gpt4omini) o advanced (gpt5mini)
+  showChatOptions: boolean = false; // Mostrar menú de opciones del chat
   chatVoiceSupported: boolean = false;
   private chatSpeechSubscription: Subscription;
   lastProcessedAnswerId: string = ''; // Para evitar procesar respuestas duplicadas
@@ -207,18 +212,129 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
   summaryJson: any = {};
   needFeedback: boolean = true;
   private messageSubscription: Subscription;
+  private processedAnomalies: Set<string> = new Set(); // Control para evitar duplicados de anomalías
   @ViewChild('contentviewSummary', { static: false }) contentviewSummary: TemplateRef<any>;
   @ViewChild('contentviewDoc', { static: false }) contentviewDoc: TemplateRef<any>;
   @ViewChild('contentSummaryDoc', { static: false }) contentSummaryDoc: TemplateRef<any>;
   @ViewChild('documentContextModal', { static: false }) documentContextModal: TemplateRef<any>;
   @ViewChild('contentviewProposedEvents', { static: false }) contentviewProposedEvents: TemplateRef<any>;
-  @ViewChild('contentviewProposedAppointments', { static: false }) contentviewProposedAppointments: TemplateRef<any>;
   @ViewChild('shareCustom', { static: false }) contentshareCustom: TemplateRef<any>;
   @ViewChild('qrPanel', { static: false }) contentqrPanel: TemplateRef<any>;
   @ViewChild('dxGptModal', { static: false }) dxGptModal: TemplateRef<any>;
   @ViewChild('notesModal', { static: false }) notesModal: TemplateRef<any>;
   @ViewChild('rarescopeModal', { static: false }) rarescopeModal: TemplateRef<any>;
   @ViewChild('diaryModal', { static: false }) diaryModal: TemplateRef<any>;
+  @ViewChild('timelineModal', { static: false }) timelineModal: TemplateRef<any>;
+  @ViewChild('prepareConsultModal', { static: false }) prepareConsultModal: TemplateRef<any>;
+  @ViewChild('soapModal', { static: false }) soapModal: TemplateRef<any>;
+  @ViewChild('trackingModal', { static: false }) trackingModal: TemplateRef<any>;
+  @ViewChild('trackingEvolutionChart', { static: false }) trackingEvolutionChartRef: ElementRef;
+  @ViewChild('trackingTimeChart', { static: false }) trackingTimeChartRef: ElementRef;
+
+  // Variables para Preparar Consulta
+  prepareConsultData = {
+    specialist: '',
+    consultDate: '',
+    comments: ''
+  };
+  prepareConsultEditMode = {
+    specialist: false,
+    consultDate: false,
+    comments: false
+  };
+  
+  // Variables para SOAP Notes (Clinical)
+  soapStep = 1;
+  soapLoading = false;
+  soapData = {
+    patientSymptoms: '',
+    suggestedQuestions: [] as Array<{question: string, answer: string}>,
+    result: null as {subjective: string, objective: string, assessment: string, plan: string} | null
+  };
+  
+  // Variables para Patient Tracking (Clinical)
+  trackingStep = 1;
+  trackingLoading = false;
+  isDragOver = false;
+  trackingEvolutionChart: any = null;
+  trackingTimeChart: any = null;
+  trackingCombinedChart: any = null;
+  
+  // Filtros para tracking
+  trackingFilters = {
+    groupBy: 'month' as 'day' | 'month' | 'year',
+    dateRange: 'all' as 'all' | '1year' | '6months' | '3months' | '1month' | 'custom',
+    customStartDate: '',
+    customEndDate: '',
+    seizureType: 'all',
+    maxSeizureScale: null as number | null,
+    maxMedicationScale: null as number | null,
+    showMedicationChanges: true,
+    selectedYears: [] as number[]  // Años seleccionados para filtrar
+  };
+  availableSeizureTypes: string[] = [];
+  availableYears: number[] = [];  // Años disponibles para el slicer
+  
+  // Variables para gestión de datos
+  deleteRangeStart = '';
+  deleteRangeEnd = '';
+  
+  trackingData = {
+    patientId: '',
+    conditionType: 'epilepsy' as 'epilepsy',  // Solo epilepsia
+    entries: [] as Array<{
+      date: Date;
+      type: string;
+      duration?: number;
+      severity?: number;
+      triggers?: string[];
+      notes?: string;
+      value?: number;
+      customFields?: Record<string, any>;
+    }>,
+    medications: [] as Array<{
+      name: string;
+      dose: string;
+      startDate: Date;
+      endDate?: Date;
+      sideEffects?: string[];
+    }>,
+    metadata: {
+      source: 'manual' as 'seizuretracker' | 'manual' | 'other',
+      importDate: new Date(),
+      originalFile: ''
+    }
+  };
+  trackingManualEntry = {
+    conditionType: 'epilepsy' as 'epilepsy',  // Solo epilepsia
+    date: '',
+    type: 'Tonic Clonic',  // Tipo por defecto
+    duration: 0,
+    severity: 5,  // Severidad por defecto
+    triggers: [] as string[],
+    notes: ''
+  };
+  trackingImportPreview: {
+    type: string;
+    entriesCount: number;
+    medicationsCount: number;
+    dateRange: string;
+    rawData: any;
+  } | null = null;
+  trackingStats = {
+    totalEvents: 0,
+    daysSinceLast: 0,
+    monthlyAvg: 0,
+    trend: '' as 'improving' | 'worsening' | '',
+    trendPercent: 0
+  };
+  trackingInsights: Array<{
+    icon: string;
+    title: string;
+    description: string;
+  }> = [];
+  availableTriggers = ['Stress', 'Sleep deprivation', 'Missed medication', 'Alcohol', 'Illness', 'Hormonal', 'Diet', 'Light sensitivity', 'Overheated', 'Other'];
+  
   tasksUpload: any[] = [];
   taskAnonimize: any[] = [];
   translateYouCanAskInChat: string = '';
@@ -252,6 +368,7 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
   loadingDoc: boolean = false;
   summaryDate: Date = null;
   generatingPDF: boolean = false;
+  regeneratingSummary: boolean = false;
   msgDownload: string;
   msgtoDownload: string;
   actualStatus: string = '';
@@ -259,10 +376,10 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
   sendingVote: boolean = false;
   actualParam: string = '';
   proposedEvents = [];
-  proposedAppointments = [];
   currentPatient: string = '';
   actualPatient: any = {};
   containerName: string = '';
+  hasShownCountryWarning: boolean = false;
   gettingSuggestions: boolean = false;
   newPermission: any;
   mode: string = 'Custom';
@@ -294,6 +411,25 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
   sortDirection: number = -1;
 
   timeline: any = [];
+  eventsNeedingReviewCount: number = 0;
+  
+  // Timeline consolidado
+  consolidatedTimeline: any = null;
+  loadingConsolidatedTimeline: boolean = false;
+  showConsolidatedView: boolean = true; // Por defecto mostrar vista consolidada
+  consolidatedTimelineError: string = null;
+
+  updateNeedingReviewCount(): void {
+    if (!this.allEvents || this.allEvents.length === 0) {
+      this.eventsNeedingReviewCount = 0;
+      return;
+    }
+    this.eventsNeedingReviewCount = this.allEvents.filter(event => 
+      event.needsDateReview || 
+      (event.date === null && event.dateConfidence === 'missing') || 
+      event.dateConfidence === 'estimated'
+    ).length;
+  }
   showFilters = false;
   groupedEvents: any = [];
   startDate: Date;
@@ -303,6 +439,8 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
   isOldestFirst = false;
   userId = '';
   openingSummary = false;
+  generatingInfographic = false;
+  infographicImageData: string = null;
   role = 'Unknown';
   medicalLevel: string = '1';
   valueGeneralFeedback: string = '';
@@ -613,7 +751,6 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
   }
 
   get ef() { return this.eventsForm.controls; }
-  get efappointment() { return this.appointmentsForm.controls; }
 
   async ngOnDestroy() {
     // Detener reconocimiento de voz si está activo
@@ -636,10 +773,7 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
       this.chatSpeechSubscription.unsubscribe();
     }
     
-    //save this.messages in bbdd
-    if (this.currentPatient) {
-      await this.saveMessages(this.currentPatient);
-    }
+    // El backend ahora guarda los mensajes automáticamente
 
     // Unsubscribe de todas las subscripciones
     this.subscription.unsubscribe();
@@ -659,46 +793,55 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     this.highlightService.highlightAll();
   }
 
-  saveMessages(pacient) {
+  /**
+   * Elimina todos los mensajes del chat en el servidor
+   */
+  deleteMessagesFromServer(): Promise<any> {
     return new Promise((resolve, reject) => {
-      //delete messages with task 
-      var messages = [];
-      this.messages.forEach(element => {
-        if (element.task == undefined && element.file == undefined) {
-          if (element.text.toString().indexOf('<form>') == -1) {
-            messages.push(element);
-          }
-          /*if (element.text.toString().indexOf('<strong>') == -1 && element.text.toString().indexOf('<form>') == -1 ) {
-            messages.push(element);
-          }*/
-        }
-      });
-      var info = { 'messages': messages };
-      this.subscription.add(this.http.post(environment.api + '/api/messages/' + this.authService.getIdUser() + '/' + pacient, info)
-        .subscribe((res: any) => {
-          resolve(res);
-        }, (err) => {
-          console.log(err);
-          this.insightsService.trackException(err);
-          resolve(err);
-        }));
+      this.subscription.add(
+        this.http.delete(environment.api + '/api/messages/' + this.authService.getIdUser() + '/' + this.currentPatient)
+          .subscribe(
+            (res: any) => {
+              console.log('✅ Mensajes eliminados del servidor');
+              resolve(res);
+            },
+            (err) => {
+              console.error('Error eliminando mensajes:', err);
+              this.insightsService.trackException(err);
+              resolve(err);
+            }
+          )
+      );
     });
   }
 
   getMessages() {
     this.subscription.add(this.http.get(environment.api + '/api/messages/' + this.authService.getIdUser() + '/' + this.currentPatient)
       .subscribe(async (res: any) => {
+        console.log('getMessages', res);
         if (res.messages != undefined) {
           if (res.messages.length > 0) {
-            this.messages = res.messages;
-            await this.delay(200);
-            this.scrollToBottom();
+            // Procesar referencias de documentos en mensajes cargados de la BD
+            this.messages = res.messages.map((msg: any) => {
+              if (!msg.isUser && msg.text) {
+                msg.text = this.processDocumentReferences(msg.text, msg.references);
+              }
+              return msg;
+            });
           } else {
             this.messages = [];
           }
         } else {
           this.messages = [];
         }
+        
+        // Cargar sugerencias del último mensaje si el backend las devuelve
+        if (res.lastSuggestions && res.lastSuggestions.length > 0) {
+          this.translateSuggestions(res.lastSuggestions);
+        }
+        
+        await this.delay(200);
+        this.scrollToBottom();
       }, (err) => {
         console.log(err);
         this.insightsService.trackException(err);
@@ -778,6 +921,24 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
       // Paciente válido
       this.isInitialLoad = false;
       this.currentPatientId = patient.sub;
+      
+      // IMPORTANTE: Resetear estados de carga del chat cuando cambias de paciente
+      // Esto evita que el chat quede bloqueado si había una petición pendiente del paciente anterior
+      this.callingOpenai = false;
+      this.gettingSuggestions = false;
+      
+      // Limpiar sugerencias del paciente anterior
+      this.suggestions = [];
+      
+      // Limpiar mensajes del paciente anterior mientras se cargan los nuevos
+      this.messages = [];
+      
+      // Limpiar contexto de conversación del paciente anterior
+      this.context = [{ role: 'system', content: '' }];
+      
+      // Limpiar control de anomalías procesadas del paciente anterior
+      this.processedAnomalies.clear();
+      
       this.initEnvironment();
       
       // Limpiar resultados de DxGPT siempre cuando cambias de paciente
@@ -789,10 +950,18 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
       this.additionalNeeds = [];
       this.rarescopeError = null;
       this.isLoadingRarescope = false;
+      
+      // Limpiar timeline cuando cambias de paciente
+      this.timeline = [];
+      this.consolidatedTimeline = null;
+      this.loadingConsolidatedTimeline = false;
+      this.consolidatedTimelineError = null;
     } else {
       // No hay paciente
       this.currentPatientId = null;
       this.dxGptResults = null;
+      this.suggestions = [];
+      this.messages = [];
       
       // Redirigir solo si no es la carga inicial
       if (!this.isInitialLoad) {
@@ -881,8 +1050,8 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
 
     this.eventsService.on('eventTask', this.handleEventTask.bind(this));
     this.eventsService.on('changelang', this.handleChangeLang.bind(this));
-    this.eventsService.on('patientChanged', this.handlePatientChanged.bind(this));
     this.eventsService.on('changeView', this.handleChangeView.bind(this));
+    this.eventsService.on('reload-messages', () => this.getMessages());
     
 
     /*if (this.authService.getRole() === 'Caregiver') {
@@ -1123,19 +1292,6 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
   }
 
 
-  handlePatientChanged(patient: any) {
-    this.saveMessages(patient.sub);
-    
-    // Limpiar datos de las herramientas cuando cambia el paciente
-    this.dxGptResults = null;
-    this.isDxGptLoading = false;
-    this.rarescopeNeeds = [''];
-    this.additionalNeeds = [];
-    this.rarescopeError = null;
-    this.isLoadingRarescope = false;
-  }
-
-
   private async handleMessage(message: any) {
     console.log('Message received in component:', message);
     
@@ -1180,6 +1336,20 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
         this.handleNoStep(parsedData);
       }
     } else {
+      // IMPORTANTE: Para mensajes de navigator y extract events, validar patientId ANTES de procesar
+      // Si el mensaje no es para el paciente actual, ignorarlo completamente
+      // El navbar se encargará de almacenarlo como pendiente
+      if (parsedData.step === 'navigator' || parsedData.step === 'extract events') {
+        if (parsedData.patientId && !this.isActualPatient(parsedData.patientId)) {
+          console.log('⚠️ Mensaje de', parsedData.step, 'ignorado: no corresponde al paciente actual');
+          console.log('  - Mensaje patientId:', parsedData.patientId);
+          console.log('  - Paciente actual:', this.authService.getCurrentPatient()?.sub);
+          console.log('  - El navbar almacenará este mensaje como pendiente');
+          return; // Ignorar completamente el mensaje
+        }
+      }
+      
+      // Para otros tipos de mensajes, intentar cambiar de paciente si es necesario
       if (!this.isActualPatient(parsedData.patientId)) {
         //change patient
         const patientsList = this.authService.getPatientList();
@@ -1287,10 +1457,26 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
   }
 
   isActualPatient(patientId: string): boolean {
+    if (!patientId) {
+      return false;
+    }
+    
     const currentPatient = this.authService.getCurrentPatient();
-    if (currentPatient && currentPatient.sub == patientId) {
+    if (!currentPatient) {
+      return false;
+    }
+    
+    // Comparar por sub (usar == para comparación débil)
+    if (currentPatient.sub == patientId) {
       return true;
     }
+    
+    // Si no coincide por sub, comparar por _id (ID de MongoDB)
+    const currentPatientId = (currentPatient as any)._id;
+    if (currentPatientId && currentPatientId == patientId) {
+      return true;
+    }
+    
     return false;
   }
   private handleNoStep(parsedData: any) {
@@ -1447,6 +1633,11 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
 
   addMessage(message: any) {
     if (message.text) {
+      // Procesar referencias de documentos usando las referencias del backend si están disponibles
+      // (guardadas temporalmente desde processNavigatorAnswer)
+      const references = (this as any).pendingReferences || message.references;
+      message.text = this.processDocumentReferences(message.text, references);
+      
       message.text = message.text.replace(/<h1>/g, '<h6>').replace(/<\/h1>/g, '</h5>');
       message.text = message.text.replace(/<h2>/g, '<h6>').replace(/<\/h2>/g, '</h6>');
       message.text = message.text.replace(/<h3>/g, '<h6>').replace(/<\/h3>/g, '</h6>');
@@ -1569,15 +1760,88 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     }
 
     if (parsedData.status === 'anomalies found') {
-      this.translateAnomalies(parsedData.anomalies).then(translatedAnomalies => {
-        this.addMessage({
-          text: '<span class="badge badge-warning mb-1 mr-2"><i class="fa fa-exclamation-triangle"></i></span><strong>' + parsedData.filename + '</strong>: ' + this.translate.instant('messages.anomaliesFound') + '<br>' + translatedAnomalies,
-          isUser: false
+      // Crear un ID único para esta anomalía para evitar duplicados
+      const anomalyKey = `${parsedData.docId}_${parsedData.filename}_anomalies`;
+      
+      // Solo procesar si no se ha mostrado ya
+      if (!this.processedAnomalies.has(anomalyKey)) {
+        this.processedAnomalies.add(anomalyKey);
+        
+        this.translateAnomalies(parsedData.anomalies).then(translatedAnomalies => {
+          this.addMessage({
+            text: '<span class="badge badge-warning mb-1 mr-2"><i class="fa fa-exclamation-triangle"></i></span><strong>' + parsedData.filename + '</strong>: ' + this.translate.instant('messages.anomaliesFound') + '<br>' + translatedAnomalies,
+            isUser: false
+          });
         });
-      });
+      } else {
+        console.log('⚠️ Anomalías ya mostradas para:', anomalyKey);
+      }
     }
   }
 
+  /**
+   * Inicializa paneles de progreso para documentos que están en proceso
+   * pero no tienen un panel creado (ej: usuario viene del wizard)
+   */
+  private initializeInProgressDocuments() {
+    const inProgressStatuses = ['pending', 'inProcess', 'extracted done', 'extracted_translated done', 
+                                 'categorizando texto', 'clean ready', 'creando resumen'];
+    
+    for (const doc of this.docs) {
+      if (inProgressStatuses.includes(doc.status)) {
+        const docIdEnc = doc._id; // El ID ya viene encriptado del servidor
+        
+        // Solo crear el panel si no existe
+        if (!this.tasksUpload[docIdEnc]) {
+          console.log(`[initializeInProgressDocuments] Creando panel para doc en proceso: ${doc.title} (${doc.status})`);
+          
+          // Crear el panel de progreso
+          const task = {
+            index: this.messages.length,
+            steps: [
+              { name: this.translate.instant('messages.m1.1'), status: 'pending' },
+              { name: this.translate.instant('messages.m4.1'), status: 'pending' },
+              { name: this.translateYouCanAskInChat, status: 'pending' },
+              {
+                name: this.translate.instant('messages.m3.1'),
+                status: 'pending',
+                action: `<resumen id='${docIdEnc}' class="round ml-1 btn btn-success btn-sm bg-light-success">${this.translate.instant('generics.View')}</resumen>`
+              }
+            ]
+          };
+          
+          // Actualizar estados basados en el status actual del documento
+          if (doc.status === 'extracted done' || doc.status === 'extracted_translated done') {
+            task.steps[0].status = 'finished';
+          } else if (doc.status === 'categorizando texto') {
+            task.steps[0].status = 'finished';
+            task.steps[1].status = 'inProcess';
+          } else if (doc.status === 'clean ready') {
+            task.steps[0].status = 'finished';
+            task.steps[1].status = 'finished';
+            task.steps[2].status = 'finished';
+          } else if (doc.status === 'creando resumen') {
+            task.steps[0].status = 'finished';
+            task.steps[1].status = 'finished';
+            task.steps[2].status = 'finished';
+            task.steps[3].status = 'inProcess';
+          } else if (doc.status === 'inProcess') {
+            task.steps[0].status = 'inProcess';
+          }
+          
+          this.tasksUpload[docIdEnc] = task;
+          
+          const msg1 = this.translate.instant("messages.m0", { value: doc.title });
+          this.addMessage({
+            text: msg1,
+            isUser: false,
+            task: task,
+            index: docIdEnc
+          });
+        }
+      }
+    }
+  }
 
   private handleDocTypeDetected(parsedData: any) {
     const docTypeMapping: { [key: string]: string } = {
@@ -1593,6 +1857,15 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
   }
 
   private handleNavigator(parsedData: any) {
+    // Validar una vez más que el mensaje sea para el paciente actual
+    // Esto es una doble verificación por si acaso
+    if (parsedData.patientId && !this.isActualPatient(parsedData.patientId)) {
+      console.warn('⚠️ handleNavigator: mensaje ignorado, no corresponde al paciente actual');
+      console.warn('  - Mensaje patientId:', parsedData.patientId);
+      console.warn('  - Paciente actual:', this.authService.getCurrentPatient()?.sub);
+      return;
+    }
+    
     if (parsedData.status === 'generando sugerencias') {
       // Solo activar gettingSuggestions si no estamos procesando una respuesta
       if (this.callingOpenai) {
@@ -1603,19 +1876,206 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     } else if (parsedData.status === 'sugerencias generadas') {
       this.translateSuggestions(parsedData.suggestions);
     } else if (parsedData.status === 'error') {
+      // Limpiar el estado cuando hay un error
       this.callingOpenai = false;
-      console.error(parsedData.error);
-      this.insightsService.trackException(parsedData.error);
+      this.gettingSuggestions = false;
+      
+      // Manejar diferentes tipos de errores
+      const errorMessage = parsedData.message || parsedData.error || 'ERROR_PROCESSING_REQUEST';
+      const errorDetails = parsedData.error || errorMessage;
+      
+      console.error('Error en navigator:', errorDetails, parsedData);
+      
+      // Registrar el error en insights
+      this.insightsService.trackException(new Error(`Navigator error: ${errorMessage}`));
+      
+      // Mostrar mensaje de error al usuario
+      if (errorMessage === 'ERROR_PROCESSING_REQUEST') {
+        this.toastr.error(
+          this.translate.instant('messages.errorProcessingRequest') || 'Error procesando la solicitud. Por favor, inténtalo de nuevo.',
+          this.translate.instant('generics.Error') || 'Error'
+        );
+      } else {
+        this.toastr.error(
+          errorMessage,
+          this.translate.instant('generics.Error') || 'Error'
+        );
+      }
     } else {
       this.updateNavigatorStatus(parsedData);
     }
+  }
+
+  /**
+   * Procesa las referencias de documentos en el texto HTML y las convierte en enlaces clickeables
+   * Usa las referencias estructuradas del backend cuando están disponibles, o hace fallback a búsqueda local
+   * @param htmlText Texto HTML con referencias en formato [filename, date]
+   * @param references Array de referencias estructuradas del backend (opcional)
+   */
+  /**
+   * Procesa las referencias de documentos en el texto HTML y las convierte en enlaces clickeables
+   * Soporta múltiples referencias separadas por punto y coma dentro de los mismos corchetes
+   * @param htmlText Texto HTML con referencias en formato [filename, date] o [file1, date1; file2, date2]
+   * @param references Array de referencias estructuradas del backend (opcional)
+   */
+  private processDocumentReferences(htmlText: string, references?: any[]): string {
+    if (!htmlText) {
+      return htmlText;
+    }
+
+    // Contador para superíndices
+    let refCounter = 0;
+
+    // Patrones para detectar placeholders internos que no deben mostrarse
+    const internalPlaceholders = /^\[?(PATIENT PROFILE|PERFIL DEL PACIENTE|PROFIL PATIENT|PATIENTENPROFIL|RELEVANT CLINICAL DATA|DATOS CLÍNICOS|HISTORICAL CONTEXT|CONTEXTO HISTÓRICO)/i;
+
+    // Patrón para capturar todo lo que hay dentro de corchetes
+    const bracketPattern = /\[([^\]]+?)\]/g;
+
+    return htmlText.replace(bracketPattern, (fullMatch, content) => {
+      // Ocultar placeholders internos del curateContext
+      if (internalPlaceholders.test(content)) {
+        return '';
+      }
+
+      // Referencias sin coma pero que son memorias/contexto (ej: "Memoria de conversación reciente 1")
+      if (!content.includes(',')) {
+        // Detectar si es una referencia a memoria/contexto/conversación
+        const memoryPattern = /(memoria|memory|contexto|context|historial|history|conversaci[oó]n|conversation)/i;
+        if (memoryPattern.test(content)) {
+          refCounter++;
+          const tooltipText = content.trim();
+          return `<span class="context-reference" style="cursor: help;" title="${tooltipText}"><sup style="font-size: 0.7em; background: #f3e5f5; color: #6f42c1; padding: 1px 4px; border-radius: 3px;">💬${refCounter}</sup></span>`;
+        }
+        // No es una cita válida, dejarlo como está
+        return fullMatch;
+      }
+
+      // Dividir el contenido por punto y coma para manejar múltiples citas
+      const parts = content.split(';');
+      
+      const processedParts = parts.map(part => {
+        const trimmedPart = part.trim();
+        // Intentar capturar nombre de archivo y fecha/undated
+        // El regex busca el último fragmento después de la última coma como la fecha
+        const lastCommaIndex = trimmedPart.lastIndexOf(',');
+        if (lastCommaIndex === -1) {
+          return trimmedPart;
+        }
+
+        const fileName = trimmedPart.substring(0, lastCommaIndex).trim();
+        let date = trimmedPart.substring(lastCommaIndex + 1).trim();
+        const displayDate = date; // Guardar la fecha original para mostrar
+
+        // Normalizar formato de fecha: aceptar YYYY-MM-DD, DD-MM-YYYY, DD/MM/YYYY
+        const isoDatePattern = /^(\d{4})-(\d{2})-(\d{2})$/;
+        const euDatePattern = /^(\d{2})[-\/](\d{2})[-\/](\d{4})$/;
+        // Equivalentes de "undated" en varios idiomas
+        const undatedPattern = /^(undated|sin fecha|ohne datum|sans date|sem data|senza data|no date|fecha desconocida|unknown date)$/i;
+        
+        if (isoDatePattern.test(date)) {
+          // Ya está en formato correcto YYYY-MM-DD
+        } else if (euDatePattern.test(date)) {
+          // Convertir DD-MM-YYYY o DD/MM/YYYY a YYYY-MM-DD
+          const match = date.match(euDatePattern);
+          date = `${match[3]}-${match[2]}-${match[1]}`;
+        } else if (undatedPattern.test(date)) {
+          // Normalizar a "undated" internamente
+          date = 'undated';
+        } else {
+          // Fecha no reconocida, devolver sin procesar
+          return trimmedPart;
+        }
+
+        refCounter++;
+        const partFullCitation = `[${fileName}, ${date}]`;
+
+        // 1. Intentar usar las referencias del backend si existen
+        if (references && references.length > 0) {
+          const ref = references.find(r => r.fullCitation === partFullCitation || r.filename === fileName);
+          if (ref && ref.documentId) {
+            const tooltipText = `${fileName} (${displayDate})`;
+            return `<a href="javascript:void(0)" 
+                        class="document-reference-link" 
+                        data-doc-id="${ref.documentId}"
+                        style="color: #007bff; text-decoration: none; cursor: pointer;"
+                        title="${tooltipText}"><sup style="font-size: 0.7em; background: #e3f2fd; padding: 1px 4px; border-radius: 3px;">📄${refCounter}</sup></a>`;
+          }
+        }
+
+        // 2. Detectar si NO es un archivo real (sin extensión conocida)
+        // Las citaciones de contexto/conversación no tienen extensión de archivo
+        const hasFileExtension = /\.(pdf|docx?|txt|xlsx?|csv|png|jpg|jpeg|gif|html?|xml|json)$/i.test(fileName);
+
+        // 3. Búsqueda local por nombre (solo si parece un archivo)
+        if (hasFileExtension && this.docs && this.docs.length > 0) {
+          // Función para normalizar nombres (quitar tildes, guiones, etc.)
+          const normalize = (str: string) => str
+            .toLowerCase()
+            .trim()
+            .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // Quitar tildes
+            .replace(/[-_\s]+/g, '') // Normalizar separadores
+            .replace(/\.(pdf|txt|docx?)$/i, ''); // Quitar extensión
+          
+          // Extraer posible ID numérico del nombre (ej: 19702982 de "Hematología-19702982.pdf")
+          const numericIdMatch = fileName.match(/(\d{8,})/);
+          const searchNumericId = numericIdMatch ? numericIdMatch[1] : null;
+          
+          const searchFileName = normalize(fileName);
+          
+          const doc = this.docs.find(d => {
+            if (!d.title && !d.url) return false;
+            const docTitle = normalize(d.title || '');
+            const docFileName = normalize((d.url || '').split('/').pop() || '');
+            
+            // Match exacto normalizado
+            if (docTitle === searchFileName || docFileName === searchFileName) return true;
+            
+            // Match parcial (uno contiene al otro)
+            if (docTitle.includes(searchFileName) || searchFileName.includes(docTitle)) return true;
+            if (docFileName.includes(searchFileName) || searchFileName.includes(docFileName)) return true;
+            
+            // Match por ID numérico
+            if (searchNumericId && (docTitle.includes(searchNumericId) || docFileName.includes(searchNumericId))) return true;
+            
+            return false;
+          });
+
+          if (doc) {
+            const docId = doc._id || doc.id || '';
+            const tooltipText = `${fileName} (${displayDate})`;
+            return `<a href="javascript:void(0)" 
+                        class="document-reference-link" 
+                        data-doc-id="${docId}"
+                        style="color: #007bff; text-decoration: none; cursor: pointer;"
+                        title="${tooltipText}"><sup style="font-size: 0.7em; background: #e3f2fd; padding: 1px 4px; border-radius: 3px;">📄${refCounter}</sup></a>`;
+          }
+        }
+
+        // 4. Si no es archivo o no se encontró: mostrar como referencia de contexto (morado)
+        // o como documento no encontrado (gris) dependiendo del caso
+        if (!hasFileExtension) {
+          // Es una referencia al contexto/conversación/historial - mostrar en morado compacto
+          const tooltipText = `${fileName} (${displayDate})`;
+          return `<span class="context-reference" style="cursor: help;" title="${tooltipText}"><sup style="font-size: 0.7em; background: #f3e5f5; color: #6f42c1; padding: 1px 4px; border-radius: 3px;">👤${refCounter}</sup></span>`;
+        } else {
+          // Es un archivo pero no se encontró - mostrar en gris compacto
+          const tooltipText = `${fileName} (${displayDate})`;
+          const bgColor = date === 'undated' ? '#fff3cd' : '#f5f5f5';
+          return `<span class="document-reference" style="cursor: help;" title="${tooltipText}"><sup style="font-size: 0.7em; background: ${bgColor}; color: #6c757d; padding: 1px 4px; border-radius: 3px;">📄${refCounter}</sup></span>`;
+        }
+      });
+
+      // En modo compacto, no envolvemos con corchetes
+      return processedParts.join('');
+    });
   }
 
   private async processNavigatorAnswer(parsedData: any) {
     // Protección contra respuestas duplicadas: usar timestamp + answer como ID único
     const answerId = `${parsedData.time || Date.now()}_${parsedData.answer?.substring(0, 50) || ''}`;
     if (this.lastProcessedAnswerId === answerId) {
-      console.warn('⚠️ Respuesta duplicada detectada, ignorando:', answerId);
+      console.warn('⚠️ Respuesta duplicada detectada (mismo ID), ignorando:', answerId);
       return;
     }
     this.lastProcessedAnswerId = answerId;
@@ -1625,20 +2085,32 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     this.gettingSuggestions = false;
     this.actualStatus = '';
     
-    this.context.push({ role: 'user', content: this.message });
+    // Si el mensaje NO viene de notificación, añadir también la pregunta al contexto
+    const isFromNotification = parsedData.fromNotification === true;
+    if (!isFromNotification) {
+      const messageToUse = this.tempInput || this.message;
+      this.context.push({ role: 'user', content: messageToUse });
+    }
+    
+    // Añadir la respuesta al contexto
     this.context.push({ role: 'assistant', content: parsedData.answer });
-    let tempMessage = this.message;
-    this.message = '';
-
+    
+    // Mostrar el mensaje (el backend ya traduce y guarda)
     try {
+      const references = parsedData.references || [];
+      (this as any).pendingReferences = references;
       await this.translateInverse(parsedData.answer);
+      (this as any).pendingReferences = null;
     } catch (error) {
       console.error('Error al procesar el mensaje:', error);
       this.insightsService.trackException(error);
+      (this as any).pendingReferences = null;
     }
-
+    
+    // Detectar eventos del navegador (extracción automática de eventos de la respuesta)
+    const messageToUse = this.tempInput || this.message;
     const query = {
-      question: tempMessage,
+      question: messageToUse,
       answer: parsedData.answer,
       userId: this.authService.getIdUser(),
       patientId: this.currentPatient,
@@ -1658,11 +2130,20 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
 
   private updateNavigatorStatus(parsedData: any) {
     const statusMapping: { [key: string]: string } = {
-      'intent detectado': parsedData.intent,
-      'generando respuesta': 'generando respuesta',
-      'generando sugerencias': 'generando sugerencias',
-      'respuesta generada': 'respuesta generada',
-      'sugerencias generadas': 'sugerencias generadas'
+      // Nuevos estados del pipeline
+      'detectando intención': this.translate.instant('navigator.detecting_intent') || 'Analizando tu pregunta...',
+      'intent detectado': this.translate.instant('navigator.intent_detected') || 'Pregunta analizada',
+      'recuperando historial': this.translate.instant('navigator.retrieving_history') || 'Recuperando historial...',
+      'buscando en documentos': this.translate.instant('navigator.searching_documents') || 'Buscando en tus documentos...',
+      'analizando documentos': this.translate.instant('navigator.analyzing_documents') || `Analizando ${parsedData.documentsFound || ''} documentos...`,
+      'extrayendo datos clínicos': this.translate.instant('navigator.extracting_data') || 'Extrayendo datos clínicos...',
+      'preparando contexto': this.translate.instant('navigator.preparing_context') || 'Preparando contexto...',
+      'invocando modelo': this.translate.instant('navigator.invoking_model') || 'Pensando...',
+      // Estados existentes
+      'generando respuesta': this.translate.instant('navigator.generating_response') || 'Generando respuesta...',
+      'generando sugerencias': this.translate.instant('navigator.generating_suggestions') || 'Generando sugerencias...',
+      'respuesta generada': this.translate.instant('navigator.response_generated') || 'Respuesta generada',
+      'sugerencias generadas': this.translate.instant('navigator.suggestions_generated') || 'Sugerencias generadas'
     };
 
     const actionMapping: { [key: string]: string } = {
@@ -1692,8 +2173,6 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
       this.setLastMessageLoading();
     } else if (parsedData.status === 'respuesta analizada') {
       this.processExtractedEvents(parsedData.events);
-    } else if (parsedData.status === 'respuesta timeline analizada') {
-      this.processExtractedAppointments(parsedData.events);
     }
   }
 
@@ -1740,48 +2219,6 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
 
   }
 
-  private processExtractedAppointments(events: any[]) {
-    let index = this.messages.length - 1;
-    while (index >= 0) {
-      if (!this.messages[index].isUser) {
-        if (events.length > 0) {
-          this.messages[index].events = events;
-          const jsontestLangText = events.map(event => ({
-            Text: event.insight
-          }));
-
-          if (this.detectedLang !== 'en') {
-            this.subscription.add(
-              this.apiDx29ServerService.getTranslationInvert(this.detectedLang, jsontestLangText)
-                .subscribe({
-                  next: (res2: any) => {
-                    if (res2[0]) {
-                      res2.forEach((translation: any, i: number) => {
-                        if (translation.translations[0]) {
-                          events[i].insight = translation.translations[0].text;
-                        }
-                      });
-                    }
-                    this.proposedAppointments = events;
-                  },
-                  error: (err) => {
-                    console.log(err);
-                    this.insightsService.trackException(err);
-                    this.proposedAppointments = events;
-                  }
-                })
-            );
-          } else {
-            this.proposedAppointments = events;
-          }
-        }
-        break;
-      }
-      index--;
-    }
-  }
-
-
   private async handleEventTask(info: any) {
     const doc = this.docs.find(x => x._id === info.task.docId);
     if (info.step.name === this.translateGeneratingSummary) {
@@ -1803,7 +2240,8 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     }
     this.messagesExpectOutPut = '';
 
-    this.messagesExpect = this.translate.instant(`messages.${this.actualStatus}`);
+    // actualStatus ya viene traducido del statusMapping, usarlo directamente
+    this.messagesExpect = this.actualStatus;
     this.delay(100);
     const words = this.messagesExpect.split(' ');
     let index = 0;
@@ -1846,6 +2284,39 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
 
   onMessageClick(event: MouseEvent, index: number) {
     const target = event.target as HTMLElement;
+    
+    // Manejar clics en enlaces de documentos
+    if (target.classList.contains('document-reference-link') || target.closest('.document-reference-link')) {
+      event.preventDefault();
+      const linkElement = target.classList.contains('document-reference-link') 
+        ? target 
+        : target.closest('.document-reference-link') as HTMLElement;
+      
+      if (linkElement) {
+        const docId = linkElement.getAttribute('data-doc-id');
+        if (docId) {
+          const doc = this.docs.find(x => x._id === docId);
+          if (doc) {
+            this.openResults(doc, this.contentSummaryDoc);
+          } else {
+            this.toastr.warning(
+              this.translate.instant('messages.documentNotFound') || 'Documento no encontrado',
+              ''
+            );
+          }
+        }
+      }
+      return;
+    }
+
+    // Manejar clics en enlaces de contexto (conversation_context)
+    if (target.classList.contains('context-reference-link') || target.closest('.context-reference-link')) {
+      event.preventDefault();
+      this.openTimelineModal(this.timelineModal);
+      return;
+    }
+    
+    // Manejar clics en elementos resumen (código original)
     if (target.tagName.toLowerCase() === 'resumen') {
       event.preventDefault();
       //search in docs where _id = target.id
@@ -1854,7 +2325,6 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
         this.openResults(doc, this.contentSummaryDoc);
       }
     }
-
   }
 
   initChat() {
@@ -1880,10 +2350,11 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     this.messages = [];
     this.suggestions = [];
     this.proposedEvents = [];
-    this.proposedAppointments = [];
     this.initChat();
     this.context.splice(1, this.context.length - 1);
-    await this.saveMessages(this.currentPatient);
+    
+    // Eliminar mensajes en el backend
+    await this.deleteMessagesFromServer();
     // get 4 random suggestions from the hardcoded pool or the summary
     try {
       this.suggestions = this.getAllSuggestions(4);
@@ -1995,6 +2466,10 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
           this.docs.forEach(doc => doc.selected = true);
           this.updateDocumentSelection();
           this.defaultDoc = this.docs[0];
+          
+          // Inicializar paneles de progreso para documentos que están en proceso
+          // (por si el usuario viene del wizard y los eventos WebPubSub se perdieron)
+          this.initializeInProgressDocuments();
         }
         this.loadedDocs = true;
         //this.assignFeedbackToDocs(this.docs);
@@ -2128,6 +2603,9 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
       } else {
         this.context.push({ role: "assistant", content: patientInfo });
       }
+
+      // Calcular eventos que necesitan revisión de fecha
+      this.updateNeedingReviewCount();
 
       this.loadedEvents = true;
     } catch (err) {
@@ -2710,8 +3188,7 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     }
     
     this.proposedEvents = [];
-    this.proposedAppointments = [];
-    this.actualStatus = 'procesando intent';
+    this.actualStatus = this.translate.instant('navigator.processing') || 'Procesando...';
     this.statusChange();
 
     // La detección de idioma y traducción ahora se hace en el backend
@@ -2770,7 +3247,17 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     const callId = `${Date.now()}_${Math.random().toString(36).substring(7)}`;
     console.log(`[${callId}] continueSendIntent: Preparando llamada HTTP a callnavigator`);
     
-    var query = { "question": msg, "context": this.context, "containerName": this.containerName, "index": this.currentPatient, "userId": this.authService.getIdUser(), "docs": docsSelected };
+    // Mostrar aviso si el paciente no tiene país configurado (solo una vez por sesión)
+    if (!this.hasShownCountryWarning && this.actualPatient && !this.actualPatient.country) {
+      this.hasShownCountryWarning = true;
+      this.toastr.info(
+        this.translate.instant('messages.countryNotConfiguredDesc') || 'Puedes añadirlo desde la lista de pacientes para obtener respuestas más contextualizadas.',
+        this.translate.instant('messages.countryNotConfigured') || 'País no configurado',
+        { timeOut: 8000, positionClass: 'toast-bottom-right' }
+      );
+    }
+    
+    var query = { "question": msg, "context": this.context, "containerName": this.containerName, "index": this.currentPatient, "userId": this.authService.getIdUser(), "docs": docsSelected, "detectedLang": this.detectedLang, "chatMode": this.chatMode };
     this.subscription.add(this.http.post(environment.api + '/api/callnavigator/'+this.authService.getCurrentPatient().sub, query)
       .subscribe(async (res: any) => {
         console.log(`[${callId}] continueSendIntent: Respuesta HTTP recibida:`, res.action);
@@ -2878,38 +3365,21 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     });
   }
 
-  translateSuggestions(info, hardcodedSuggestion = undefined) {
-    if (this.detectedLang != 'en') {
-      var jsontestLangText = [];
-      for (var i = 0; i < info.length; i++) {
-        if (info[i] !== hardcodedSuggestion) {
-          jsontestLangText.push({ "Text": info[i] });
-        } else {
-          info[i] = hardcodedSuggestion;
-        }
-      }
+  /**
+   * Asigna las sugerencias directamente (ya vienen traducidas del backend)
+   */
+  setSuggestions(suggestions: string[]) {
+    this.suggestions = suggestions || [];
+    this.gettingSuggestions = false;
+  }
 
-      this.subscription.add(this.apiDx29ServerService.getTranslationInvert(this.detectedLang, jsontestLangText)
-        .subscribe((res2: any) => {
-          if (res2[0] != undefined) {
-            for (var i = 0; i < res2.length; i++) {
-              if (res2[i].translations[0] != undefined && info[i] !== hardcodedSuggestion) {
-                info[i] = res2[i].translations[0].text;
-              }
-            }
-          }
-          this.suggestions = info;
-          this.gettingSuggestions = false;
-        }, (err) => {
-          console.log(err);
-          this.insightsService.trackException(err);
-          this.suggestions = info;
-          this.gettingSuggestions = false;
-        }));
-    } else {
-      this.suggestions = info;
-      this.gettingSuggestions = false;
-    }
+  /**
+   * Asigna las sugerencias (ya vienen traducidas del backend)
+   */
+  translateSuggestions(info, hardcodedSuggestion = undefined) {
+    // El backend ahora devuelve las sugerencias ya traducidas
+    this.suggestions = info || [];
+    this.gettingSuggestions = false;
   }
 
 
@@ -3012,43 +3482,20 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     return info;
   }
 
+  /**
+   * Muestra el mensaje de respuesta del asistente
+   * El backend ahora envía el mensaje ya traducido y lo guarda en la BD
+   */
   async translateInverse(msg): Promise<string> {
     return new Promise((resolve, reject) => {
-
-      if (this.detectedLang != 'en') {
-        var jsontestLangText = [{ "Text": msg }]
-        this.subscription.add(this.apiDx29ServerService.getDeepLTranslationInvert(this.detectedLang, jsontestLangText)
-          .subscribe((res2: any) => {
-            if (res2.text != undefined) {
-              msg = res2.text;
-            }
-            this.addMessage({
-              text: msg,
-              isUser: false
-            });
-            this.callingOpenai = false;
-            this.saveMessages(this.currentPatient);
-            resolve('ok')
-          }, (err) => {
-            console.log(err);
-            this.insightsService.trackException(err);
-            this.addMessage({
-              text: msg,
-              isUser: false
-            });
-            this.callingOpenai = false;
-            this.saveMessages(this.currentPatient);
-            resolve('ok')
-          }));
-      } else {
-        this.addMessage({
-          text: msg,
-          isUser: false
-        });
-        this.callingOpenai = false;
-        this.saveMessages(this.currentPatient);
-        resolve('ok')
-      }
+      // El backend ahora traduce y guarda, solo necesitamos mostrar el mensaje
+      this.addMessage({
+        text: msg,
+        isUser: false
+      });
+      this.callingOpenai = false;
+      // Ya no llamamos a saveMessages porque el backend ya guarda
+      resolve('ok');
     });
   }
 
@@ -3116,56 +3563,9 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     this.callingOpenai = false;
   }
 
-  showFormAppointment(info) {
-    if (this.detectedLang != 'en') {
-      var textToExtract = info.name;
-      var jsontestLangText = [{ "Text": textToExtract }]
-      this.subscription.add(this.apiDx29ServerService.getDeepLTranslationInvert(this.detectedLang, jsontestLangText)
-        .subscribe((res2: any) => {
-          if (res2.text != undefined) {
-            info.name = res2.text;
-          }
-          this.addFormAppointment(info);
-        }, (err) => {
-          console.log(err);
-          this.insightsService.trackException(err);
-          this.addFormAppointment(info);
-        }));
-
-    } else {
-      this.addFormAppointment(info);
-    }
-  }
-
-  addFormAppointment(info) {
-    Swal.close();
-    //this.eventsForm.reset();
-    this.appointmentsForm = this.formBuilder.group({
-      name: ['', Validators.required],
-      date: [new Date()],
-      key: ['appointment'],
-      notes: []
-    });
-    //if no date, set today
-    if (!info.date) {
-      info.date = new Date();
-    }
-    //info.date = this.dateService.transformDate(new Date());
-    this.appointmentsForm.patchValue(info);
-    this.showProposedAppointments();
-    this.callingTextAnalytics = false;
-    this.callingOpenai = false;
-  }
-
   get date() {
     //return this.seizuresForm.get('date').value;
     let minDate = new Date(this.eventsForm.get('date').value);
-    return minDate;
-  }
-
-  get dateAppointment() {
-    //return this.seizuresForm.get('date').value;
-    let minDate = new Date(this.appointmentsForm.get('date').value);
     return minDate;
   }
 
@@ -3590,6 +3990,111 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     });
   }
 
+  private lastInfographicRequestTime = 0;
+  
+  getPatientInfographic(regenerate: boolean = false) {
+    // Protección contra doble click - verificar si ya está generando
+    if (this.generatingInfographic) {
+      console.log('[Infographic] Already generating, ignoring duplicate request');
+      return;
+    }
+    
+    // Debounce: ignorar peticiones muy cercanas (menos de 2 segundos)
+    const now = Date.now();
+    if (now - this.lastInfographicRequestTime < 2000) {
+      console.log('[Infographic] Request too soon after previous, ignoring (debounce)');
+      return;
+    }
+    this.lastInfographicRequestTime = now;
+    
+    this.generatingInfographic = true;
+    console.log('[Infographic] Starting request, regenerate:', regenerate);
+    const info = { 
+      userId: this.authService.getIdUser(),
+      lang: this.preferredResponseLanguage || localStorage.getItem('lang') || 'en',
+      regenerate: regenerate
+    };
+    
+    // Timeout extendido para generación de imágenes (3 minutos)
+    this.subscription.add(this.http.post(environment.api + '/api/ai/infographic/' + this.currentPatient, info)
+      .pipe(timeout(180000))
+      .subscribe((res: any) => {
+        this.generatingInfographic = false;
+        console.log('[Infographic] Response received:', res);
+        
+        if (res.success && (res.imageUrl || res.imageData)) {
+          // Determinar la fuente de la imagen (URL o base64)
+          const imageSrc = res.imageUrl || `data:${res.mimeType || 'image/png'};base64,${res.imageData}`;
+          this.infographicImageData = res.imageData || null;
+          
+          // Formatear la fecha de generación
+          let dateInfo = '';
+          if (res.generatedAt) {
+            const genDate = new Date(res.generatedAt);
+            dateInfo = `<p style="font-size: 0.85rem; color: #666; margin-bottom: 10px;">
+              ${this.translate.instant('infographic.generatedOn')}: ${genDate.toLocaleDateString()} ${genDate.toLocaleTimeString()}
+              ${res.cached ? `<span style="color: #28a745; margin-left: 8px;">(${this.translate.instant('infographic.cached')})</span>` : ''}
+            </p>`;
+          }
+          
+          // Aviso si es infografía básica (sin resumen completo del paciente)
+          let basicWarning = '';
+          if (res.isBasic) {
+            basicWarning = `<p style="font-size: 0.85rem; color: #856404; background-color: #fff3cd; padding: 8px 12px; border-radius: 4px; margin-bottom: 10px; border: 1px solid #ffeeba;">
+              <i class="fa fa-info-circle" style="margin-right: 6px;"></i>
+              ${this.translate.instant('infographic.basicWarning')}
+            </p>`;
+          }
+          
+          Swal.fire({
+            title: this.translate.instant('infographic.title'),
+            html: `${dateInfo}${basicWarning}
+                   <img src="${imageSrc}" 
+                   style="display: block; margin: 0 auto; max-width: 100%; max-height: 65vh; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);" 
+                   alt="Patient Infographic"/>`,
+            width: '90%',
+            showCloseButton: true,
+            showConfirmButton: true,
+            confirmButtonText: this.translate.instant('infographic.download'),
+            showCancelButton: true,
+            cancelButtonText: this.translate.instant('generics.Close'),
+            showDenyButton: true,
+            denyButtonText: this.translate.instant('infographic.regenerate'),
+            denyButtonColor: '#6c757d',
+          }).then((result) => {
+            if (result.isConfirmed) {
+              // Descargar la imagen
+              const link = document.createElement('a');
+              link.href = imageSrc;
+              link.download = `patient_infographic_${Date.now()}.png`;
+              link.target = '_blank';
+              link.click();
+            } else if (result.isDenied) {
+              // Regenerar la infografía
+              this.getPatientInfographic(true);
+            }
+          });
+        } else {
+          this.toastr.error('', res.error || this.translate.instant('infographic.error'));
+        }
+      }, (err) => {
+        console.log('[Infographic] Error:', err);
+        
+        // Si es 429 (Too Many Requests), la generación está en progreso - esperar
+        if (err.status === 429) {
+          console.log('[Infographic] Generation in progress, waiting...');
+          // No resetear generatingInfographic, dejar que la otra petición termine
+          // Mostrar mensaje informativo en lugar de error
+          this.toastr.info('', this.translate.instant('infographic.inProgress') || 'Generation in progress, please wait...');
+          return;
+        }
+        
+        this.generatingInfographic = false;
+        this.insightsService.trackException(err);
+        this.toastr.error('', this.translate.instant("generics.error try again"));
+      }));
+  }
+
   checkDocs(): Promise<boolean> {
     return new Promise((resolve) => {
       this.subscription.add(this.patientService.getDocuments()
@@ -3747,6 +4252,20 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     this.generatingPDF = false;
   }
 
+  regenerateSummary() {
+    this.regeneratingSummary = true;
+    this.closeModal();
+    this.getPatientSummary(true);
+    this.regeneratingSummary = false;
+    // Show info message that the summary is being regenerated
+    /*Swal.fire({
+      icon: 'info',
+      title: this.translate.instant("messages.m6.1"),
+      text: this.translate.instant("messages.m6.3"),
+      showConfirmButton: true
+    });*/
+  }
+
   copymsg(msg: any) {
     console.log('Received msg:', msg);
 
@@ -3871,10 +4390,15 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
       'appointment': `${this.translate.instant('events.appointment')} 📅`,
       'symptom': `${this.translate.instant('timeline.Symptoms')} 🤒`,
       'medication': `${this.translate.instant('timeline.Medications')} 💊`,
+      'activity': `${this.translate.instant('timeline.Activity')} 🏃`,
+      'reminder': `${this.translate.instant('timeline.Reminder')} 🔔`,
       'other': `${this.translate.instant('timeline.Other')} 🔍`
     };
 
-    return types[type] || type;
+    if (!type || type === 'null') {
+      return `${this.translate.instant('timeline.Other')} 🔍`;
+    }
+    return types[type] || `${this.translate.instant('timeline.Other')} 🔍`;
   }
 
   showProposedEvents() {
@@ -3969,156 +4493,6 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
       });
       this.loadEnvironmentMydata(); // llamar a loadEvents una vez que todos los datos se guarden
     });
-  }
-
-  editProposedAppointment(event) {
-    console.log(event);
-    var info = {
-      name: event.insight.toLowerCase(),
-      date: event.date,
-      notes: '',
-      data: event.data,
-      key: event.key
-    }
-    this.showFormAppointment(info)
-  }
-
-  addProposedAppointment(event) {
-    this.appointmentsForm = this.formBuilder.group({
-      name: ['', Validators.required],
-      date: [new Date()],
-      key: ['appointment'],
-      notes: []
-    });
-    if (event.date != undefined) {
-      event.date = new Date(event.date);
-    } else {
-      event.date = new Date();
-    }
-    event.name = event.insight;
-    event.key = 'appointment';
-    //info.date = this.dateService.transformDate(new Date());
-    this.appointmentsForm.patchValue(event);
-    this.saveAppointmentsData(false, true);
-  }
-
-  deleteProposedAppointment(index) {
-    this.proposedAppointments.splice(index, 1);
-    if (this.proposedAppointments.length == 0 && this.suggestions.length == 0) {
-      this.suggestions = this.getAllSuggestions(4);
-    }
-  }
-
-  deleteAllProposedAppointments() {
-    this.proposedAppointments = [];
-    if (this.proposedAppointments.length == 0 && this.suggestions.length == 0) {
-      this.suggestions = this.getAllSuggestions(4);
-    }
-  }
-
-  addAllProposedAppointments() {
-
-    let savePromises = [];
-    this.proposedAppointments.forEach(event => {
-      this.appointmentsForm = this.formBuilder.group({
-        name: ['', Validators.required],
-        date: [new Date()],
-        key: ['appointment'],
-        notes: []
-      });
-      event.date = new Date();
-      event.key = 'appointment';
-      //info.date = this.dateService.transformDate(new Date());
-      this.appointmentsForm.patchValue(event);
-      savePromises.push(this.saveAppointmentsData(false, false));
-    });
-    this.proposedAppointments = [];
-
-    Promise.all(savePromises).then(() => { // cuando todas las promesas se resuelven
-      if (this.proposedAppointments.length == 0 && this.suggestions.length == 0) {
-        this.suggestions = this.getAllSuggestions(4);
-      }
-      let newMsg = this.translate.instant('events.The events have been saved');
-      this.addMessage({
-        text: newMsg,
-        isUser: false
-      });
-      this.loadEnvironmentMydata(); // llamar a loadEvents una vez que todos los datos se guarden
-    });
-  }
-
-  saveAppointmentsData(checkForm, loadEvents) {
-    return new Promise((resolve, reject) => {
-      if (checkForm) {
-        if (this.appointmentsForm.invalid) {
-          return;
-        }
-      }
-      var actualIndex = 0;
-      this.proposedAppointments.forEach((element, index) => {
-        if (element.name == this.appointmentsForm.value.name) {
-          this.proposedAppointments[index].saving = true;
-          actualIndex = index;
-        }
-      });
-
-      this.submitted = true;
-      /*if (this.appointmentsForm.value.date != null) {
-        this.appointmentsForm.value.date = this.dateService.transformDate(this.appointmentsForm.value.date);
-      }
-      console.log(this.appointmentsForm.value.date)*/
-
-      if (this.authGuard.testtoken()) {
-        this.saving = true;
-        const userId = this.authService.getIdUser();
-        this.subscription.add(this.http.post(environment.api + '/api/events/' + this.currentPatient + '/' + userId, this.appointmentsForm.value)
-          .subscribe((res: any) => {
-            this.saving = false;
-            this.proposedAppointments.splice(actualIndex, 1);
-
-
-            if (this.modalReference != null) {
-              this.modalReference.close();
-            }
-            this.submitted = false;
-            if (loadEvents) {
-              let newMsg = this.translate.instant('home.botmsg3') + ': ' + this.appointmentsForm.value.name;
-              this.addMessage({
-                text: newMsg,
-                isUser: false
-              });
-              if (this.proposedAppointments.length == 0 && this.suggestions.length == 0) {
-                this.suggestions = this.getAllSuggestions(4);
-              }
-              this.loadEnvironmentMydata();
-            }
-            resolve(true);
-          }, (err) => {
-            this.proposedAppointments[actualIndex].saving = false;
-            this.submitted = false;
-            console.log(err);
-            this.insightsService.trackException(err);
-            this.saving = false;
-            if (err.error.message == 'Token expired' || err.error.message == 'Invalid Token') {
-              this.authGuard.testtoken();
-            } else {
-            }
-            reject(err);
-          }));
-      }
-    });
-  }
-
-  showProposedAppointments() {
-    if (this.modalReference != undefined) {
-      this.modalReference.close();
-      this.modalReference = undefined;
-    }
-    let ngbModalOptions: NgbModalOptions = {
-      keyboard: false,
-      windowClass: 'ModalClass-sm' // xl, lg, sm
-    };
-    this.modalReference = this.modalService.open(this.contentviewProposedAppointments, ngbModalOptions);
   }
 
   resetPermisions() {
@@ -4959,24 +5333,47 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
 
   private groupEventsByMonth(events: any[]): any[] {
     const grouped = {};
+    const noDateEvents = [];
 
     events.forEach(event => {
-      const monthYear = this.getMonthYear(event.date).getTime(); // Usar getTime para agrupar
-      if (!grouped[monthYear]) {
-        grouped[monthYear] = [];
+      if (!event.date) {
+        noDateEvents.push(event);
+      } else {
+        const dateObj = new Date(event.date);
+        // Validar que la fecha sea válida y no sea 1970 (caso de error común)
+        if (isNaN(dateObj.getTime()) || dateObj.getFullYear() <= 1970) {
+          noDateEvents.push(event);
+        } else {
+          const monthYear = this.getMonthYear(event.date).getTime();
+          if (!grouped[monthYear]) {
+            grouped[monthYear] = [];
+          }
+          grouped[monthYear].push(event);
+        }
       }
-      grouped[monthYear].push(event);
     });
 
-    return Object.keys(grouped).map(key => ({
-      monthYear: new Date(Number(key)), // Convertir la clave de nuevo a fecha
+    const result = Object.keys(grouped).map(key => ({
+      monthYear: new Date(Number(key)),
       events: grouped[key]
     }));
+
+    if (noDateEvents.length > 0) {
+      result.push({
+        monthYear: null, // Identificador especial para eventos sin fecha
+        events: noDateEvents
+      });
+    }
+
+    return result;
   }
 
 
   private getMonthYear(dateStr: string): Date {
     const date = new Date(dateStr);
+    if (isNaN(date.getTime())) {
+      return new Date(0); // Fallback
+    }
     return new Date(date.getFullYear(), date.getMonth(), 1); // Primer día del mes
   }
 
@@ -5001,7 +5398,7 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
         // El evento debe empezar antes del fin del filtro
         isBeforeEndDate = !eventStart || eventStart <= endDate;
       }
-      
+
       const isEventTypeMatch = !this.selectedEventType || this.selectedEventType == 'null' || !event.key || event.key === this.selectedEventType;
       return isAfterStartDate && isBeforeEndDate && isEventTypeMatch;
     });
@@ -5026,15 +5423,22 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
 
   orderEvents() {
     this.groupedEvents.sort((a, b) => {
-      const dateA = a.monthYear.getTime(); // Convertir a timestamp
-      const dateB = b.monthYear.getTime(); // Convertir a timestamp
+      // Los eventos sin fecha (monthYear === null) siempre van primero para que el usuario los vea
+      if (a.monthYear === null) return -1;
+      if (b.monthYear === null) return 1;
+
+      const dateA = a.monthYear.getTime();
+      const dateB = b.monthYear.getTime();
       return this.isOldestFirst ? dateA - dateB : dateB - dateA;
     });
 
     this.groupedEvents.forEach(group => {
       group.events.sort((a, b) => {
-        const dateA = new Date(a.date).getTime(); // Convertir a timestamp
-        const dateB = new Date(b.date).getTime(); // Convertir a timestamp
+        if (!a.date) return -1;
+        if (!b.date) return 1;
+        
+        const dateA = new Date(a.date).getTime();
+        const dateB = new Date(b.date).getTime();
         return this.isOldestFirst ? dateA - dateB : dateB - dateA;
       });
     });
@@ -5401,6 +5805,11 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     this.rightSidebarOpenMobile = false;
   }
 
+  openTrialGpt() {
+    // Abrir TrialGPT en una nueva pestaña
+    window.open('https://trialgpt.app/', '_blank');
+  }
+
   openToolModal(tool: string) {
     let ngbModalOptions: NgbModalOptions = {
       backdrop: 'static',
@@ -5457,6 +5866,1317 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
       this.modalReference.close();
     }
     this.modalReference = this.modalService.open(this.diaryModal, ngbModalOptions);
+  }
+
+  sendQuickPrepareConsult() {
+    // Enviar directamente un mensaje predeterminado al chat
+    this.message = this.translate.instant('prepareConsult.quickMessage');
+    this.sendMessage();
+  }
+
+  openPrepareConsultModal() {
+    // Resetear datos del formulario
+    this.prepareConsultData = {
+      specialist: '',
+      consultDate: '',
+      comments: ''
+    };
+    this.prepareConsultEditMode = {
+      specialist: false,
+      consultDate: false,
+      comments: false
+    };
+    
+    let ngbModalOptions: NgbModalOptions = {
+      backdrop: 'static',
+      keyboard: false,
+      windowClass: 'ModalClass-md' // md para un modal mediano
+    };
+    
+    if (this.modalReference != undefined) {
+      this.modalReference.close();
+    }
+    this.modalReference = this.modalService.open(this.prepareConsultModal, ngbModalOptions);
+  }
+
+  togglePrepareConsultEdit(field: 'specialist' | 'consultDate' | 'comments') {
+    this.prepareConsultEditMode[field] = !this.prepareConsultEditMode[field];
+  }
+
+  sendPreparedConsult() {
+    // Construir el mensaje para el chat
+    let messageToSend = this.translate.instant('prepareConsult.title');
+    
+    if (this.prepareConsultData.specialist) {
+      messageToSend += ` con ${this.prepareConsultData.specialist}`;
+    }
+    
+    if (this.prepareConsultData.consultDate) {
+      messageToSend += ` (${this.prepareConsultData.consultDate})`;
+    }
+    
+    messageToSend += '. ';
+    
+    if (this.prepareConsultData.comments) {
+      messageToSend += this.prepareConsultData.comments;
+    } else {
+      messageToSend += this.translate.instant('prepareConsult.commentsPlaceholder');
+    }
+    
+    // Cerrar el modal
+    this.closeModal();
+    
+    // Enviar el mensaje al chat
+    this.message = messageToSend;
+    this.sendMessage();
+  }
+
+  // ========== SOAP Notes Methods (Clinical) ==========
+  
+  openSoapModal() {
+    // Resetear datos del formulario
+    this.soapStep = 1;
+    this.soapLoading = false;
+    this.soapData = {
+      patientSymptoms: '',
+      suggestedQuestions: [],
+      result: null
+    };
+    
+    let ngbModalOptions: NgbModalOptions = {
+      backdrop: 'static',
+      keyboard: false,
+      windowClass: 'ModalClass-lg',
+      size: 'lg'
+    };
+    
+    if (this.modalReference != undefined) {
+      this.modalReference.close();
+    }
+    this.modalReference = this.modalService.open(this.soapModal, ngbModalOptions);
+  }
+
+  generateSoapQuestions() {
+    if (!this.soapData.patientSymptoms || this.soapLoading) return;
+    
+    this.soapLoading = true;
+    const info = {
+      userId: this.authService.getIdUser(),
+      lang: this.preferredResponseLanguage || localStorage.getItem('lang') || 'en',
+      patientSymptoms: this.soapData.patientSymptoms
+    };
+    
+    this.subscription.add(this.http.post(environment.api + '/api/ai/soap/questions/' + this.currentPatient, info)
+      .pipe(timeout(120000))
+      .subscribe((res: any) => {
+        this.soapLoading = false;
+        
+        if (res.success && res.questions) {
+          this.soapData.suggestedQuestions = res.questions.map((q: string) => ({
+            question: q,
+            answer: ''
+          }));
+          this.soapStep = 2;
+        } else {
+          this.toastr.error('', res.error || this.translate.instant('soap.errorQuestions'));
+        }
+      }, (err) => {
+        this.soapLoading = false;
+        console.log('[SOAP] Error generating questions:', err);
+        this.insightsService.trackException(err);
+        this.toastr.error('', this.translate.instant("generics.error try again"));
+      }));
+  }
+
+  generateSoapReport() {
+    if (this.soapLoading) return;
+    
+    this.soapLoading = true;
+    const info = {
+      userId: this.authService.getIdUser(),
+      lang: this.preferredResponseLanguage || localStorage.getItem('lang') || 'en',
+      patientSymptoms: this.soapData.patientSymptoms,
+      questionsAndAnswers: this.soapData.suggestedQuestions
+    };
+    
+    this.subscription.add(this.http.post(environment.api + '/api/ai/soap/report/' + this.currentPatient, info)
+      .pipe(timeout(180000))
+      .subscribe((res: any) => {
+        this.soapLoading = false;
+        
+        if (res.success && res.soap) {
+          this.soapData.result = res.soap;
+          this.soapStep = 3;
+        } else {
+          this.toastr.error('', res.error || this.translate.instant('soap.errorReport'));
+        }
+      }, (err) => {
+        this.soapLoading = false;
+        console.log('[SOAP] Error generating report:', err);
+        this.insightsService.trackException(err);
+        this.toastr.error('', this.translate.instant("generics.error try again"));
+      }));
+  }
+
+  copySoapReport() {
+    if (!this.soapData.result) return;
+    
+    const soapText = `SOAP NOTES
+================
+
+SUBJECTIVE:
+${this.soapData.result.subjective}
+
+OBJECTIVE:
+${this.soapData.result.objective}
+
+ASSESSMENT:
+${this.soapData.result.assessment}
+
+PLAN:
+${this.soapData.result.plan}
+`;
+    
+    navigator.clipboard.writeText(soapText).then(() => {
+      this.toastr.success('', this.translate.instant('soap.copied'));
+    }).catch(err => {
+      console.error('Error copying to clipboard:', err);
+      this.toastr.error('', this.translate.instant('generics.error try again'));
+    });
+  }
+
+  // ========== Patient Tracking Methods (Clinical) ==========
+  
+  openTrackingModal() {
+    // Resetear datos del formulario
+    this.trackingLoading = true; // Mostrar loading mientras carga
+    this.trackingImportPreview = null;
+    this.trackingManualEntry = {
+      conditionType: 'epilepsy',
+      date: '',
+      type: 'Tonic Clonic',
+      duration: 0,
+      severity: 5,
+      triggers: [],
+      notes: ''
+    };
+    
+    let ngbModalOptions: NgbModalOptions = {
+      backdrop: 'static',
+      keyboard: false,
+      windowClass: 'ModalClass-xl',
+      size: 'xl'
+    };
+    
+    if (this.modalReference != undefined) {
+      this.modalReference.close();
+    }
+    this.modalReference = this.modalService.open(this.trackingModal, ngbModalOptions);
+    
+    // Cargar datos existentes del paciente
+    this.loadTrackingData();
+  }
+
+  loadTrackingData() {
+    if (!this.currentPatient) {
+      this.trackingLoading = false;
+      this.trackingStep = 1;
+      return;
+    }
+    
+    this.trackingLoading = true;
+    
+    // Build URL with optional condition filter
+    const url = environment.api + '/api/tracking/' + this.currentPatient + '/data';
+    
+    this.subscription.add(
+      this.http.get(url)
+        .pipe(timeout(30000))
+        .subscribe({
+          next: (res: any) => {
+            this.trackingLoading = false;
+            
+            if (res.success && res.data) {
+              this.trackingData = res.data;
+              this.trackingData.entries = this.trackingData.entries.map(e => ({
+                ...e,
+                date: new Date(e.date)
+              }));
+              // Cargar insights existentes
+              if (res.data.insights && res.data.insights.length > 0) {
+                this.trackingInsights = res.data.insights;
+              }
+              this.calculateTrackingStats();
+              this.populateSeizureTypes();
+              this.populateAvailableYears();
+              // Si hay datos, ir directo al dashboard (paso 4)
+              if (this.trackingData.entries.length > 0) {
+                this.trackingStep = 4;
+                // Usar setTimeout con retry para esperar a que Angular renderice el DOM
+                this.initTrackingChartsWithRetry();
+              } else {
+                // Sin datos, mostrar menú de opciones
+                this.trackingStep = 1;
+              }
+            } else {
+              this.trackingStep = 1;
+            }
+          },
+          error: (err) => {
+            this.trackingLoading = false;
+            this.trackingStep = 1;
+            console.error('Error loading tracking data:', err);
+          }
+        })
+    );
+  }
+
+  onDragOver(event: DragEvent) {
+    event.preventDefault();
+    event.stopPropagation();
+    this.isDragOver = true;
+  }
+
+  onDragLeave(event: DragEvent) {
+    event.preventDefault();
+    event.stopPropagation();
+    this.isDragOver = false;
+  }
+
+  onTrackingFileDrop(event: DragEvent) {
+    event.preventDefault();
+    event.stopPropagation();
+    this.isDragOver = false;
+    
+    const files = event.dataTransfer?.files;
+    if (files && files.length > 0) {
+      this.processTrackingFile(files[0]);
+    }
+  }
+
+  onTrackingFileSelected(event: Event) {
+    const input = event.target as HTMLInputElement;
+    if (input.files && input.files.length > 0) {
+      this.processTrackingFile(input.files[0]);
+    }
+  }
+
+  processTrackingFile(file: File) {
+    if (!file.name.endsWith('.json')) {
+      this.toastr.error('', this.translate.instant('tracking.invalidFileType'));
+      return;
+    }
+    
+    this.trackingLoading = true;
+    const reader = new FileReader();
+    
+    reader.onload = (e) => {
+      try {
+        const content = e.target?.result as string;
+        const jsonData = JSON.parse(content);
+        
+        // Detectar tipo de archivo
+        const detected = this.detectTrackingFileType(jsonData);
+        
+        this.trackingImportPreview = {
+          type: detected.type,
+          entriesCount: detected.entriesCount,
+          medicationsCount: detected.medicationsCount,
+          dateRange: detected.dateRange,
+          rawData: jsonData
+        };
+        
+        this.trackingLoading = false;
+      } catch (err) {
+        this.trackingLoading = false;
+        this.toastr.error('', this.translate.instant('tracking.parseError'));
+        console.error('Error parsing JSON:', err);
+      }
+    };
+    
+    reader.onerror = () => {
+      this.trackingLoading = false;
+      this.toastr.error('', this.translate.instant('tracking.readError'));
+    };
+    
+    reader.readAsText(file);
+  }
+
+  detectTrackingFileType(data: any): { type: string; entriesCount: number; medicationsCount: number; dateRange: string } {
+    // Detectar SeizureTracker
+    if (data.Seizures && Array.isArray(data.Seizures)) {
+      const seizures = data.Seizures;
+      const medications = data.Medications || [];
+      
+      let dateRange = '-';
+      if (seizures.length > 0) {
+        const dates = seizures
+          .map((s: any) => new Date(s.Date_Time))
+          .filter((d: Date) => !isNaN(d.getTime()))
+          .sort((a: Date, b: Date) => a.getTime() - b.getTime());
+        
+        if (dates.length > 0) {
+          const firstDate = dates[0].toLocaleDateString();
+          const lastDate = dates[dates.length - 1].toLocaleDateString();
+          dateRange = `${firstDate} - ${lastDate}`;
+        }
+      }
+      
+      return {
+        type: 'SeizureTracker (Epilepsy)',
+        entriesCount: seizures.length,
+        medicationsCount: medications.length,
+        dateRange
+      };
+    }
+    
+    // Detectar formato genérico con entries
+    if (data.entries && Array.isArray(data.entries)) {
+      return {
+        type: 'Generic JSON',
+        entriesCount: data.entries.length,
+        medicationsCount: data.medications?.length || 0,
+        dateRange: '-'
+      };
+    }
+    
+    // Formato desconocido
+    return {
+      type: 'Unknown Format',
+      entriesCount: 0,
+      medicationsCount: 0,
+      dateRange: '-'
+    };
+  }
+
+  confirmTrackingImport() {
+    if (!this.trackingImportPreview || !this.currentPatient) return;
+    
+    this.trackingLoading = true;
+    
+    const payload = {
+      userId: this.authService.getIdUser(),
+      rawData: this.trackingImportPreview.rawData,
+      detectedType: this.trackingImportPreview.type
+    };
+    
+    this.subscription.add(
+      this.http.post(environment.api + '/api/tracking/' + this.currentPatient + '/import', payload)
+        .pipe(timeout(60000))
+        .subscribe({
+          next: (res: any) => {
+            this.trackingLoading = false;
+            if (res.success) {
+              this.toastr.success('', this.translate.instant('tracking.importSuccess'));
+              this.trackingData = res.data;
+              this.trackingData.entries = this.trackingData.entries.map(e => ({
+                ...e,
+                date: new Date(e.date)
+              }));
+              this.calculateTrackingStats();
+              this.populateSeizureTypes();
+              this.populateAvailableYears();
+              this.trackingStep = 4;
+              this.initTrackingChartsWithRetry();
+            } else {
+              this.toastr.error('', res.message || this.translate.instant('tracking.importError'));
+            }
+          },
+          error: (err) => {
+            this.trackingLoading = false;
+            this.toastr.error('', this.translate.instant('tracking.importError'));
+            console.error('Error importing tracking data:', err);
+          }
+        })
+    );
+  }
+
+  toggleTrigger(trigger: string) {
+    const index = this.trackingManualEntry.triggers.indexOf(trigger);
+    if (index === -1) {
+      this.trackingManualEntry.triggers.push(trigger);
+    } else {
+      this.trackingManualEntry.triggers.splice(index, 1);
+    }
+  }
+
+  saveManualEntry() {
+    if (!this.trackingManualEntry.date || !this.currentPatient) return;
+    
+    this.trackingLoading = true;
+    
+    const payload = {
+      userId: this.authService.getIdUser(),
+      entry: {
+        ...this.trackingManualEntry,
+        date: new Date(this.trackingManualEntry.date)
+      }
+    };
+    
+    this.subscription.add(
+      this.http.post(environment.api + '/api/tracking/' + this.currentPatient + '/entry', payload)
+        .pipe(timeout(30000))
+        .subscribe({
+          next: (res: any) => {
+            this.trackingLoading = false;
+            if (res.success) {
+              this.toastr.success('', this.translate.instant('tracking.entrySaved'));
+              // Añadir la entrada a los datos locales
+              this.trackingData.entries.unshift({
+                ...payload.entry,
+                date: new Date(payload.entry.date)
+              });
+              this.trackingData.conditionType = this.trackingManualEntry.conditionType;
+              this.calculateTrackingStats();
+              // Resetear formulario
+              this.trackingManualEntry = {
+                conditionType: this.trackingManualEntry.conditionType,
+                date: '',
+                type: '',
+                duration: 0,
+                severity: 5,
+                triggers: [],
+                notes: ''
+              };
+              this.trackingStep = 4;
+              this.initTrackingChartsWithRetry();
+            } else {
+              this.toastr.error('', res.message || this.translate.instant('tracking.saveError'));
+            }
+          },
+          error: (err) => {
+            this.trackingLoading = false;
+            this.toastr.error('', this.translate.instant('tracking.saveError'));
+            console.error('Error saving entry:', err);
+          }
+        })
+    );
+  }
+
+  calculateTrackingStats() {
+    const entries = this.trackingData.entries;
+    if (entries.length === 0) {
+      this.trackingStats = {
+        totalEvents: 0,
+        daysSinceLast: 0,
+        monthlyAvg: 0,
+        trend: '',
+        trendPercent: 0
+      };
+      return;
+    }
+    
+    // Total eventos
+    this.trackingStats.totalEvents = entries.length;
+    
+    // Días desde el último evento
+    const sortedEntries = [...entries].sort((a, b) => 
+      new Date(b.date).getTime() - new Date(a.date).getTime()
+    );
+    const lastEventDate = new Date(sortedEntries[0].date);
+    const today = new Date();
+    this.trackingStats.daysSinceLast = Math.floor(
+      (today.getTime() - lastEventDate.getTime()) / (1000 * 60 * 60 * 24)
+    );
+    
+    // Promedio mensual
+    if (entries.length > 1) {
+      const firstDate = new Date(sortedEntries[sortedEntries.length - 1].date);
+      const months = Math.max(1, 
+        (today.getTime() - firstDate.getTime()) / (1000 * 60 * 60 * 24 * 30)
+      );
+      this.trackingStats.monthlyAvg = entries.length / months;
+    } else {
+      this.trackingStats.monthlyAvg = entries.length;
+    }
+    
+    // Calcular tendencia (comparar últimos 3 meses vs 3 meses anteriores)
+    const threeMonthsAgo = new Date();
+    threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+    const sixMonthsAgo = new Date();
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+    
+    const recentCount = entries.filter(e => new Date(e.date) >= threeMonthsAgo).length;
+    const previousCount = entries.filter(e => {
+      const date = new Date(e.date);
+      return date >= sixMonthsAgo && date < threeMonthsAgo;
+    }).length;
+    
+    if (previousCount > 0) {
+      const diff = recentCount - previousCount;
+      this.trackingStats.trendPercent = Math.abs(Math.round((diff / previousCount) * 100));
+      this.trackingStats.trend = diff < 0 ? 'improving' : (diff > 0 ? 'worsening' : '');
+    } else {
+      this.trackingStats.trend = '';
+      this.trackingStats.trendPercent = 0;
+    }
+  }
+
+  initTrackingChartsWithRetry(attempt = 0, maxAttempts = 10) {
+    // Pequeño delay para que el modal renderice el DOM
+    setTimeout(() => {
+      // Buscar canvas por ID (ViewChild no funciona dentro de ng-template/modal)
+      const canvas = document.getElementById('trackingEvolutionChart') as HTMLCanvasElement;
+      if (canvas) {
+        console.log('initTrackingChartsWithRetry: canvas encontrado');
+        this.initTrackingCharts();
+        
+        // Forzar resize después de crear las gráficas
+        setTimeout(() => {
+          if (this.trackingEvolutionChart) {
+            this.trackingEvolutionChart.resize();
+          }
+          if (this.trackingTimeChart) {
+            this.trackingTimeChart.resize();
+          }
+        }, 100);
+      } else if (attempt < maxAttempts) {
+        console.log('initTrackingChartsWithRetry: intento', attempt, '- canvas no disponible');
+        this.initTrackingChartsWithRetry(attempt + 1, maxAttempts);
+      } else {
+        console.warn('No se pudo inicializar gráficos de tracking: canvas no disponible');
+      }
+    }, 200);
+  }
+
+  initTrackingCharts() {
+    // Destruir gráficos existentes
+    if (this.trackingEvolutionChart) {
+      this.trackingEvolutionChart.destroy();
+      this.trackingEvolutionChart = null;
+    }
+    if (this.trackingTimeChart) {
+      this.trackingTimeChart.destroy();
+      this.trackingTimeChart = null;
+    }
+    
+    // Buscar canvas por ID (ViewChild no funciona dentro de ng-template/modal)
+    const canvas = document.getElementById('trackingEvolutionChart') as HTMLCanvasElement;
+    if (!canvas) {
+      console.warn('initTrackingCharts: canvas no disponible');
+      return;
+    }
+    
+    // Verificar y destruir charts existentes en canvas
+    const existingEvolutionChart = Chart.getChart(canvas);
+    if (existingEvolutionChart) {
+      existingEvolutionChart.destroy();
+    }
+    
+    const timeCanvas = document.getElementById('trackingTimeChart') as HTMLCanvasElement;
+    if (timeCanvas) {
+      const existingTimeChart = Chart.getChart(timeCanvas);
+      if (existingTimeChart) {
+        existingTimeChart.destroy();
+      }
+    }
+    
+    const entries = this.trackingData.entries;
+    if (!entries || entries.length === 0) {
+      console.warn('initTrackingCharts: no hay entries');
+      return;
+    }
+    
+    // Agrupar por mes
+    const monthlyData: { [key: string]: number } = {};
+    entries.forEach(entry => {
+      const date = new Date(entry.date);
+      const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      monthlyData[key] = (monthlyData[key] || 0) + 1;
+    });
+    
+    const sortedMonths = Object.keys(monthlyData).sort();
+    const labels = sortedMonths.map(m => {
+      const [year, month] = m.split('-');
+      return new Date(parseInt(year), parseInt(month) - 1).toLocaleDateString('default', { month: 'short', year: '2-digit' });
+    });
+    const data = sortedMonths.map(m => monthlyData[m]);
+    
+    console.log('initTrackingCharts: creando chart con', { labels, data, entries: entries.length });
+    
+    // Gráfico de evolución - Chart.js v4
+    try {
+      this.trackingEvolutionChart = new Chart(canvas, {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: this.translate.instant('tracking.events'),
+            data: data,
+            borderColor: '#00897b',
+            backgroundColor: 'rgba(0, 137, 123, 0.1)',
+            fill: true,
+            tension: 0.3,
+            pointRadius: 4,
+            pointBackgroundColor: '#00897b'
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false }
+          },
+          scales: {
+            y: { 
+              beginAtZero: true,
+              ticks: {
+                stepSize: 1
+              }
+            },
+            x: {
+              ticks: {
+                autoSkip: true,
+                maxTicksLimit: 12
+              }
+            }
+          }
+        }
+      });
+      console.log('initTrackingCharts: chart de evolución creado', this.trackingEvolutionChart);
+    } catch (err) {
+      console.error('initTrackingCharts: error creando chart de evolución', err);
+    }
+    
+    // Gráfico de distribución horaria (solo para epilepsia)
+    if (this.trackingData.conditionType === 'epilepsy' && timeCanvas) {
+      const hourlyData = new Array(24).fill(0);
+      entries.forEach(entry => {
+        const hour = new Date(entry.date).getHours();
+        hourlyData[hour]++;
+      });
+      
+      try {
+        this.trackingTimeChart = new Chart(timeCanvas, {
+          type: 'bar',
+          data: {
+            labels: Array.from({ length: 24 }, (_, i) => `${i}:00`),
+            datasets: [{
+              label: this.translate.instant('tracking.events'),
+              data: hourlyData,
+              backgroundColor: 'rgba(156, 39, 176, 0.6)',
+              borderColor: '#9c27b0',
+              borderWidth: 1
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: { display: false }
+            },
+            scales: {
+              y: { 
+                beginAtZero: true,
+                ticks: {
+                  stepSize: 1
+                }
+              }
+            }
+          }
+        });
+        console.log('initTrackingCharts: chart horario creado');
+      } catch (err) {
+        console.error('initTrackingCharts: error creando chart horario', err);
+      }
+    }
+    
+    // Crear gráfico combinado de crisis vs medicación
+    this.initCombinedChart();
+  }
+
+  // Poblar tipos de crisis disponibles para el filtro
+  populateSeizureTypes() {
+    const types = new Set<string>();
+    this.trackingData.entries.forEach(entry => {
+      if (entry.type) types.add(entry.type);
+    });
+    this.availableSeizureTypes = Array.from(types);
+  }
+
+  // Poblar años disponibles para el slicer
+  populateAvailableYears() {
+    const years = new Set<number>();
+    this.trackingData.entries.forEach(entry => {
+      const year = new Date(entry.date).getFullYear();
+      if (!isNaN(year)) years.add(year);
+    });
+    this.availableYears = Array.from(years).sort((a, b) => a - b);
+    // Por defecto seleccionar todos los años
+    if (this.trackingFilters.selectedYears.length === 0) {
+      this.trackingFilters.selectedYears = [...this.availableYears];
+    }
+  }
+
+  // Toggle selección de año individual
+  toggleYearSelection(year: number) {
+    const idx = this.trackingFilters.selectedYears.indexOf(year);
+    if (idx > -1) {
+      this.trackingFilters.selectedYears.splice(idx, 1);
+    } else {
+      this.trackingFilters.selectedYears.push(year);
+    }
+    this.onTrackingFilterChange();
+  }
+
+  // Seleccionar/deseleccionar todos los años
+  toggleAllYears() {
+    if (this.trackingFilters.selectedYears.length === this.availableYears.length) {
+      this.trackingFilters.selectedYears = [];
+    } else {
+      this.trackingFilters.selectedYears = [...this.availableYears];
+    }
+    this.onTrackingFilterChange();
+  }
+
+  // Verificar si un año está seleccionado
+  isYearSelected(year: number): boolean {
+    return this.trackingFilters.selectedYears.includes(year);
+  }
+
+  // Obtener rango de fechas según filtro
+  getFilteredDateRange(): { startDate: Date; endDate: Date } {
+    const now = new Date();
+    let startDate = new Date(0); // Fecha mínima
+    let endDate = new Date();
+    
+    switch (this.trackingFilters.dateRange) {
+      case '1year':
+        startDate = new Date(now.getFullYear() - 1, now.getMonth(), now.getDate());
+        break;
+      case '6months':
+        startDate = new Date(now.getFullYear(), now.getMonth() - 6, now.getDate());
+        break;
+      case '3months':
+        startDate = new Date(now.getFullYear(), now.getMonth() - 3, now.getDate());
+        break;
+      case '1month':
+        startDate = new Date(now.getFullYear(), now.getMonth() - 1, now.getDate());
+        break;
+      case 'custom':
+        if (this.trackingFilters.customStartDate) {
+          startDate = new Date(this.trackingFilters.customStartDate);
+        }
+        if (this.trackingFilters.customEndDate) {
+          endDate = new Date(this.trackingFilters.customEndDate);
+        }
+        break;
+      case 'all':
+      default:
+        // Usar el rango completo de los datos
+        if (this.trackingData.entries.length > 0) {
+          const dates = this.trackingData.entries.map(e => new Date(e.date).getTime());
+          startDate = new Date(Math.min(...dates));
+          endDate = new Date(Math.max(...dates));
+        }
+        break;
+    }
+    
+    return { startDate, endDate };
+  }
+
+  // Calcular fecha mínima para el gráfico considerando años seleccionados
+  getChartMinDate(fallbackDate: Date): Date {
+    // Si hay años seleccionados y no son todos, usar el primer año seleccionado
+    if (this.trackingFilters.selectedYears.length > 0 && 
+        this.trackingFilters.selectedYears.length < this.availableYears.length) {
+      const minYear = Math.min(...this.trackingFilters.selectedYears);
+      return new Date(minYear, 0, 1);
+    }
+    return fallbackDate;
+  }
+
+  // Calcular fecha máxima para el gráfico considerando años seleccionados
+  getChartMaxDate(fallbackDate: Date): Date {
+    // Si hay años seleccionados y no son todos, usar el último año seleccionado
+    if (this.trackingFilters.selectedYears.length > 0 && 
+        this.trackingFilters.selectedYears.length < this.availableYears.length) {
+      const maxYear = Math.max(...this.trackingFilters.selectedYears);
+      return new Date(maxYear, 11, 31);
+    }
+    // Si es todo el historial, usar fecha actual como máximo
+    if (this.trackingFilters.dateRange === 'all') {
+      return new Date();
+    }
+    return fallbackDate;
+  }
+
+  // Filtrar entries según filtros activos
+  getFilteredEntries(): Array<any> {
+    const { startDate, endDate } = this.getFilteredDateRange();
+    
+    return this.trackingData.entries.filter(entry => {
+      const entryDate = new Date(entry.date);
+      
+      // Filtro por fecha
+      if (entryDate < startDate || entryDate > endDate) return false;
+      
+      // Filtro por años seleccionados
+      if (this.trackingFilters.selectedYears.length > 0 && 
+          this.trackingFilters.selectedYears.length < this.availableYears.length) {
+        const year = entryDate.getFullYear();
+        if (!this.trackingFilters.selectedYears.includes(year)) return false;
+      }
+      
+      // Filtro por tipo de crisis
+      if (this.trackingFilters.seizureType !== 'all' && entry.type !== this.trackingFilters.seizureType) {
+        return false;
+      }
+      
+      return true;
+    });
+  }
+
+  // Actualizar gráficos cuando cambian filtros
+  onTrackingFilterChange() {
+    this.initTrackingCharts();
+  }
+
+  // Manejar cambio de rango de fechas
+  onDateRangeChange() {
+    // Habilitar/deshabilitar campos de fecha personalizada
+    if (this.trackingFilters.dateRange === 'custom') {
+      // Establecer fechas por defecto si no están definidas
+      if (!this.trackingFilters.customStartDate && this.trackingData.entries.length > 0) {
+        const dates = this.trackingData.entries.map(e => new Date(e.date).getTime());
+        const minDate = new Date(Math.min(...dates));
+        this.trackingFilters.customStartDate = minDate.toISOString().split('T')[0];
+        this.trackingFilters.customEndDate = new Date().toISOString().split('T')[0];
+      }
+    }
+    this.onTrackingFilterChange();
+  }
+
+  // Inicializar gráfico combinado de Crisis vs Medicación
+  initCombinedChart() {
+    // Destruir chart existente si lo hay
+    if (this.trackingCombinedChart) {
+      this.trackingCombinedChart.destroy();
+      this.trackingCombinedChart = null;
+    }
+    
+    const canvas = document.getElementById('trackingCombinedChart') as HTMLCanvasElement;
+    if (!canvas) {
+      console.warn('initCombinedChart: canvas no disponible');
+      return;
+    }
+    
+    // También verificar si hay un chart existente en el canvas usando Chart.getChart
+    const existingChart = Chart.getChart(canvas);
+    if (existingChart) {
+      existingChart.destroy();
+    }
+    
+    const entries = this.getFilteredEntries();
+    const medications = this.trackingData.medications || [];
+    const { startDate, endDate } = this.getFilteredDateRange();
+    
+    if (entries.length === 0) {
+      console.warn('initCombinedChart: no hay entries filtradas');
+      return;
+    }
+    
+    // Agrupar crisis según el filtro
+    const groupedData: { [key: string]: number } = {};
+    entries.forEach(entry => {
+      const date = new Date(entry.date);
+      let key: string;
+      
+      switch (this.trackingFilters.groupBy) {
+        case 'day':
+          key = date.toISOString().split('T')[0];
+          break;
+        case 'year':
+          key = `${date.getFullYear()}`;
+          break;
+        case 'month':
+        default:
+          key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+          break;
+      }
+      
+      groupedData[key] = (groupedData[key] || 0) + 1;
+    });
+    
+    const sortedKeys = Object.keys(groupedData).sort();
+    const seizureLabels = sortedKeys;
+    const seizureValues = sortedKeys.map(k => groupedData[k]);
+    
+    // Convertir labels a fechas para el eje X
+    const seizureDataPoints = sortedKeys.map((k, idx) => {
+      let date: Date;
+      if (this.trackingFilters.groupBy === 'day') {
+        date = new Date(k);
+      } else if (this.trackingFilters.groupBy === 'year') {
+        date = new Date(parseInt(k), 0, 1);
+      } else {
+        const [year, month] = k.split('-');
+        date = new Date(parseInt(year), parseInt(month) - 1, 1);
+      }
+      return { x: date, y: seizureValues[idx] };
+    });
+    
+    // Preparar datasets de medicación
+    const medDatasets: any[] = [];
+    const medChanges: Array<{ date: Date; medication: string; dose: number; type: string }> = [];
+    const colors = ['#4caf50', '#ffc107', '#2196f3', '#9c27b0', '#00bcd4', '#ff5722', '#795548'];
+    
+    // Agrupar medicamentos por nombre
+    const medGroups: { [key: string]: any[] } = {};
+    medications.forEach(med => {
+      const medStartDate = new Date(med.startDate);
+      const medEndDate = med.endDate ? new Date(med.endDate) : new Date();
+      
+      // Filtrar por rango de fechas
+      if (this.trackingFilters.dateRange !== 'all') {
+        if (medEndDate < startDate || medStartDate > endDate) return;
+      }
+      
+      // Filtrar por años seleccionados
+      if (this.trackingFilters.selectedYears.length > 0 && 
+          this.trackingFilters.selectedYears.length < this.availableYears.length) {
+        const medStartYear = medStartDate.getFullYear();
+        const medEndYear = medEndDate.getFullYear();
+        // Incluir si el medicamento cubre alguno de los años seleccionados
+        const overlapsSelectedYears = this.trackingFilters.selectedYears.some(
+          year => year >= medStartYear && year <= medEndYear
+        );
+        if (!overlapsSelectedYears) return;
+      }
+      
+      if (!medGroups[med.name]) medGroups[med.name] = [];
+      medGroups[med.name].push({
+        ...med,
+        startDate: medStartDate,
+        endDate: medEndDate,
+        dailyDose: this.parseDose(med.dose)
+      });
+    });
+    
+    let colorIdx = 0;
+    Object.keys(medGroups).forEach(medName => {
+      const meds = medGroups[medName].sort((a: any, b: any) => a.startDate - b.startDate);
+      const dataPoints: any[] = [];
+      
+      meds.forEach((med: any, idx: number) => {
+        let visibleStartDate = med.startDate;
+        let visibleEndDate = med.endDate;
+        
+        if (this.trackingFilters.dateRange !== 'all') {
+          if (visibleStartDate < startDate) visibleStartDate = startDate;
+          if (visibleEndDate > endDate) visibleEndDate = endDate;
+        }
+        
+        // Marcar cambios de medicación
+        if (idx === 0 || meds[idx - 1].dailyDose !== med.dailyDose) {
+          medChanges.push({ date: visibleStartDate, medication: medName, dose: med.dailyDose, type: 'change' });
+        }
+        
+        dataPoints.push({ x: visibleStartDate, y: med.dailyDose });
+        dataPoints.push({ x: visibleEndDate, y: med.dailyDose });
+        dataPoints.push({ x: visibleEndDate, y: null }); // Romper línea
+      });
+      
+      medDatasets.push({
+        label: medName,
+        data: dataPoints,
+        borderColor: colors[colorIdx % colors.length],
+        backgroundColor: 'transparent',
+        borderWidth: 3,
+        stepped: true,
+        yAxisID: 'y1',
+        pointRadius: 0,
+        pointHoverRadius: 4
+      });
+      colorIdx++;
+    });
+    
+    // Calcular escalas
+    const maxSeizure = Math.max(...seizureValues);
+    const userMaxSeizure = this.trackingFilters.maxSeizureScale;
+    const maxSeizureScale = userMaxSeizure || Math.ceil(maxSeizure * 1.1);
+    
+    let autoMaxMedScale = 100;
+    medDatasets.forEach(ds => {
+      ds.data.forEach((point: any) => {
+        if (point.y && point.y > autoMaxMedScale) autoMaxMedScale = point.y;
+      });
+    });
+    const maxMedScale = this.trackingFilters.maxMedicationScale || Math.ceil(autoMaxMedScale * 1.1);
+    
+    // Preparar anotaciones para cambios de medicación
+    const annotations: any = {};
+    if (this.trackingFilters.showMedicationChanges) {
+      medChanges.forEach((change, idx) => {
+        annotations[`line${idx}`] = {
+          type: 'line',
+          xMin: change.date,
+          xMax: change.date,
+          borderColor: 'rgba(255, 99, 132, 0.5)',
+          borderWidth: 2,
+          borderDash: [6, 6],
+          label: {
+            display: true,
+            content: `${change.medication}: ${change.dose}mg`,
+            position: 'start',
+            backgroundColor: 'rgba(255, 99, 132, 0.8)',
+            color: 'white',
+            font: { size: 10 }
+          }
+        };
+      });
+    }
+    
+    try {
+      this.trackingCombinedChart = new Chart(canvas, {
+        type: 'line',
+        data: {
+          datasets: [
+            {
+              label: this.translate.instant('tracking.crisisFrequency'),
+              data: seizureDataPoints,
+              borderColor: '#dc3545',
+              backgroundColor: 'rgba(220, 53, 69, 0.1)',
+              borderWidth: 2,
+              fill: true,
+              tension: 0.4,
+              yAxisID: 'y',
+              order: 2
+            },
+            ...medDatasets
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: {
+            mode: 'index',
+            intersect: false,
+          },
+          plugins: {
+            legend: {
+              position: 'top',
+              labels: { usePointStyle: true }
+            },
+            tooltip: {
+              callbacks: {
+                label: (context: any) => {
+                  let label = context.dataset.label || '';
+                  if (label) label += ': ';
+                  if (context.dataset.yAxisID === 'y1') {
+                    label += context.parsed.y + ' mg';
+                  } else {
+                    label += context.parsed.y + ' ' + this.translate.instant('tracking.crisis');
+                  }
+                  return label;
+                }
+              }
+            },
+            annotation: {
+              annotations: annotations
+            }
+          },
+          scales: {
+            x: {
+              type: 'time',
+              time: {
+                unit: this.trackingFilters.groupBy === 'day' ? 'day' : (this.trackingFilters.groupBy === 'year' ? 'year' : 'month'),
+                displayFormats: {
+                  day: 'dd/MM',
+                  month: 'MMM yyyy',
+                  year: 'yyyy'
+                }
+              },
+              title: { display: true, text: this.translate.instant('tracking.date') },
+              min: this.getChartMinDate(startDate).getTime(),
+              max: this.getChartMaxDate(endDate).getTime()
+            },
+            y: {
+              type: 'linear',
+              display: true,
+              position: 'left',
+              title: { display: true, text: this.translate.instant('tracking.crisisFrequency') },
+              beginAtZero: true,
+              max: maxSeizureScale
+            },
+            y1: {
+              type: 'linear',
+              display: true,
+              position: 'right',
+              title: { display: true, text: this.translate.instant('tracking.medicationDose') },
+              grid: { drawOnChartArea: false },
+              beginAtZero: true,
+              max: maxMedScale
+            }
+          }
+        }
+      });
+      console.log('initCombinedChart: gráfico combinado creado');
+    } catch (err) {
+      console.error('initCombinedChart: error creando gráfico combinado', err);
+    }
+  }
+
+  // Parsear dosis de medicamento (ej: "1200mg" -> 1200)
+  parseDose(doseStr: string): number {
+    if (!doseStr) return 0;
+    const match = doseStr.toString().match(/(\d+)/);
+    return match ? parseInt(match[1]) : 0;
+  }
+
+  generateTrackingInsights() {
+    if (!this.currentPatient || this.trackingData.entries.length === 0) return;
+    
+    this.trackingLoading = true;
+    
+    const payload = {
+      userId: this.authService.getIdUser(),
+      lang: localStorage.getItem('lang') || 'en'
+    };
+    
+    this.subscription.add(
+      this.http.post(environment.api + '/api/tracking/' + this.currentPatient + '/insights', payload)
+        .pipe(timeout(60000))
+        .subscribe({
+          next: (res: any) => {
+            this.trackingLoading = false;
+            if (res.success && res.insights) {
+              this.trackingInsights = res.insights;
+              this.toastr.success('', this.translate.instant('tracking.insightsGenerated'));
+            }
+          },
+          error: (err) => {
+            this.trackingLoading = false;
+            this.toastr.error('', this.translate.instant('tracking.insightsError'));
+            console.error('Error generating insights:', err);
+          }
+        })
+    );
+  }
+
+  exportTrackingData() {
+    const dataStr = JSON.stringify(this.trackingData, null, 2);
+    const blob = new Blob([dataStr], { type: 'application/json' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `tracking_${this.trackingData.conditionType}_${new Date().toISOString().split('T')[0]}.json`;
+    a.click();
+    window.URL.revokeObjectURL(url);
+    this.toastr.success('', this.translate.instant('tracking.exported'));
+  }
+
+  // Eliminar todos los datos de epilepsia
+  deleteCurrentCondition() {
+    Swal.fire({
+      title: this.translate.instant('epilepsy.confirmDeleteCondition'),
+      text: this.translate.instant('epilepsy.confirmDeleteCondition'),
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#d33',
+      cancelButtonColor: '#3085d6',
+      confirmButtonText: this.translate.instant('generics.Delete'),
+      cancelButtonText: this.translate.instant('generics.Cancel')
+    }).then((result) => {
+      if (result.isConfirmed) {
+        this.trackingLoading = true;
+        const url = environment.api + '/api/tracking/' + this.currentPatient;
+        
+        this.subscription.add(
+          this.http.delete(url)
+            .pipe(timeout(30000))
+            .subscribe({
+              next: (res: any) => {
+                this.trackingLoading = false;
+                if (res.success) {
+                  this.toastr.success('', this.translate.instant('tracking.dataDeleted'));
+                  // Resetear datos locales
+                  this.trackingData.entries = [];
+                  this.trackingData.medications = [];
+                  this.trackingInsights = [];
+                  this.trackingStep = 1;
+                }
+              },
+              error: (err) => {
+                this.trackingLoading = false;
+                this.toastr.error('', this.translate.instant('generics.error try again'));
+                console.error('Error deleting tracking data:', err);
+              }
+            })
+        );
+      }
+    });
+  }
+
+  // Eliminar entradas en un rango de fechas
+  deleteEntriesInRange() {
+    if (!this.deleteRangeStart || !this.deleteRangeEnd) {
+      this.toastr.warning('', this.translate.instant('tracking.selectDateRange'));
+      return;
+    }
+
+    Swal.fire({
+      title: this.translate.instant('tracking.confirmDeleteTitle'),
+      text: this.translate.instant('tracking.confirmDeleteRange'),
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#d33',
+      cancelButtonColor: '#3085d6',
+      confirmButtonText: this.translate.instant('generics.Delete'),
+      cancelButtonText: this.translate.instant('generics.Cancel')
+    }).then((result) => {
+      if (result.isConfirmed) {
+        this.trackingLoading = true;
+        const payload = {
+          conditionType: this.trackingData.conditionType,
+          startDate: this.deleteRangeStart,
+          endDate: this.deleteRangeEnd
+        };
+        
+        this.subscription.add(
+          this.http.post(environment.api + '/api/tracking/' + this.currentPatient + '/delete-range', payload)
+            .pipe(timeout(30000))
+            .subscribe({
+              next: (res: any) => {
+                this.trackingLoading = false;
+                if (res.success) {
+                  this.toastr.success('', this.translate.instant('tracking.entriesDeleted'));
+                  this.trackingData = res.data;
+                  this.trackingData.entries = this.trackingData.entries.map(e => ({
+                    ...e,
+                    date: new Date(e.date)
+                  }));
+                  this.calculateTrackingStats();
+                  this.populateSeizureTypes();
+                  this.populateAvailableYears();
+                  this.initTrackingChartsWithRetry();
+                  this.deleteRangeStart = '';
+                  this.deleteRangeEnd = '';
+                }
+              },
+              error: (err) => {
+                this.trackingLoading = false;
+                this.toastr.error('', this.translate.instant('generics.error try again'));
+                console.error('Error deleting entries:', err);
+              }
+            })
+        );
+      }
+    });
+  }
+
+  getConditionIcon(condition: string): string {
+    const icons: { [key: string]: string } = {
+      epilepsy: 'fa fa-brain',
+      diabetes: 'fa fa-tint',
+      migraine: 'fa fa-head-side-virus',
+      custom: 'fa fa-heartbeat'
+    };
+    return icons[condition] || 'fa fa-heartbeat';
+  }
+
+  getConditionLabel(condition: string): string {
+    return this.translate.instant('tracking.conditions.' + condition);
   }
 
   getNotes() {
@@ -5924,7 +7644,8 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
         cancelButtonText: this.translate.instant('dxgpt.chooseMethod.withEvents') || 'Analizar con eventos y documentos',
         confirmButtonColor: '#3085d6',
         cancelButtonColor: '#6c757d',
-        reverseButtons: true
+        reverseButtons: true,
+        showCloseButton: true
       });
 
       if (result.isConfirmed) {
@@ -5933,6 +7654,9 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
       } else if (result.dismiss === Swal.DismissReason.cancel) {
         // Usuario quiere usar eventos y documentos
         this.executeFetchDxGptResults(true);
+      } else {
+        // Usuario cerró el modal (Escape, clic fuera, etc.) - no hacer nada
+        return;
       }
     } else {
       // Si no tiene resumen, preguntar al usuario
@@ -5960,10 +7684,11 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
           icon: 'info',
           confirmButtonText: 'OK'
         });
-      } else {
-        // Usuario quiere continuar sin resumen (usará el flujo actual)
+      } else if (result.dismiss === Swal.DismissReason.cancel) {
+        // Usuario quiere continuar sin resumen (clic en botón "Continuar sin resumen")
         this.executeFetchDxGptResults();
       }
+      // Si cerró con Escape o clic fuera, no hacer nada
     }
   }
 
@@ -5974,6 +7699,209 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
       scrollable: true,
       backdrop: 'static'
     });
+    
+    // Cargar timeline consolidado si no está cargado
+    if (!this.consolidatedTimeline && this.showConsolidatedView) {
+      this.loadConsolidatedTimeline();
+    }
+  }
+
+  async loadConsolidatedTimeline(forceRegenerate: boolean = false) {
+    this.loadingConsolidatedTimeline = true;
+    this.consolidatedTimelineError = null;
+    
+    try {
+      const lang = this.preferredResponseLanguage || localStorage.getItem('lang') || 'en';
+      const url = `${environment.api}/api/timeline/consolidated/${this.currentPatient}?lang=${lang}${forceRegenerate ? '&regenerate=true' : ''}`;
+      
+      const response: any = await this.http.get(url).toPromise();
+      
+      if (response && response.success) {
+        this.consolidatedTimeline = response;
+        console.log('[Timeline] Consolidado cargado:', response.stats);
+      } else {
+        throw new Error(response?.message || 'Error loading timeline');
+      }
+    } catch (error) {
+      console.error('[Timeline] Error:', error);
+      this.consolidatedTimelineError = error.message || 'Error loading consolidated timeline';
+      // Fallback: mostrar vista de eventos crudos
+      this.showConsolidatedView = false;
+    } finally {
+      this.loadingConsolidatedTimeline = false;
+    }
+  }
+
+  toggleTimelineView() {
+    this.showConsolidatedView = !this.showConsolidatedView;
+    
+    if (this.showConsolidatedView && !this.consolidatedTimeline) {
+      this.loadConsolidatedTimeline();
+    }
+  }
+
+  regenerateConsolidatedTimeline() {
+    this.loadConsolidatedTimeline(true);
+  }
+
+  getMonthName(monthNum: number): string {
+    if (!monthNum || monthNum < 1 || monthNum > 12) return '';
+    const date = new Date(2000, monthNum - 1, 1);
+    return date.toLocaleString(this.translate.currentLang || 'en', { month: 'long' });
+  }
+
+  copyConsolidatedTimelineToClipboard() {
+    if (!this.consolidatedTimeline) return;
+    
+    let text = '';
+    
+    // Chronic conditions
+    if (this.consolidatedTimeline.chronicConditions?.length > 0) {
+      text += '📋 ' + this.translate.instant('timeline.Chronic conditions') + ':\n';
+      this.consolidatedTimeline.chronicConditions.forEach(c => {
+        text += `  • ${c.name}${c.since ? ' (' + c.since + ')' : ''}\n`;
+      });
+      text += '\n';
+    }
+    
+    // Current medications
+    if (this.consolidatedTimeline.currentMedications?.length > 0) {
+      text += '💊 ' + this.translate.instant('timeline.Current medications') + ':\n';
+      this.consolidatedTimeline.currentMedications.forEach(m => {
+        text += `  • ${m.name}${m.since ? ' (' + m.since + ')' : ''}\n`;
+      });
+      text += '\n';
+    }
+    
+    // Milestones
+    if (this.consolidatedTimeline.milestones?.length > 0) {
+      text += '📅 ' + this.translate.instant('timeline.Timeline') + ':\n';
+      this.consolidatedTimeline.milestones.forEach(milestone => {
+        const dateStr = milestone.month 
+          ? `${this.getMonthName(milestone.month)} ${milestone.year}` 
+          : (milestone.year || this.translate.instant('timeline.Undated'));
+        text += `\n${dateStr}:\n`;
+        milestone.events?.forEach(e => {
+          text += `  ${e.icon || '•'} ${e.title}${e.details ? ' - ' + e.details : ''}\n`;
+        });
+      });
+    }
+    
+    this.clipboard.copy(text);
+    this.toastr.success(this.translate.instant('timeline.Timeline copied to clipboard'));
+  }
+
+  exportConsolidatedTimelineToPDF() {
+    if (!this.consolidatedTimeline) return;
+    
+    const doc = new jsPDF();
+    let y = 20;
+    const lineHeight = 7;
+    const pageHeight = doc.internal.pageSize.height;
+    const maxWidth = 170; // Max text width before wrapping
+    
+    // Helper to remove emojis (jsPDF doesn't support them)
+    const removeEmojis = (text: string): string => {
+      if (!text) return '';
+      return text.replace(/[\u{1F300}-\u{1F9FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]|[\u{1F600}-\u{1F64F}]|[\u{1F680}-\u{1F6FF}]|[\u{1F1E0}-\u{1F1FF}]/gu, '').trim();
+    };
+    
+    const checkPageBreak = (neededSpace: number) => {
+      if (y + neededSpace > pageHeight - 20) {
+        doc.addPage();
+        y = 20;
+      }
+    };
+
+    // Helper to wrap and print text
+    const printWrappedText = (text: string, x: number, maxW: number) => {
+      const lines = doc.splitTextToSize(text, maxW);
+      lines.forEach((line: string) => {
+        checkPageBreak(lineHeight);
+        doc.text(line, x, y);
+        y += lineHeight;
+      });
+    };
+    
+    // Title
+    doc.setFontSize(18);
+    doc.text(this.translate.instant('timeline.Timeline') + ' - ' + this.translate.instant('timeline.Consolidated'), 14, y);
+    y += 15;
+    
+    // Chronic conditions
+    if (this.consolidatedTimeline.chronicConditions?.length > 0) {
+      checkPageBreak(20);
+      doc.setFontSize(14);
+      doc.text(this.translate.instant('timeline.Chronic conditions'), 14, y);
+      y += 10;
+      doc.setFontSize(10);
+      this.consolidatedTimeline.chronicConditions.forEach(c => {
+        checkPageBreak(lineHeight);
+        const text = `- ${c.name}${c.since ? ' (' + c.since + ')' : ''}`;
+        printWrappedText(text, 20, maxWidth - 20);
+      });
+      y += 5;
+    }
+    
+    // Current medications
+    if (this.consolidatedTimeline.currentMedications?.length > 0) {
+      checkPageBreak(20);
+      doc.setFontSize(14);
+      doc.text(this.translate.instant('timeline.Current medications'), 14, y);
+      y += 10;
+      doc.setFontSize(10);
+      this.consolidatedTimeline.currentMedications.forEach(m => {
+        checkPageBreak(lineHeight);
+        const text = `- ${m.name}${m.since ? ' (' + m.since + ')' : ''}`;
+        printWrappedText(text, 20, maxWidth - 20);
+      });
+      y += 5;
+    }
+    
+    // Milestones
+    if (this.consolidatedTimeline.milestones?.length > 0) {
+      checkPageBreak(20);
+      doc.setFontSize(14);
+      doc.text(this.translate.instant('timeline.milestones'), 14, y);
+      y += 10;
+      
+      this.consolidatedTimeline.milestones.forEach(milestone => {
+        checkPageBreak(15);
+        const dateStr = milestone.month 
+          ? `${this.getMonthName(milestone.month)} ${milestone.year}` 
+          : (milestone.year?.toString() || this.translate.instant('timeline.Undated'));
+        doc.setFontSize(11);
+        doc.setFont(undefined, 'bold');
+        doc.text(dateStr, 14, y);
+        y += lineHeight;
+        doc.setFont(undefined, 'normal');
+        doc.setFontSize(10);
+        
+        milestone.events?.forEach(e => {
+          checkPageBreak(lineHeight * 2);
+          const title = `- ${removeEmojis(e.title)}`;
+          printWrappedText(title, 20, maxWidth - 20);
+          if (e.details) {
+            doc.setTextColor(100);
+            printWrappedText(removeEmojis(e.details), 25, maxWidth - 25);
+            doc.setTextColor(0);
+          }
+        });
+        y += 3;
+      });
+    }
+    
+    // Footer on all pages
+    const pageCount = doc.internal.pages.length - 1;
+    for (let i = 1; i <= pageCount; i++) {
+      doc.setPage(i);
+      doc.setFontSize(8);
+      doc.setTextColor(150);
+      doc.text(`${this.translate.instant('timeline.Exported on')}: ${new Date().toLocaleDateString()}`, 14, pageHeight - 10);
+      doc.text(`${i}/${pageCount}`, pageHeight - 20, pageHeight - 10);
+    }
+    
+    doc.save('timeline-consolidated.pdf');
   }
 
   getEventTypeIcon(type: string): string {
@@ -5984,9 +7912,14 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
       'appointment': '📅',
       'symptom': '🤒',
       'medication': '💊',
+      'activity': '🏃',
+      'reminder': '🔔',
       'other': '🔍'
     };
-    return icons[type] ? icons[type] + ' ' : '';
+    if (!type || type === 'null') {
+      return '🔍 ';
+    }
+    return icons[type] ? icons[type] + ' ' : '🔍 ';
   }
 
   newMedicalEventTimeline() {
@@ -6135,9 +8068,14 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
       'appointment': this.translate.instant('events.appointment'),
       'symptom': this.translate.instant('timeline.Symptoms'),
       'medication': this.translate.instant('timeline.Medications'),
+      'activity': this.translate.instant('timeline.Activity'),
+      'reminder': this.translate.instant('timeline.Reminder'),
       'other': this.translate.instant('timeline.Other')
     };
-    return types[type] || type || '';
+    if (!type || type === 'null') {
+      return this.translate.instant('timeline.Other');
+    }
+    return types[type] || this.translate.instant('timeline.Other');
   }
 
   exportTimelineToPDF() {

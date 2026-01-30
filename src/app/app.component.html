@@ -1,1 +1,7 @@
 <router-outlet></router-outlet>
+<app-inactivity-warning
+  [visible]="inactivityWarningVisible"
+  [timeRemaining]="inactivityWarningTimeRemaining"
+  (keepAlive)="onInactivityKeepAlive()"
+  (closed)="onInactivityWarningClosed()">
+</app-inactivity-warning>

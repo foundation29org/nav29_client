@@ -225,6 +225,9 @@
                         *ngIf="timeline.length > 0">
                         <span>{{'timeline.Timeline' | translate }}</span>
                         <span class="ml-1 badge badge-dark">{{timeline.length}}</span>
+                        <span *ngIf="eventsNeedingReviewCount > 0" class="ml-1 badge badge-danger" title="{{'timeline.Events needing review' | translate}}">
+                            <i class="fa fa-exclamation-triangle"></i>
+                        </span>
                     </button>
                 </div>
             </div>
@@ -600,68 +603,8 @@
                                         </div>
                                     </span>
                                 </span>
-                                <span *ngIf="proposedAppointments.length > 0" class="mb-2" style="display: flex;">
-                                    <span class="border"
-                                        style="background-color: white !important;border-radius: 1rem;">
-                                        <span *ngIf="proposedAppointments.length == 1">
-                                            <h6 class="m-2" *ngIf="proposedAppointments.length == 1">{{'events.event has
-                                                been detected' | translate}}</h6>
-                                            <p class="m-2">{{'events.We need you to validate if is correct' |
-                                                translate}}</p>
-                                        </span>
-                                        <span *ngIf="proposedAppointments.length > 1">
-                                            <h6 class="m-2" *ngIf="proposedAppointments.length > 1">{{'events.events
-                                                have been detected' | translate: { value: proposedAppointments.length }
-                                                }}</h6>
-                                            <p class="m-2">{{'events.Save or delete to continue the conversation' |
-                                                translate}}</p>
-                                        </span>
-                                        <div *ngFor="let proposedAppointment of proposedAppointments; let j = index"
-                                            class="m-2">
-                                            <hr class="mt-2 mb-2">
-                                            <p class=""><strong>{{'generics.Name' | translate}}:</strong><span
-                                                    class="ml-1">{{proposedAppointment.insight}}</span></p>
-                                            <p class=""><strong>{{'generics.Date' | translate}}:</strong><span
-                                                    class="ml-1">{{proposedAppointment.date | date: timeformat}}</span>
-                                            </p>
-                                            <p *ngIf="!proposedAppointment.saving && !submitted">
-                                                <button class="mb-1 btn btn-white btn-sm mr-1"
-                                                    title="{{'generics.Edit' | translate}}"
-                                                    (click)="editProposedAppointment(proposedAppointment)"><i
-                                                        class="fa fa-edit success"></i> {{'generics.Edit' |
-                                                    translate}}</button>
-                                                <button class="mb-1 btn btn-white btn-sm ml-1 mr-1"
-                                                    title="{{'generics.Save' | translate}}"
-                                                    (click)="addProposedAppointment(proposedAppointment)"><i
-                                                        class="fa fa-plus success"></i> {{'generics.Save' |
-                                                    translate}}</button>
-                                                <button class="mb-1 btn btn-white btn-sm ml-1"
-                                                    title="{{'generics.Delete' | translate}}"
-                                                    (click)="deleteProposedAppointment(j)"><i
-                                                        class="fa fa-trash danger"></i> {{'generics.Delete' |
-                                                    translate}}</button>
-                                            </p>
-                                            <p *ngIf="proposedAppointment.saving">
-                                                <em class="fa fa-spinner fa-spin fa-2x fa-fw primary"></em>
-                                            </p>
-                                        </div>
-                                        <div *ngIf="proposedAppointments.length > 1"
-                                            class="border-top pt-3 pb-2 center-elements">
-                                            <button class="mb-1 btn btn-white btn-sm mr-1"
-                                                title="{{'generics.Save all' | translate}}"
-                                                (click)="addAllProposedAppointments()"><i
-                                                    class="fa fa-plus success"></i> {{'generics.Save all' |
-                                                translate}}</button>
-                                            <button class="mb-1 btn btn-white btn-sm ml-1"
-                                                title="{{'generics.Delete all' | translate}}"
-                                                (click)="deleteAllProposedAppointments()"><i
-                                                    class="fa fa-trash danger"></i> {{'generics.Delete all' |
-                                                translate}}</button>
-                                        </div>
-                                    </span>
-                                </span>
                                 <span
-                                    *ngIf="suggestions.length > 0 && proposedEvents.length == 0 && proposedAppointments.length == 0"
+                                    *ngIf="suggestions.length > 0 && proposedEvents.length == 0"
                                     class="suggestion-items">
                                     <span *ngFor="let suggestion of suggestions" class="suggestion-item"
                                         title="{{suggestion}}">
@@ -682,20 +625,78 @@
                     </div>
                     <a id="chatContainer"></a>
                     <div class="chat-input-container" [ngClass]="{'left-sidebar-collapsed': leftSidebarCollapsed && !isSmallScreen()}">
-                        <!--<div class="d-flex align-items-center input-container" *ngIf="!callingOpenai && proposedEvents.length == 0 && proposedAppointments.length == 0">-->
-                        <div class="d-flex align-items-end input-container border" id="chat-container">
+                        <!--<div class="d-flex align-items-center input-container" *ngIf="!callingOpenai && proposedEvents.length == 0">-->
+                        <div class="d-flex align-items-end input-container border" id="chat-container" style="position: relative;">
+                            <!-- Botón + para opciones -->
+                            <button class="btn btn-link p-0 ml-2" 
+                                    type="button" 
+                                    (click)="showChatOptions = !showChatOptions"
+                                    [disabled]="callingOpenai"
+                                    style="color: #9ca3af; font-size: 1.3rem; line-height: 1; align-self: center;"
+                                    [title]="chatMode === 'advanced' ? ('chat.advancedMode' | translate) : ('chat.fastMode' | translate)">
+                                <em class="fa fa-plus-circle"></em>
+                            </button>
+                            <!-- Badge de modo avanzado -->
+                            <span *ngIf="chatMode === 'advanced'" 
+                                  (click)="chatMode = 'fast'"
+                                  class="chat-mode-badge"
+                                  style="display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; background: #2563eb; color: white; border-radius: 16px; font-size: 0.75rem; font-weight: 500; cursor: pointer; align-self: center; margin-left: 8px; transition: background 0.15s;"
+                                  (mouseenter)="$event.target.style.background='#1d4ed8'"
+                                  (mouseleave)="$event.target.style.background='#2563eb'"
+                                  [title]="'Click to switch to fast mode'">
+                                <span>🧠</span>
+                                <span>{{'chat.advancedMode' | translate}}</span>
+                                <em class="fa fa-times" style="font-size: 0.65rem; opacity: 0.8;"></em>
+                            </span>
+                            <!-- Menú desplegable -->
+                            <div *ngIf="showChatOptions" 
+                                 class="chat-options-menu"
+                                 style="position: absolute; bottom: 100%; left: 0; margin-bottom: 8px; background: white; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.15); padding: 8px 0; min-width: 220px; z-index: 1000;">
+                                <div style="padding: 8px 16px; color: #6b7280; font-size: 0.75rem; font-weight: 500; text-transform: uppercase;">
+                                    {{'chat.responseMode' | translate}}
+                                </div>
+                                <a href="javascript:void(0)" 
+                                   (click)="chatMode = 'fast'; showChatOptions = false"
+                                   style="display: flex; align-items: center; padding: 10px 16px; color: #374151; text-decoration: none; transition: background 0.15s;"
+                                   [style.background]="chatMode === 'fast' ? '#f3f4f6' : 'transparent'"
+                                   (mouseenter)="$event.target.style.background='#f3f4f6'"
+                                   (mouseleave)="$event.target.style.background = chatMode === 'fast' ? '#f3f4f6' : 'transparent'">
+                                    <span style="width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; margin-right: 12px;">⚡</span>
+                                    <span style="flex: 1;">{{'chat.fastMode' | translate}}</span>
+                                    <span style="color: #9ca3af; font-size: 0.8rem;">~15s</span>
+                                    <em *ngIf="chatMode === 'fast'" class="fa fa-check ml-2" style="color: #10b981;"></em>
+                                </a>
+                                <a href="javascript:void(0)" 
+                                   (click)="chatMode = 'advanced'; showChatOptions = false"
+                                   style="display: flex; align-items: center; padding: 10px 16px; color: #374151; text-decoration: none; transition: background 0.15s;"
+                                   [style.background]="chatMode === 'advanced' ? '#f3f4f6' : 'transparent'"
+                                   (mouseenter)="$event.target.style.background='#f3f4f6'"
+                                   (mouseleave)="$event.target.style.background = chatMode === 'advanced' ? '#f3f4f6' : 'transparent'">
+                                    <span style="width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; margin-right: 12px;">🧠</span>
+                                    <span style="flex: 1;">{{'chat.advancedMode' | translate}}</span>
+                                    <span style="color: #9ca3af; font-size: 0.8rem;">~2min</span>
+                                    <em *ngIf="chatMode === 'advanced'" class="fa fa-check ml-2" style="color: #10b981;"></em>
+                                </a>
+                                <div style="height: 1px; background: #e5e7eb; margin: 8px 0;"></div>
+                                <a href="javascript:void(0)" 
+                                   (click)="openOptionsFiles(contentviewSelectFile); showChatOptions = false"
+                                   style="display: flex; align-items: center; padding: 10px 16px; color: #374151; text-decoration: none; transition: background 0.15s;"
+                                   (mouseenter)="$event.target.style.background='#f3f4f6'"
+                                   (mouseleave)="$event.target.style.background='transparent'">
+                                    <span style="width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; margin-right: 12px;">📎</span>
+                                    <span>{{'generics.Upload' | translate}}</span>
+                                </a>
+                            </div>
+                            <!-- Overlay para cerrar el menú -->
+                            <div *ngIf="showChatOptions" 
+                                 (click)="showChatOptions = false" 
+                                 style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 999;"></div>
                             <textarea [(ngModel)]="message" [disabled]="callingOpenai || chatRecording"
                                 placeholder="{{'generics.Write a message' | translate }}..."
                                 (keydown.enter)="onChatInputKeydown($event)" 
                                 autoResize
                                 class="mt-0 border-0 mr-2 flex-grow-1 chat-textarea"
                                 rows="1"></textarea>
-                            <button class="mr-1 btn btn-light chat-action-btn" title="{{'generics.Upload' | translate }}"
-                                style="padding: 0.2rem 0.57rem;" [disabled]="callingOpenai || chatRecording"
-                                (click)="openOptionsFiles(contentviewSelectFile)">
-                                <em class="fa fa-paperclip fa-rotate-180 h-4 w-auto" width="1em" height="1em"
-                                    fill="currentColor"></em>
-                            </button>
                             <button *ngIf="chatVoiceSupported" 
                                 class="mr-1 btn chat-action-btn" 
                                 [ngClass]="{'btn-danger': chatRecording, 'btn-light': !chatRecording}"
@@ -785,9 +786,13 @@
                             title="{{'rarescope.My Needs' | translate}}">
                         <i class="fa fa-lightbulb-o"></i>
                     </button>
-                    <button class="collapsed-icon-btn tool-card-blue" (click)="openToolModal('trialgpt')" 
+                    <button class="collapsed-icon-btn tool-card-blue" (click)="openTrialGpt()" 
                             title="{{'trialgpt.title' | translate}}">
                         <i class="fa fa-flask"></i>
+                    </button>
+                    <button class="collapsed-icon-btn tool-card-purple" (click)="openPrepareConsultModal()" 
+                            title="{{'prepareConsult.button' | translate}}">
+                        <i class="fa fa-calendar-check-o"></i>
                     </button>
                     
                     <!-- Separador -->
@@ -806,6 +811,11 @@
                     <button class="collapsed-icon-btn result-icon-diary" (click)="openDiaryModal()" 
                             title="{{'diary.title' | translate}}">
                         <i class="fa fa-calendar"></i>
+                    </button>
+                    <button class="collapsed-icon-btn result-icon-infographic" (click)="getPatientInfographic()" 
+                            [disabled]="generatingInfographic"
+                            title="{{'infographic.title' | translate}}">
+                        <i class="fa" [ngClass]="generatingInfographic ? 'fa-spinner fa-spin' : 'fa-image'"></i>
                     </button>
                 </div>
                 
@@ -829,13 +839,48 @@
                             </button>
                             
                             <!-- TrialGPT -->
-                            <button class="tool-card tool-card-blue" (click)="openToolModal('trialgpt')" 
-                                    title="{{'trialgpt.title' | translate}}"
-                                    [disabled]="true">
+                            <button class="tool-card tool-card-blue" (click)="openTrialGpt()" 
+                                    title="{{'trialgpt.title' | translate}}">
                                 <i class="fa fa-flask tool-icon"></i>
                                 <span class="tool-name">{{'trialgpt.button' | translate}}</span>
-                                <span class="tool-coming-soon">{{'trialgpt.comingSoon' | translate}}</span>
                             </button>
+                            
+                            <!-- Preparar Consulta (para usuarios no-Clinical) -->
+                            <div class="tool-card tool-card-purple tool-card-with-edit" *ngIf="role !== 'Clinical'">
+                                <div class="tool-card-main" (click)="sendQuickPrepareConsult()" 
+                                     title="{{'prepareConsult.button' | translate}}">
+                                    <i class="fa fa-calendar-check-o tool-icon"></i>
+                                    <span class="tool-name">{{'prepareConsult.button' | translate}}</span>
+                                </div>
+                                <button class="tool-card-edit-btn" (click)="openPrepareConsultModal(); $event.stopPropagation()"
+                                        title="{{'prepareConsult.editTooltip' | translate}}">
+                                    <i class="fa fa-pencil"></i>
+                                </button>
+                            </div>
+                            
+                            <!-- SOAP Notes (para Clinical) -->
+                            <button class="tool-card tool-card-purple" *ngIf="role === 'Clinical'"
+                                    (click)="openSoapModal()" 
+                                    title="{{'soap.title' | translate}}">
+                                <i class="fa fa-medkit tool-icon"></i>
+                                <span class="tool-name">{{'soap.button' | translate}}</span>
+                            </button>
+                            
+                            <!-- Patient Tracking (para Clinical) -->
+                            <button class="tool-card tool-card-teal"
+                                    (click)="openTrackingModal()" 
+                                    title="{{'epilepsy.title' | translate}}">
+                                <i class="fa fa-bolt tool-icon"></i>
+                                <span class="tool-name">{{'epilepsy.button' | translate}}</span>
+                            </button>
+                        </div>
+                        
+                        <!-- Enlace a Ideas y sugerencias -->
+                        <div class="explore-options-link" (click)="showOptionsMenu(ContentOptionsMenu)"
+                             title="{{'tools.exploreOptionsDesc' | translate}}">
+                            <i class="fa fa-lightbulb-o"></i>
+                            <span>{{'tools.exploreOptions' | translate}}</span>
+                            <i class="fa fa-chevron-right"></i>
                         </div>
                     </div>
                     
@@ -892,6 +937,25 @@
                             </div>
                             <div class="result-card-arrow">
                                 <i class="fa fa-chevron-right"></i>
+                            </div>
+                        </div>
+                        
+                        <!-- Infografía del Paciente -->
+                        <div class="result-card result-card-infographic" (click)="getPatientInfographic()" [class.disabled]="generatingInfographic">
+                            <div class="result-card-icon">
+                                <i class="fa" [ngClass]="generatingInfographic ? 'fa-spinner fa-spin' : 'fa-image'"></i>
+                            </div>
+                            <div class="result-card-content">
+                                <h6 class="result-card-title">{{'infographic.title' | translate}}</h6>
+                                <p class="result-card-preview" *ngIf="generatingInfographic">
+                                    {{'generics.Loading' | translate}}...
+                                </p>
+                                <p class="result-card-preview" *ngIf="!generatingInfographic">
+                                    {{'infographic.clickToGenerate' | translate}}
+                                </p>
+                            </div>
+                            <div class="result-card-arrow">
+                                <i class="fa" [ngClass]="generatingInfographic ? 'fa-spinner fa-spin' : 'fa-chevron-right'"></i>
                             </div>
                         </div>
                     </div>
@@ -929,9 +993,13 @@
                             title="{{'rarescope.My Needs' | translate}}">
                         <i class="fa fa-lightbulb-o"></i>
                     </button>
-                    <button class="collapsed-icon-btn tool-card-blue" (click)="openToolModal('trialgpt')" 
+                    <button class="collapsed-icon-btn tool-card-blue" (click)="openTrialGpt()" 
                             title="{{'trialgpt.title' | translate}}">
                         <i class="fa fa-flask"></i>
+                    </button>
+                    <button class="collapsed-icon-btn tool-card-purple" (click)="openPrepareConsultModal()" 
+                            title="{{'prepareConsult.button' | translate}}">
+                        <i class="fa fa-calendar-check-o"></i>
                     </button>
                     
                     <!-- Separador -->
@@ -950,6 +1018,11 @@
                     <button class="collapsed-icon-btn result-icon-diary" (click)="openDiaryModal()" 
                             title="{{'diary.title' | translate}}">
                         <i class="fa fa-calendar"></i>
+                    </button>
+                    <button class="collapsed-icon-btn result-icon-infographic" (click)="getPatientInfographic()" 
+                            [disabled]="generatingInfographic"
+                            title="{{'infographic.title' | translate}}">
+                        <i class="fa" [ngClass]="generatingInfographic ? 'fa-spinner fa-spin' : 'fa-image'"></i>
                     </button>
                 </div>
                 
@@ -974,13 +1047,48 @@
                             </button>
                             
                             <!-- TrialGPT -->
-                            <button class="tool-card tool-card-blue" (click)="openToolModal('trialgpt')" 
-                                    title="{{'trialgpt.title' | translate}}"
-                                    [disabled]="true">
+                            <button class="tool-card tool-card-blue" (click)="openTrialGpt()" 
+                                    title="{{'trialgpt.title' | translate}}">
                                 <i class="fa fa-flask tool-icon"></i>
                                 <span class="tool-name">{{'trialgpt.button' | translate}}</span>
-                                <span class="tool-coming-soon">{{'trialgpt.comingSoon' | translate}}</span>
                             </button>
+                            
+                            <!-- Preparar Consulta (para usuarios no-Clinical) -->
+                            <div class="tool-card tool-card-purple tool-card-with-edit" *ngIf="role !== 'Clinical'">
+                                <div class="tool-card-main" (click)="sendQuickPrepareConsult()" 
+                                     title="{{'prepareConsult.button' | translate}}">
+                                    <i class="fa fa-calendar-check-o tool-icon"></i>
+                                    <span class="tool-name">{{'prepareConsult.button' | translate}}</span>
+                                </div>
+                                <button class="tool-card-edit-btn" (click)="openPrepareConsultModal(); $event.stopPropagation()"
+                                        title="{{'prepareConsult.editTooltip' | translate}}">
+                                    <i class="fa fa-pencil"></i>
+                                </button>
+                            </div>
+                            
+                            <!-- SOAP Notes (para Clinical) -->
+                            <button class="tool-card tool-card-purple" *ngIf="role === 'Clinical'"
+                                    (click)="openSoapModal()" 
+                                    title="{{'soap.title' | translate}}">
+                                <i class="fa fa-medkit tool-icon"></i>
+                                <span class="tool-name">{{'soap.button' | translate}}</span>
+                            </button>
+                            
+                            <!-- Patient Tracking (para Clinical) -->
+                            <button class="tool-card tool-card-teal"
+                                    (click)="openTrackingModal()" 
+                                    title="{{'epilepsy.title' | translate}}">
+                                <i class="fa fa-bolt tool-icon"></i>
+                                <span class="tool-name">{{'epilepsy.button' | translate}}</span>
+                            </button>
+                        </div>
+                        
+                        <!-- Enlace a Ideas y sugerencias -->
+                        <div class="explore-options-link" (click)="showOptionsMenu(ContentOptionsMenu)"
+                             title="{{'tools.exploreOptionsDesc' | translate}}">
+                            <i class="fa fa-lightbulb-o"></i>
+                            <span>{{'tools.exploreOptions' | translate}}</span>
+                            <i class="fa fa-chevron-right"></i>
                         </div>
                     </div>
                     
@@ -1039,6 +1147,25 @@
                                 <i class="fa fa-chevron-right"></i>
                             </div>
                         </div>
+                        
+                        <!-- Infografía del Paciente -->
+                        <div class="result-card result-card-infographic" (click)="getPatientInfographic()" [class.disabled]="generatingInfographic">
+                            <div class="result-card-icon">
+                                <i class="fa" [ngClass]="generatingInfographic ? 'fa-spinner fa-spin' : 'fa-image'"></i>
+                            </div>
+                            <div class="result-card-content">
+                                <h6 class="result-card-title">{{'infographic.title' | translate}}</h6>
+                                <p class="result-card-preview" *ngIf="generatingInfographic">
+                                    {{'generics.Loading' | translate}}...
+                                </p>
+                                <p class="result-card-preview" *ngIf="!generatingInfographic">
+                                    {{'infographic.clickToGenerate' | translate}}
+                                </p>
+                            </div>
+                            <div class="result-card-arrow">
+                                <i class="fa" [ngClass]="generatingInfographic ? 'fa-spinner fa-spin' : 'fa-chevron-right'"></i>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1056,8 +1183,144 @@
         </button>
     </div>
     <div class="modal-body">
-        <!-- Aquí va todo el contenido del timeline que tenías antes -->
-        <div class="">
+        <!-- Toggle entre vista consolidada y vista de eventos crudos -->
+        <div class="d-flex justify-content-between align-items-center mb-3 px-2">
+            <div class="btn-group btn-group-sm" role="group">
+                <button type="button" class="btn" 
+                    [class.btn-primary]="showConsolidatedView" 
+                    [class.btn-outline-primary]="!showConsolidatedView"
+                    (click)="showConsolidatedView = true; loadConsolidatedTimeline()">
+                    <i class="fa fa-magic mr-1"></i> {{'timeline.Consolidated' | translate}}
+                </button>
+                <button type="button" class="btn" 
+                    [class.btn-primary]="!showConsolidatedView" 
+                    [class.btn-outline-primary]="showConsolidatedView"
+                    (click)="showConsolidatedView = false">
+                    <i class="fa fa-list mr-1"></i> {{'timeline.All events' | translate}}
+                </button>
+            </div>
+            <button *ngIf="showConsolidatedView && consolidatedTimeline" 
+                class="btn btn-sm btn-outline-secondary" 
+                (click)="regenerateConsolidatedTimeline()"
+                [disabled]="loadingConsolidatedTimeline"
+                title="{{'timeline.Regenerate' | translate}}">
+                <i class="fa fa-refresh" [class.fa-spin]="loadingConsolidatedTimeline"></i>
+            </button>
+        </div>
+
+        <!-- Vista consolidada -->
+        <div *ngIf="showConsolidatedView" class="consolidated-timeline-view">
+            <!-- Loading -->
+            <div *ngIf="loadingConsolidatedTimeline" class="text-center py-5">
+                <i class="fa fa-spinner fa-spin fa-2x text-primary"></i>
+                <p class="mt-2 text-muted">{{'timeline.Generating consolidated timeline' | translate}}...</p>
+            </div>
+
+            <!-- Error -->
+            <div *ngIf="consolidatedTimelineError && !loadingConsolidatedTimeline" class="alert alert-warning">
+                <i class="fa fa-exclamation-triangle mr-2"></i>
+                {{consolidatedTimelineError}}
+                <button class="btn btn-sm btn-link" (click)="showConsolidatedView = false">
+                    {{'timeline.Show all events instead' | translate}}
+                </button>
+            </div>
+
+            <!-- Timeline consolidado -->
+            <div *ngIf="consolidatedTimeline && !loadingConsolidatedTimeline">
+                <!-- Toolbar -->
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <!-- Stats -->
+                    <small class="text-muted" *ngIf="consolidatedTimeline.stats">
+                        <i class="fa fa-info-circle mr-1"></i>
+                        {{consolidatedTimeline.stats.rawEvents}} → {{consolidatedTimeline.stats.consolidatedMilestones}} {{'timeline.milestones' | translate}}
+                        <span *ngIf="consolidatedTimeline.fromCache" class="ml-1">
+                            ({{'timeline.cached' | translate}})
+                        </span>
+                    </small>
+                    <!-- Export options -->
+                    <div class="d-flex gap-2">
+                        <div ngbDropdown class="btn-group" placement="bottom-right" container="body" role="group">
+                            <button type="button" class="btn btn-sm btn-white" ngbDropdownToggle>
+                                <i class="fa fa-download"></i> {{'timeline.Export' | translate }}
+                            </button>
+                            <div ngbDropdownMenu>
+                                <button class="dropdown-item" (click)="copyConsolidatedTimelineToClipboard()">
+                                    <i class="fa fa-copy mr-2"></i> {{'timeline.Copy to clipboard' | translate }}
+                                </button>
+                                <button class="dropdown-item" (click)="exportConsolidatedTimelineToPDF()">
+                                    <i class="fa fa-file-pdf mr-2"></i> {{'timeline.Export to PDF' | translate }}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Condiciones crónicas -->
+                <div *ngIf="consolidatedTimeline.chronicConditions?.length > 0" class="mb-4">
+                    <h6 class="text-muted mb-2">
+                        <i class="fa fa-heartbeat mr-1"></i> {{'timeline.Chronic conditions' | translate}}
+                    </h6>
+                    <div class="d-flex flex-wrap gap-2">
+                        <span *ngFor="let condition of consolidatedTimeline.chronicConditions" 
+                            class="badge badge-secondary py-1 px-2 mr-1 mb-1">
+                            {{condition.name}}
+                            <small *ngIf="condition.since" class="text-muted ml-1">({{condition.since}})</small>
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Medicación actual -->
+                <div *ngIf="consolidatedTimeline.currentMedications?.length > 0" class="mb-4">
+                    <h6 class="text-muted mb-2">
+                        <i class="fa fa-pills mr-1"></i> {{'timeline.Current medications' | translate}}
+                    </h6>
+                    <div class="d-flex flex-wrap gap-2">
+                        <span *ngFor="let med of consolidatedTimeline.currentMedications" 
+                            class="badge badge-info py-1 px-2 mr-1 mb-1">
+                            💊 {{med.name}}
+                            <small *ngIf="med.since" class="ml-1" style="opacity: 0.8;">({{med.since}})</small>
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Hitos del timeline -->
+                <div class="timeline" *ngIf="consolidatedTimeline.milestones?.length > 0">
+                    <div *ngFor="let milestone of consolidatedTimeline.milestones" class="mb-3">
+                        <div class="timeline-month-title">
+                            <ng-container *ngIf="milestone.month">
+                                {{getMonthName(milestone.month)}} {{milestone.year}}
+                            </ng-container>
+                            <ng-container *ngIf="!milestone.month && milestone.year">
+                                {{milestone.year}}
+                            </ng-container>
+                            <ng-container *ngIf="!milestone.year">
+                                <span class="text-muted">{{'timeline.Undated' | translate}}</span>
+                            </ng-container>
+                        </div>
+                        <div class="timeline-item" *ngFor="let event of milestone.events">
+                            <div class="timeline-dot"></div>
+                            <div class="timeline-content">
+                                <p class="mb-0">
+                                    <span>{{event.icon || '📌'}}</span>
+                                    {{event.title}}
+                                </p>
+                                <small *ngIf="event.details" class="text-muted d-block">
+                                    {{event.details}}
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div *ngIf="consolidatedTimeline.milestones?.length === 0" class="text-center text-muted py-4">
+                    <i class="fa fa-calendar-o fa-2x mb-2"></i>
+                    <p>{{'timeline.No milestones found' | translate}}</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Vista de eventos crudos (original) -->
+        <div *ngIf="!showConsolidatedView" class="">
             <div class="card-content" style="background-color: #d9d9d9;">
                 <div class="card-body py-0">
                     <div class="media">
@@ -1154,9 +1417,19 @@
                         </div>
                     </div>
                     <div *ngFor="let group of groupedEvents">
-                        <div class="timeline-month-title">{{ group.monthYear | date: 'MMMM y' : '' : lang }}</div>
-                        <div class="timeline-item" *ngFor="let event of group.events">
-                            <div class="timeline-dot"></div>
+                        <div class="timeline-month-title">
+                            <ng-container *ngIf="group.monthYear; else noDateTitle">
+                                {{ group.monthYear | date: 'MMMM y' : '' : lang }}
+                            </ng-container>
+                            <ng-template #noDateTitle>
+                                <span class="text-danger">
+                                    <i class="fa fa-exclamation-triangle mr-1"></i> 
+                                    {{'timeline.Missing date' | translate}}
+                                </span>
+                            </ng-template>
+                        </div>
+                        <div class="timeline-item" *ngFor="let event of group.events" [ngClass]="{'timeline-item-no-date': !group.monthYear}">
+                            <div class="timeline-dot" [ngClass]="{'timeline-dot-danger': !group.monthYear}"></div>
                             <div class="timeline-content">
                                 <div class="d-flex justify-content-between align-items-start">
                                     <div>
@@ -1166,8 +1439,14 @@
                                             {{ event.name }}
                                         </p>
                                         <small class="text-muted">
-                                            <span *ngIf="!event.dateEnd">{{ event.date | date }}</span>
-                                            <span *ngIf="event.dateEnd">{{ event.date | date }} - {{ event.dateEnd | date }}</span>
+                                            <span *ngIf="!group.monthYear" class="d-block font-italic mb-1">
+                                                {{'timeline.Please add a date to this event' | translate}}
+                                            </span>
+                                            <span *ngIf="group.monthYear && !event.dateEnd">{{ event.date | date }}</span>
+                                            <span *ngIf="group.monthYear && event.dateEnd">{{ event.date | date }} - {{ event.dateEnd | date }}</span>
+                                            <span *ngIf="event.dateConfidence === 'estimated'" class="badge badge-warning ml-1" style="font-size: 0.7rem; vertical-align: middle;">
+                                                {{'timeline.Estimated' | translate}}
+                                            </span>
                                         </small>
                                     </div>
                                     <button class="btn btn-link btn-sm" [matMenuTriggerFor]="menu"
@@ -1194,7 +1473,7 @@
                 </div>
             </div>
         </div>
-    </div>
+        </div><!-- Cierre de vista de eventos crudos -->
 </ng-template>
 <ng-template #contentSummaryDoc id="contentSummaryDoc" let-c="close" let-d="dismiss" appendTo="body">
     <a id="contentHeader"></a>
@@ -1434,7 +1713,7 @@
                     {{'generics.Copy' | translate }}
                 </button>
 
-                <button class="btn btn-sm btn-white mb-2" (click)="downloadPDF()" [disabled]="generatingPDF">
+                <button class="btn btn-sm btn-white mb-2 mr-2" (click)="downloadPDF()" [disabled]="generatingPDF">
                     <span *ngIf="!generatingPDF">
                         <em class="fa fa-download"></em>
                         {{'generics.Download' | translate }} PDF
@@ -1442,6 +1721,18 @@
                     <span *ngIf="generatingPDF">
                         <i class="fa fa-spinner fa-spin fa-fw primary"></i>
                         {{'generics.Please wait' | translate }} PDF
+                    </span>
+                </button>
+
+                <button class="btn btn-sm btn-outline-secondary mb-2" (click)="regenerateSummary()" 
+                    [disabled]="regeneratingSummary" title="{{'messages.m6.4' | translate }}">
+                    <span *ngIf="!regeneratingSummary">
+                        <em class="fa fa-refresh mr-1"></em>
+                        {{'messages.m6.4' | translate }}
+                    </span>
+                    <span *ngIf="regeneratingSummary">
+                        <i class="fa fa-spinner fa-spin fa-fw"></i>
+                        {{'generics.Please wait' | translate }}
                     </span>
                 </button>
             </div>
@@ -1626,6 +1917,8 @@
                                     <option value="appointment">📅 {{ 'events.appointment' | translate }}</option>
                                     <option value="symptom">🤒 {{ 'timeline.Symptoms' | translate }}</option>
                                     <option value="medication">💊 {{ 'timeline.Medications' | translate }}</option>
+                                    <option value="activity">🏃 {{ 'timeline.Activity' | translate }}</option>
+                                    <option value="reminder">🔔 {{ 'timeline.Reminder' | translate }}</option>
                                     <option value="other">🔍 {{ 'timeline.Other' | translate }}</option>
                                 </select>
                             </div>
@@ -1646,77 +1939,6 @@
                 <button type="button" class="btn btn-secondary mr-1" (click)="cancelData();">{{'generics.Cancel' |
                     translate }}</button>
                 <button type="button" class="btn btn-dark ml-1" (click)="saveData(true, true);">{{'generics.Save' |
-                    translate }}</button>
-            </div>
-            <div class="col-md-12 center-elements" *ngIf="submitted">
-                <em class="fa fa-spinner fa-spin fa-2x fa-fw primary"></em>
-            </div>
-        </div>
-    </div>
-</ng-template>
-
-<ng-template #contentviewProposedAppointments let-c="close" let-d="dismiss" appendTo="body">
-    <div class="modal-header" id="idHeader">
-        <div class="content-header text-left">
-            <h4 class="mb-0">{{'events.appointment' | translate }}</h4>
-        </div>
-        <button type="button" class="close" aria-label="Close" (click)="closeModal();">
-            <span aria-hidden="true">&times;</span>
-        </button>
-    </div>
-    <div class="modal-body content-wrapper p-2" id="idBody">
-        <div class="p-1">
-            <form action="#" class="form form-horizontal" [formGroup]="appointmentsForm">
-                <div class="form-body">
-                    <div class="">
-                        <div class="">
-                            <div class="form-group">
-                                <label>{{'generics.Name' | translate }}</label>
-                                <input type="text" class="col-12 form-control" id="numericos2" formControlName="name"
-                                    [ngClass]="{ 'is-invalid': submitted && efappointment.name.errors }"
-                                    name="numericos2">
-                                <small class="form-text text-muted danger"
-                                    *ngIf="submitted && efappointment.name.errors">{{'generics.required' |
-                                    translate }}</small>
-                            </div>
-                        </div>
-                        <div class="">
-                            <div class="form-group">
-                                <label class="mb-0">{{'generics.Date' | translate }}</label>
-                                <div class="">
-                                    <mat-form-field class="mr-sm-24" fxFlex>
-                                        <input matInput class="grey" readonly [matDatepicker]="picker"
-                                            autocomplete="off" name="date" formControlName="date">
-                                        <button *ngIf="appointmentsForm.value.endDate!=null" matSuffix mat-icon-button
-                                            aria-label="Clear"
-                                            (click)="appointmentsForm.controls['endDate'].setValue(null)"
-                                            style="position: absolute; left: 30px;">
-                                            <em class="fa fa-trash danger"></em>
-                                        </button>
-                                        <mat-datepicker-toggle matSuffix [for]="picker"></mat-datepicker-toggle>
-                                        <mat-datepicker touchUi="true" [startAt]="dateAppointment"
-                                            #picker></mat-datepicker>
-                                    </mat-form-field>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="">
-                            <div class="form-group">
-                                <label>{{'generics.notes' | translate }}</label>
-                                <textarea maxlength="150" name="notes" formControlName="notes"
-                                    placeholder="{{'generics.Write down any details' | translate }}"
-                                    class="autoajustable form-control"></textarea>
-                            </div>
-                        </div>
-                    </div>
-
-                </div>
-            </form>
-            <div class="col-md-12 center-elements" *ngIf="!submitted">
-                <button type="button" class="btn btn-secondary mr-1" (click)="cancelData();">{{'generics.Cancel' |
-                    translate }}</button>
-                <button type="button" class="btn btn-dark ml-1"
-                    (click)="saveAppointmentsData(true, true);">{{'generics.Save' |
                     translate }}</button>
             </div>
             <div class="col-md-12 center-elements" *ngIf="submitted">
@@ -2720,6 +2942,720 @@
     </div>
     <div class="modal-footer">
         <button type="button" class="btn btn-secondary" (click)="modal.dismiss('Close click')">{{'generics.Close' | translate}}</button>
+    </div>
+</ng-template>
+
+<!-- Modal de Preparar Consulta -->
+<ng-template #prepareConsultModal let-modal>
+    <div class="modal-header prepare-consult-header">
+        <div class="d-flex align-items-center">
+            <i class="fa fa-calendar-check-o mr-2" style="font-size: 1.5rem; color: #7c4dff;"></i>
+            <h4 class="modal-title mb-0">{{'prepareConsult.title' | translate}}</h4>
+        </div>
+        <button type="button" class="close" aria-label="Close" (click)="modal.dismiss('Cross click')">
+            <span aria-hidden="true">&times;</span>
+        </button>
+    </div>
+    <div class="modal-body prepare-consult-body">
+        <div class="prepare-consult-content">
+            <p class="prepare-consult-description text-center mb-4">
+                {{'prepareConsult.description' | translate}}
+            </p>
+            
+            <!-- Campo: Especialista -->
+            <div class="prepare-consult-field mb-3">
+                <label class="prepare-consult-label">
+                    <i class="fa fa-user-md mr-2"></i>
+                    {{'prepareConsult.specialist' | translate}}
+                </label>
+                <div class="prepare-consult-input-wrapper" 
+                     [class.editing]="prepareConsultEditMode.specialist">
+                    <input type="text" 
+                           class="prepare-consult-input"
+                           [(ngModel)]="prepareConsultData.specialist"
+                           [placeholder]="'prepareConsult.specialistPlaceholder' | translate"
+                           [readonly]="!prepareConsultEditMode.specialist"
+                           (focus)="prepareConsultEditMode.specialist = true"
+                           (blur)="prepareConsultEditMode.specialist = false">
+                    <button class="prepare-consult-edit-btn" 
+                            (click)="togglePrepareConsultEdit('specialist')"
+                            [title]="'prepareConsult.editTooltip' | translate">
+                        <i class="fa" [ngClass]="prepareConsultEditMode.specialist ? 'fa-check' : 'fa-pencil'"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Campo: Fecha de la consulta -->
+            <div class="prepare-consult-field mb-3">
+                <label class="prepare-consult-label">
+                    <i class="fa fa-calendar mr-2"></i>
+                    {{'prepareConsult.consultDate' | translate}}
+                </label>
+                <div class="prepare-consult-input-wrapper"
+                     [class.editing]="prepareConsultEditMode.consultDate">
+                    <input type="text" 
+                           class="prepare-consult-input"
+                           [(ngModel)]="prepareConsultData.consultDate"
+                           [placeholder]="'prepareConsult.consultDatePlaceholder' | translate"
+                           [readonly]="!prepareConsultEditMode.consultDate"
+                           (focus)="prepareConsultEditMode.consultDate = true"
+                           (blur)="prepareConsultEditMode.consultDate = false">
+                    <button class="prepare-consult-edit-btn"
+                            (click)="togglePrepareConsultEdit('consultDate')"
+                            [title]="'prepareConsult.editTooltip' | translate">
+                        <i class="fa" [ngClass]="prepareConsultEditMode.consultDate ? 'fa-check' : 'fa-pencil'"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Campo: Comentarios / Qué preparar -->
+            <div class="prepare-consult-field mb-4">
+                <label class="prepare-consult-label">
+                    <i class="fa fa-comment-o mr-2"></i>
+                    {{'prepareConsult.comments' | translate}}
+                </label>
+                <div class="prepare-consult-textarea-wrapper"
+                     [class.editing]="prepareConsultEditMode.comments">
+                    <textarea class="prepare-consult-textarea"
+                              [(ngModel)]="prepareConsultData.comments"
+                              [placeholder]="'prepareConsult.commentsPlaceholder' | translate"
+                              [readonly]="!prepareConsultEditMode.comments"
+                              (focus)="prepareConsultEditMode.comments = true"
+                              (blur)="prepareConsultEditMode.comments = false"
+                              rows="4"></textarea>
+                    <button class="prepare-consult-edit-btn textarea-edit-btn"
+                            (click)="togglePrepareConsultEdit('comments')"
+                            [title]="'prepareConsult.editTooltip' | translate">
+                        <i class="fa" [ngClass]="prepareConsultEditMode.comments ? 'fa-check' : 'fa-pencil'"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="modal-footer prepare-consult-footer">
+        <button type="button" class="btn btn-outline-secondary" (click)="modal.dismiss('Close click')">
+            {{'generics.Cancel' | translate}}
+        </button>
+        <button type="button" 
+                class="btn btn-primary prepare-consult-generate-btn"
+                (click)="sendPreparedConsult()"
+                [disabled]="!prepareConsultData.specialist && !prepareConsultData.comments">
+            <i class="fa fa-magic mr-2"></i>
+            {{'prepareConsult.generate' | translate}}
+        </button>
+    </div>
+</ng-template>
+
+<!-- Modal SOAP Notes (para Clinical) -->
+<ng-template #soapModal let-modal>
+    <div class="modal-header soap-header">
+        <div class="d-flex align-items-center">
+            <i class="fa fa-medkit mr-2" style="font-size: 1.5rem; color: #7c4dff;"></i>
+            <h4 class="modal-title mb-0">{{'soap.title' | translate}}</h4>
+        </div>
+        <button type="button" class="close" aria-label="Close" (click)="modal.dismiss('Cross click')">
+            <span aria-hidden="true">&times;</span>
+        </button>
+    </div>
+    <div class="modal-body soap-body">
+        <div class="soap-content">
+            <!-- Paso 1: Síntomas del paciente -->
+            <div class="soap-step" *ngIf="soapStep === 1">
+                <h5 class="soap-step-title">
+                    <span class="step-number">1</span>
+                    {{'soap.step1Title' | translate}}
+                </h5>
+                <p class="soap-description">{{'soap.step1Description' | translate}}</p>
+                
+                <div class="soap-input-group">
+                    <label class="soap-label">
+                        <i class="fa fa-comment-o mr-2"></i>
+                        {{'soap.patientSymptoms' | translate}}
+                    </label>
+                    <textarea class="form-control soap-textarea"
+                              [(ngModel)]="soapData.patientSymptoms"
+                              [placeholder]="'soap.symptomsPlaceholder' | translate"
+                              rows="4"></textarea>
+                </div>
+            </div>
+            
+            <!-- Paso 2: Preguntas sugeridas -->
+            <div class="soap-step" *ngIf="soapStep === 2">
+                <h5 class="soap-step-title">
+                    <span class="step-number">2</span>
+                    {{'soap.step2Title' | translate}}
+                </h5>
+                <p class="soap-description">{{'soap.step2Description' | translate}}</p>
+                
+                <div class="soap-questions-list" *ngIf="soapData.suggestedQuestions.length > 0">
+                    <div class="soap-question-item" *ngFor="let question of soapData.suggestedQuestions; let i = index">
+                        <div class="soap-question-header">
+                            <span class="question-number">Q{{i + 1}}</span>
+                            <span class="question-text">{{question.question}}</span>
+                        </div>
+                        <textarea class="form-control soap-answer-input"
+                                  [(ngModel)]="question.answer"
+                                  [placeholder]="'soap.answerPlaceholder' | translate"
+                                  rows="2"></textarea>
+                    </div>
+                </div>
+                
+                <div class="soap-loading" *ngIf="soapLoading">
+                    <i class="fa fa-spinner fa-spin mr-2"></i>
+                    {{'soap.generatingQuestions' | translate}}
+                </div>
+            </div>
+            
+            <!-- Paso 3: Resultado SOAP -->
+            <div class="soap-step" *ngIf="soapStep === 3">
+                <h5 class="soap-step-title">
+                    <span class="step-number">3</span>
+                    {{'soap.step3Title' | translate}}
+                </h5>
+                
+                <div class="soap-result" *ngIf="soapData.result">
+                    <div class="soap-section">
+                        <h6 class="soap-section-title"><i class="fa fa-user mr-2"></i>{{'soap.subjective' | translate}}</h6>
+                        <div class="soap-section-content" [innerHTML]="soapData.result.subjective"></div>
+                    </div>
+                    <div class="soap-section">
+                        <h6 class="soap-section-title"><i class="fa fa-stethoscope mr-2"></i>{{'soap.objective' | translate}}</h6>
+                        <div class="soap-section-content" [innerHTML]="soapData.result.objective"></div>
+                    </div>
+                    <div class="soap-section">
+                        <h6 class="soap-section-title"><i class="fa fa-lightbulb-o mr-2"></i>{{'soap.assessment' | translate}}</h6>
+                        <div class="soap-section-content" [innerHTML]="soapData.result.assessment"></div>
+                    </div>
+                    <div class="soap-section">
+                        <h6 class="soap-section-title"><i class="fa fa-list-ul mr-2"></i>{{'soap.plan' | translate}}</h6>
+                        <div class="soap-section-content" [innerHTML]="soapData.result.plan"></div>
+                    </div>
+                </div>
+                
+                <div class="soap-loading" *ngIf="soapLoading">
+                    <i class="fa fa-spinner fa-spin mr-2"></i>
+                    {{'soap.generatingReport' | translate}}
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="modal-footer soap-footer">
+        <button type="button" class="btn btn-outline-secondary" (click)="modal.dismiss('Close click')">
+            {{'generics.Cancel' | translate}}
+        </button>
+        
+        <!-- Botón Paso 1 -> 2 -->
+        <button type="button" *ngIf="soapStep === 1"
+                class="btn btn-primary"
+                (click)="generateSoapQuestions()"
+                [disabled]="!soapData.patientSymptoms || soapLoading">
+            <i class="fa fa-magic mr-2"></i>
+            {{'soap.suggestQuestions' | translate}}
+        </button>
+        
+        <!-- Botón Paso 2 -> 3 -->
+        <button type="button" *ngIf="soapStep === 2"
+                class="btn btn-primary"
+                (click)="generateSoapReport()"
+                [disabled]="soapLoading">
+            <i class="fa fa-file-text-o mr-2"></i>
+            {{'soap.generateReport' | translate}}
+        </button>
+        
+        <!-- Botón Paso 3: Copiar/Descargar -->
+        <button type="button" *ngIf="soapStep === 3 && soapData.result"
+                class="btn btn-success"
+                (click)="copySoapReport()">
+            <i class="fa fa-copy mr-2"></i>
+            {{'soap.copyReport' | translate}}
+        </button>
+    </div>
+</ng-template>
+
+<!-- Modal de Seguimiento de Paciente (Tracking) -->
+<ng-template #trackingModal let-modal>
+    <div class="modal-header tracking-header">
+        <div class="d-flex align-items-center">
+            <i class="fa fa-bolt mr-2" style="font-size: 1.5rem;"></i>
+            <h4 class="modal-title mb-0">{{'epilepsy.title' | translate}}</h4>
+        </div>
+        <button type="button" class="close" aria-label="Close" (click)="modal.dismiss('Cross click')">
+            <span aria-hidden="true">&times;</span>
+        </button>
+    </div>
+    <div class="modal-body tracking-body">
+        <div class="tracking-content">
+            <!-- Loading spinner mientras carga datos -->
+            <div class="tracking-loading-overlay" *ngIf="trackingLoading && trackingStep !== 2">
+                <div class="loading-content">
+                    <i class="fa fa-spinner fa-spin fa-3x text-primary"></i>
+                    <p class="mt-3">{{'tracking.loadingData' | translate}}</p>
+                </div>
+            </div>
+            
+            <!-- Paso 1: Selección de acción -->
+            <div class="tracking-step" *ngIf="trackingStep === 1 && !trackingLoading">
+                <h5 class="tracking-step-title">
+                    <span class="step-number">1</span>
+                    {{'epilepsy.step1Title' | translate}}
+                </h5>
+                <p class="tracking-description">{{'epilepsy.step1Description' | translate}}</p>
+                
+                <div class="tracking-options">
+                    <div class="tracking-option-card" (click)="trackingStep = 2">
+                        <div class="option-icon">
+                            <i class="fa fa-upload"></i>
+                        </div>
+                        <div class="option-content">
+                            <h6>{{'epilepsy.importSeizureTracker' | translate}}</h6>
+                            <p>{{'epilepsy.importSeizureTrackerDesc' | translate}}</p>
+                        </div>
+                        <i class="fa fa-chevron-right option-arrow"></i>
+                    </div>
+                    
+                    <div class="tracking-option-card" (click)="trackingStep = 3">
+                        <div class="option-icon manual">
+                            <i class="fa fa-plus-circle"></i>
+                        </div>
+                        <div class="option-content">
+                            <h6>{{'epilepsy.addSeizure' | translate}}</h6>
+                            <p>{{'epilepsy.addSeizureDesc' | translate}}</p>
+                        </div>
+                        <i class="fa fa-chevron-right option-arrow"></i>
+                    </div>
+                    
+                    <div class="tracking-option-card" (click)="loadTrackingData()" 
+                         *ngIf="trackingData.entries.length > 0">
+                        <div class="option-icon view">
+                            <i class="fa fa-bar-chart"></i>
+                        </div>
+                        <div class="option-content">
+                            <h6>{{'epilepsy.viewHistory' | translate}}</h6>
+                            <p>{{'epilepsy.viewHistoryDesc' | translate}} ({{trackingData.entries.length}} {{'epilepsy.seizures' | translate}})</p>
+                        </div>
+                        <i class="fa fa-chevron-right option-arrow"></i>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Paso 2: Importar SeizureTracker -->
+            <div class="tracking-step" *ngIf="trackingStep === 2">
+                <h5 class="tracking-step-title">
+                    <span class="step-number">2</span>
+                    {{'epilepsy.importTitle' | translate}}
+                </h5>
+                <p class="tracking-description">{{'epilepsy.importDescription' | translate}}</p>
+                
+                <div class="tracking-dropzone" 
+                     (drop)="onTrackingFileDrop($event)" 
+                     (dragover)="onDragOver($event)"
+                     (dragleave)="onDragLeave($event)"
+                     [class.dragover]="isDragOver"
+                     (click)="trackingFileInput.click()">
+                    <input type="file" 
+                           #trackingFileInput 
+                           accept=".json" 
+                           (change)="onTrackingFileSelected($event)" 
+                           style="display: none;">
+                    <i class="fa fa-cloud-upload dropzone-icon"></i>
+                    <p class="dropzone-text">{{'epilepsy.dropzoneText' | translate}}</p>
+                    <p class="dropzone-hint">{{'epilepsy.dropzoneHint' | translate}}</p>
+                </div>
+                
+                <div class="supported-formats">
+                    <p class="formats-title">{{'epilepsy.howToExport' | translate}}:</p>
+                    <div class="seizure-tracker-help">
+                        <p><i class="fa fa-info-circle text-primary mr-2"></i>{{'epilepsy.seizureTrackerHelp' | translate}}</p>
+                    </div>
+                </div>
+                
+                <div class="tracking-loading" *ngIf="trackingLoading">
+                    <i class="fa fa-spinner fa-spin mr-2"></i>
+                    {{'tracking.processingFile' | translate}}
+                </div>
+                
+                <div class="import-preview" *ngIf="trackingImportPreview">
+                    <div class="preview-header">
+                        <i class="fa fa-check-circle text-success mr-2"></i>
+                        <span>{{'tracking.fileDetected' | translate}}: <strong>{{trackingImportPreview.type}}</strong></span>
+                    </div>
+                    <div class="preview-stats">
+                        <div class="preview-stat">
+                            <span class="stat-value">{{trackingImportPreview.entriesCount}}</span>
+                            <span class="stat-label">{{'tracking.entries' | translate}}</span>
+                        </div>
+                        <div class="preview-stat" *ngIf="trackingImportPreview.medicationsCount">
+                            <span class="stat-value">{{trackingImportPreview.medicationsCount}}</span>
+                            <span class="stat-label">{{'tracking.medications' | translate}}</span>
+                        </div>
+                        <div class="preview-stat">
+                            <span class="stat-value">{{trackingImportPreview.dateRange}}</span>
+                            <span class="stat-label">{{'tracking.dateRange' | translate}}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Paso 3: Entrada manual -->
+            <div class="tracking-step" *ngIf="trackingStep === 3">
+                <h5 class="tracking-step-title">
+                    <span class="step-number">+</span>
+                    {{'epilepsy.addSeizureTitle' | translate}}
+                </h5>
+                <p class="tracking-description">{{'epilepsy.addSeizureDescription' | translate}}</p>
+                
+                <div class="manual-entry-form">
+                    <div class="form-row">
+                        <div class="form-group col-md-6">
+                            <label>{{'epilepsy.seizureDateTime' | translate}} <span class="text-danger">*</span></label>
+                            <input type="datetime-local" class="form-control" [(ngModel)]="trackingManualEntry.date">
+                        </div>
+                        <div class="form-group col-md-6">
+                            <label>{{'epilepsy.seizureType' | translate}}</label>
+                            <select class="form-control" [(ngModel)]="trackingManualEntry.type">
+                                <option value="Tonic Clonic">{{'epilepsy.types.tonicClonic' | translate}}</option>
+                                <option value="Absence">{{'epilepsy.types.absence' | translate}}</option>
+                                <option value="Focal">{{'epilepsy.types.focal' | translate}}</option>
+                                <option value="Myoclonic">{{'epilepsy.types.myoclonic' | translate}}</option>
+                                <option value="Atonic">{{'epilepsy.types.atonic' | translate}}</option>
+                                <option value="Unknown">{{'epilepsy.types.unknown' | translate}}</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group col-md-6">
+                            <label>{{'epilepsy.duration' | translate}} ({{'epilepsy.seconds' | translate}})</label>
+                            <input type="number" class="form-control" [(ngModel)]="trackingManualEntry.duration" min="0" 
+                                   [placeholder]="'epilepsy.durationPlaceholder' | translate">
+                        </div>
+                        <div class="form-group col-md-6">
+                            <label>{{'epilepsy.severity' | translate}} (1-10)</label>
+                            <input type="number" class="form-control" [(ngModel)]="trackingManualEntry.severity" min="1" max="10">
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>{{'epilepsy.triggers' | translate}}</label>
+                        <div class="trigger-checkboxes">
+                            <label class="trigger-checkbox" *ngFor="let trigger of availableTriggers">
+                                <input type="checkbox" [checked]="trackingManualEntry.triggers.includes(trigger)"
+                                       (change)="toggleTrigger(trigger)">
+                                {{trigger}}
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>{{'epilepsy.notes' | translate}}</label>
+                        <textarea class="form-control" [(ngModel)]="trackingManualEntry.notes" rows="3"
+                                  [placeholder]="'epilepsy.notesPlaceholder' | translate"></textarea>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Paso 4: Dashboard de Epilepsia -->
+            <div class="tracking-step tracking-dashboard" [hidden]="trackingStep !== 4">
+                <div class="dashboard-header">
+                    <div class="condition-badge condition-epilepsy">
+                        <i class="fa fa-bolt"></i>
+                        {{'epilepsy.title' | translate}}
+                    </div>
+                    <div class="dashboard-actions">
+                        <button class="btn btn-sm btn-outline-primary" (click)="trackingStep = 3">
+                            <i class="fa fa-plus mr-1"></i>{{'epilepsy.addSeizure' | translate}}
+                        </button>
+                        <button class="btn btn-sm btn-outline-primary" (click)="trackingStep = 2">
+                            <i class="fa fa-upload mr-1"></i>{{'epilepsy.importSeizureTracker' | translate}}
+                        </button>
+                        <button class="btn btn-sm btn-outline-secondary" (click)="exportTrackingData()">
+                            <i class="fa fa-download mr-1"></i>{{'timeline.Export' | translate}}
+                        </button>
+                        <div class="dropdown d-inline-block" ngbDropdown placement="bottom-right">
+                            <button class="btn btn-sm btn-outline-danger" ngbDropdownToggle>
+                                <i class="fa fa-cog mr-1"></i>{{'epilepsy.manage' | translate}}
+                            </button>
+                            <div ngbDropdownMenu class="manage-dropdown-menu">
+                                <div class="dropdown-header">{{'epilepsy.manageData' | translate}}</div>
+                                <div class="dropdown-divider"></div>
+                                <div class="dropdown-item-form px-3 py-2">
+                                    <label class="small text-muted mb-1">{{'epilepsy.deleteRange' | translate}}</label>
+                                    <div class="d-flex align-items-center mb-2">
+                                        <input type="date" class="form-control form-control-sm" 
+                                               [(ngModel)]="deleteRangeStart">
+                                        <span class="mx-2">-</span>
+                                        <input type="date" class="form-control form-control-sm" 
+                                               [(ngModel)]="deleteRangeEnd">
+                                    </div>
+                                    <button class="btn btn-sm btn-outline-warning btn-block" 
+                                            (click)="deleteEntriesInRange()"
+                                            [disabled]="!deleteRangeStart || !deleteRangeEnd">
+                                        <i class="fa fa-trash-o mr-1"></i>{{'epilepsy.deleteSelectedRange' | translate}}
+                                    </button>
+                                </div>
+                                <div class="dropdown-divider"></div>
+                                <button ngbDropdownItem class="text-danger" (click)="deleteCurrentCondition()">
+                                    <i class="fa fa-trash mr-2"></i>{{'epilepsy.deleteAllData' | translate}}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Stats Cards -->
+                <div class="tracking-stats">
+                    <div class="stat-card">
+                        <div class="stat-icon"><i class="fa fa-bolt"></i></div>
+                        <div class="stat-info">
+                            <span class="stat-value">{{trackingStats.totalEvents}}</span>
+                            <span class="stat-label">{{'epilepsy.totalSeizures' | translate}}</span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon success"><i class="fa fa-calendar-check-o"></i></div>
+                        <div class="stat-info">
+                            <span class="stat-value">{{trackingStats.daysSinceLast}}</span>
+                            <span class="stat-label">{{'tracking.daysSinceLast' | translate}}</span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon warning"><i class="fa fa-chart-line"></i></div>
+                        <div class="stat-info">
+                            <span class="stat-value">{{trackingStats.monthlyAvg | number:'1.1-1'}}</span>
+                            <span class="stat-label">{{'tracking.monthlyAverage' | translate}}</span>
+                        </div>
+                    </div>
+                    <div class="stat-card" *ngIf="trackingStats.trend">
+                        <div class="stat-icon" [ngClass]="trackingStats.trend === 'improving' ? 'success' : 'danger'">
+                            <i [class]="trackingStats.trend === 'improving' ? 'fa fa-arrow-down' : 'fa fa-arrow-up'"></i>
+                        </div>
+                        <div class="stat-info">
+                            <span class="stat-value">{{trackingStats.trendPercent}}%</span>
+                            <span class="stat-label">{{'tracking.trend' | translate}}</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Filtros y Configuración -->
+                <div class="tracking-filters-card">
+                    <div class="filters-header">
+                        <i class="fa fa-filter text-primary mr-2"></i>
+                        <h6 class="mb-0">{{'tracking.filtersConfig' | translate}}</h6>
+                    </div>
+                    <div class="filters-body">
+                        <div class="row">
+                            <div class="col-md-2 col-sm-6 mb-2">
+                                <label class="filter-label">{{'tracking.groupBy' | translate}}</label>
+                                <select class="form-control form-control-sm" 
+                                        [(ngModel)]="trackingFilters.groupBy" 
+                                        (change)="onTrackingFilterChange()">
+                                    <option value="day">{{'tracking.day' | translate}}</option>
+                                    <option value="month">{{'tracking.month' | translate}}</option>
+                                    <option value="year">{{'tracking.year' | translate}}</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2 col-sm-6 mb-2">
+                                <label class="filter-label">{{'tracking.dateRangeLabel' | translate}}</label>
+                                <select class="form-control form-control-sm" 
+                                        [(ngModel)]="trackingFilters.dateRange" 
+                                        (change)="onDateRangeChange()">
+                                    <option value="all">{{'tracking.allHistory' | translate}}</option>
+                                    <option value="1year">{{'tracking.lastYear' | translate}}</option>
+                                    <option value="6months">{{'tracking.last6Months' | translate}}</option>
+                                    <option value="3months">{{'tracking.last3Months' | translate}}</option>
+                                    <option value="1month">{{'tracking.lastMonth' | translate}}</option>
+                                    <option value="custom">{{'tracking.custom' | translate}}</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2 col-sm-6 mb-2" *ngIf="trackingFilters.dateRange === 'custom'">
+                                <label class="filter-label">{{'tracking.from' | translate}}</label>
+                                <input type="date" class="form-control form-control-sm" 
+                                       [(ngModel)]="trackingFilters.customStartDate"
+                                       (change)="onTrackingFilterChange()">
+                            </div>
+                            <div class="col-md-2 col-sm-6 mb-2" *ngIf="trackingFilters.dateRange === 'custom'">
+                                <label class="filter-label">{{'tracking.to' | translate}}</label>
+                                <input type="date" class="form-control form-control-sm" 
+                                       [(ngModel)]="trackingFilters.customEndDate"
+                                       (change)="onTrackingFilterChange()">
+                            </div>
+                            <div class="col-md-2 col-sm-6 mb-2">
+                                <label class="filter-label">{{'tracking.crisisType' | translate}}</label>
+                                <select class="form-control form-control-sm" 
+                                        [(ngModel)]="trackingFilters.seizureType" 
+                                        (change)="onTrackingFilterChange()">
+                                    <option value="all">{{'tracking.allTypes' | translate}}</option>
+                                    <option *ngFor="let type of availableSeizureTypes" [value]="type">{{type}}</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2 col-sm-6 mb-2">
+                                <label class="filter-label">{{'tracking.crisisScale' | translate}}</label>
+                                <input type="number" class="form-control form-control-sm" 
+                                       [(ngModel)]="trackingFilters.maxSeizureScale"
+                                       [placeholder]="'Auto'"
+                                       min="1"
+                                       (change)="onTrackingFilterChange()">
+                            </div>
+                        </div>
+                        <div class="row mt-2">
+                            <div class="col-md-2 col-sm-6 mb-2">
+                                <label class="filter-label">{{'tracking.medScale' | translate}}</label>
+                                <input type="number" class="form-control form-control-sm" 
+                                       [(ngModel)]="trackingFilters.maxMedicationScale"
+                                       [placeholder]="'Auto'"
+                                       min="1"
+                                       (change)="onTrackingFilterChange()">
+                            </div>
+                            <div class="col-md-10 d-flex align-items-center mb-2">
+                                <div class="form-check d-flex align-items-center">
+                                    <input class="form-check-input mt-0 mr-2" type="checkbox" 
+                                           id="showMedicationChanges"
+                                           [(ngModel)]="trackingFilters.showMedicationChanges"
+                                           (change)="onTrackingFilterChange()">
+                                    <label class="form-check-label" for="showMedicationChanges">
+                                        {{'tracking.markMedicationChanges' | translate}}
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Slicer de Años -->
+                        <div class="row mt-2" *ngIf="availableYears.length > 1">
+                            <div class="col-12">
+                                <label class="filter-label mb-2">
+                                    <i class="fa fa-calendar mr-1"></i>{{'tracking.selectYears' | translate}}
+                                    <span class="text-muted ml-2">({{trackingFilters.selectedYears.length}}/{{availableYears.length}})</span>
+                                </label>
+                                <div class="year-slicer d-flex flex-wrap align-items-center">
+                                    <button class="btn btn-sm mr-2 mb-1" 
+                                            [ngClass]="trackingFilters.selectedYears.length === availableYears.length ? 'btn-primary' : 'btn-outline-primary'"
+                                            (click)="toggleAllYears()">
+                                        {{'tracking.allYears' | translate}}
+                                    </button>
+                                    <button *ngFor="let year of availableYears"
+                                            class="btn btn-sm mr-1 mb-1"
+                                            [ngClass]="isYearSelected(year) ? 'btn-secondary' : 'btn-outline-secondary'"
+                                            (click)="toggleYearSelection(year)">
+                                        {{year}}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Gráfico Combinado Crisis vs Medicación -->
+                <div class="chart-container chart-combined" [hidden]="!trackingData.medications || trackingData.medications.length === 0">
+                    <h6 class="chart-title">
+                        <i class="fa fa-layer-group mr-2"></i>{{'tracking.combinedChart' | translate}}
+                    </h6>
+                    <div class="chart-wrapper" style="height: 350px;">
+                        <canvas id="trackingCombinedChart"></canvas>
+                    </div>
+                </div>
+                <!-- Mensaje si no hay medicamentos -->
+                <div class="alert alert-info" *ngIf="!trackingData.medications || trackingData.medications.length === 0">
+                    <i class="fa fa-info-circle mr-2"></i>
+                    {{'tracking.noMedicationsInfo' | translate}}
+                </div>
+                
+                <!-- Charts -->
+                <div class="tracking-charts">
+                    <div class="chart-container">
+                        <h6 class="chart-title"><i class="fa fa-area-chart mr-2"></i>{{'tracking.evolutionChart' | translate}}</h6>
+                        <div class="chart-wrapper" style="height: 250px;">
+                            <canvas id="trackingEvolutionChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="chart-container" *ngIf="trackingData.conditionType === 'epilepsy'">
+                        <h6 class="chart-title"><i class="fa fa-clock-o mr-2"></i>{{'tracking.timeDistribution' | translate}}</h6>
+                        <div class="chart-wrapper" style="height: 250px;">
+                            <canvas id="trackingTimeChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- AI Insights -->
+                <div class="tracking-insights" *ngIf="trackingInsights.length > 0">
+                    <h6 class="insights-title"><i class="fa fa-lightbulb-o mr-2"></i>{{'tracking.aiInsights' | translate}}</h6>
+                    <div class="insight-cards">
+                        <div class="insight-card" *ngFor="let insight of trackingInsights">
+                            <i [class]="'fa ' + insight.icon + ' insight-icon'"></i>
+                            <div class="insight-content">
+                                <strong>{{insight.title}}</strong>
+                                <p>{{insight.description}}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Recent Events Table -->
+                <div class="tracking-events-table">
+                    <h6 class="table-title"><i class="fa fa-list mr-2"></i>{{'tracking.recentEvents' | translate}}</h6>
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>{{'tracking.date' | translate}}</th>
+                                    <th>{{'tracking.type' | translate}}</th>
+                                    <th>{{'tracking.duration' | translate}}</th>
+                                    <th>{{'tracking.triggers' | translate}}</th>
+                                    <th>{{'tracking.notes' | translate}}</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr *ngFor="let entry of trackingData.entries | slice:0:20">
+                                    <td>{{entry.date | date:'short'}}</td>
+                                    <td><span class="type-badge">{{entry.type}}</span></td>
+                                    <td>{{entry.duration ? (entry.duration + 's') : '-'}}</td>
+                                    <td>{{entry.triggers?.join(', ') || '-'}}</td>
+                                    <td class="notes-cell">{{entry.notes || '-'}}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="modal-footer tracking-footer">
+        <button type="button" class="btn btn-outline-secondary" (click)="modal.dismiss('Close click')">
+            {{'generics.Cancel' | translate}}
+        </button>
+        
+        <!-- Botón volver -->
+        <button type="button" *ngIf="trackingStep > 1 && trackingStep !== 4"
+                class="btn btn-outline-primary"
+                (click)="trackingStep = 1">
+            <i class="fa fa-arrow-left mr-2"></i>
+            {{'generics.Back' | translate}}
+        </button>
+        
+        <!-- Botón importar (Paso 2) -->
+        <button type="button" *ngIf="trackingStep === 2 && trackingImportPreview"
+                class="btn btn-primary"
+                (click)="confirmTrackingImport()"
+                [disabled]="trackingLoading">
+            <i class="fa fa-check mr-2"></i>
+            {{'tracking.confirmImport' | translate}}
+        </button>
+        
+        <!-- Botón guardar entrada manual (Paso 3) -->
+        <button type="button" *ngIf="trackingStep === 3"
+                class="btn btn-primary"
+                (click)="saveManualEntry()"
+                [disabled]="!trackingManualEntry.date || trackingLoading">
+            <i class="fa fa-save mr-2"></i>
+            {{'tracking.saveEntry' | translate}}
+        </button>
+        
+        <!-- Botón generar insights (Paso 4) -->
+        <button type="button" *ngIf="trackingStep === 4"
+                class="btn btn-primary"
+                (click)="generateTrackingInsights()"
+                [disabled]="trackingLoading">
+            <i class="fa fa-magic mr-2"></i>
+            {{'tracking.generateInsights' | translate}}
+        </button>
     </div>
 </ng-template>
 

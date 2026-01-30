@@ -181,6 +181,21 @@
       transition: all 0.2s ease;
       border-bottom: 1px solid #f0f0f0;
       
+      &.clickable-row {
+        cursor: pointer;
+        
+        &:hover {
+          background-color: #e3f2fd;
+          transform: scale(1.01);
+          box-shadow: 0 2px 8px rgba(25, 118, 210, 0.15);
+        }
+        
+        &:active {
+          transform: scale(0.99);
+          background-color: #bbdefb;
+        }
+      }
+      
       &:hover {
         background-color: #f8f9fa;
         transform: scale(1.01);
@@ -309,6 +324,21 @@
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
   transition: all 0.3s ease;
   border: 1px solid #e9ecef;
+  
+  &.clickable-card {
+    cursor: pointer;
+    
+    &:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 4px 16px rgba(25, 118, 210, 0.2);
+      border-color: #90caf9;
+    }
+    
+    &:active {
+      transform: translateY(-2px);
+      background-color: #f5f9ff;
+    }
+  }
   
   &:hover {
     transform: translateY(-4px);

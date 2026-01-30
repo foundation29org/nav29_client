@@ -318,6 +318,21 @@
                                 </mat-form-field>
                                 <small class="form-text text-muted danger" 
                                         *ngIf="submitted && initialEventsForm.get('ethnicGroup').errors">{{ 'generics.required' | translate }}</small>
+                                
+                                <!-- País del paciente -->
+                                <div class="mt-4">
+                                  <label class="d-block mb-1">{{'personalinfo.Country' | translate }}</label>
+                                  <p class="text-muted small mb-2">{{'steps.countryDescription' | translate }}</p>
+                                  <mat-form-field class="w-100" appearance="fill">
+                                    <mat-label>{{'steps.Select' | translate }}</mat-label>
+                                    <mat-select formControlName="country">
+                                      <mat-option value="">{{'steps.notSpecified' | translate }}</mat-option>
+                                      <mat-option *ngFor="let country of countries" [value]="country.name">
+                                        {{ country.name }}
+                                      </mat-option>
+                                    </mat-select>
+                                  </mat-form-field>
+                                </div>
                             </div>
                             <div *ngIf="stepform==6" class="form-step-section">
                               <h3 class="card-title mb-0">{{'steps.medicalHistory' | translate }}</h3>
