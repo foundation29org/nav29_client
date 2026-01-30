@@ -6172,7 +6172,12 @@ ${this.soapData.result.plan}
     
     reader.onload = (e) => {
       try {
-        const content = e.target?.result as string;
+        let content = e.target?.result as string;
+        
+        // Sanitizar JSON: escapar caracteres de control dentro de strings
+        // Seizure Tracker exporta JSON con saltos de línea literales en valores
+        content = this.sanitizeJsonString(content);
+        
         const jsonData = JSON.parse(content);
         
         // Detectar tipo de archivo
@@ -6200,6 +6205,30 @@ ${this.soapData.result.plan}
     };
     
     reader.readAsText(file);
+  }
+
+  /**
+   * Sanitiza un string JSON escapando caracteres de control dentro de valores string.
+   * Seizure Tracker y otras apps exportan JSON con saltos de línea literales en valores.
+   */
+  sanitizeJsonString(jsonStr: string): string {
+    // Reemplazar caracteres de control dentro de strings JSON
+    // Usa una regex que encuentra strings JSON y escapa caracteres de control dentro
+    return jsonStr.replace(/"([^"\\]|\\.)*"/g, (match) => {
+      // Escapar caracteres de control no escapados dentro del string
+      return match
+        .replace(/[\x00-\x1F\x7F]/g, (char) => {
+          // Mapeo de caracteres de control a secuencias de escape JSON
+          const escapes: { [key: string]: string } = {
+            '\n': '\\n',
+            '\r': '\\r',
+            '\t': '\\t',
+            '\b': '\\b',
+            '\f': '\\f'
+          };
+          return escapes[char] || `\\u${char.charCodeAt(0).toString(16).padStart(4, '0')}`;
+        });
+    });
   }
 
   detectTrackingFileType(data: any): { type: string; entriesCount: number; medicationsCount: number; dateRange: string } {
