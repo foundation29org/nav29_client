@@ -142,7 +142,7 @@
 				<p class="text-muted">{{'whatsapp.linked_since' | translate}}: {{ whatsappLinkedAt | date:'dd/MM/yyyy' }}</p>
 			  </div>
 			  <button class="btn btn-outline-danger" (click)="unlinkWhatsApp()" [disabled]="unlinkingWhatsApp">
-				<i class="fa fa-unlink"></i>
+				<i class="fa fa-unlink mr-1"></i>
 				<span *ngIf="!unlinkingWhatsApp">{{'whatsapp.unlink_button' | translate}}</span>
 				<span *ngIf="unlinkingWhatsApp" class="spinner-border spinner-border-sm" role="status"></span>
 			  </button>
