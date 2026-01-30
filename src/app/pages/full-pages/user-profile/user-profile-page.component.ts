@@ -487,7 +487,7 @@ export class UserProfilePageComponent implements OnInit, AfterViewInit, OnDestro
             this.generatingCode = false;
             if (res && res.code) {
               this.linkCode = res.code;
-              this.linkCodeExpires = new Date(res.expiresAt);
+              this.linkCodeExpires = new Date(res.expires);
               this.startCountdown();
               // Iniciar polling para detectar cuando se vincule
               this.startWhatsAppPolling();
