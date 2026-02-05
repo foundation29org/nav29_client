@@ -38,12 +38,31 @@ $transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     gap: 16px;
   }
 
+  .title-with-count {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
   .events-title {
     font-size: 32px;
     font-weight: 700;
     color: $text-primary;
     margin: 0;
     letter-spacing: -0.5px;
+  }
+
+  .events-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 6px 14px;
+    background: $primary-color;
+    color: white;
+    border-radius: 20px;
+    font-size: 14px;
+    font-weight: 600;
+    min-width: 32px;
   }
 
   .btn-new-event {
@@ -196,6 +215,59 @@ $transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 
       i {
         font-size: 14px;
+      }
+    }
+  }
+
+  .type-filter-container {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    .type-filter-select {
+      padding: 10px 12px;
+      border: 2px solid $border-color;
+      border-radius: 8px;
+      font-size: 14px;
+      background: white;
+      color: $text-primary;
+      cursor: pointer;
+      transition: $transition;
+      min-width: 160px;
+
+      &:focus {
+        outline: none;
+        border-color: $primary-color;
+        box-shadow: 0 0 0 3px rgba(47, 139, 230, 0.1);
+      }
+
+      &:hover {
+        border-color: $primary-color;
+      }
+    }
+
+    .btn-clear-type {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 28px;
+      height: 28px;
+      padding: 0;
+      background: transparent;
+      border: 1px solid $border-color;
+      color: $text-secondary;
+      cursor: pointer;
+      border-radius: 6px;
+      transition: $transition;
+
+      &:hover {
+        background: rgba(220, 53, 69, 0.1);
+        border-color: $danger-color;
+        color: $danger-color;
+      }
+
+      i {
+        font-size: 12px;
       }
     }
   }

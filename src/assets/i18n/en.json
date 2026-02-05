@@ -888,6 +888,7 @@
     "footer6": "For any questions or queries, please contact us at"
   },
   "events":{
+    "AllTypes": "All types",
     "appointment": "Appointment",
     "title": "Events",
     "Allergy": "Allergy",

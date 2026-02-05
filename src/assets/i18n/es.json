@@ -888,6 +888,7 @@
     "footer6": "Para cualquier duda o consulta contacta con nosotros en"
   },
   "events":{
+    "AllTypes": "Todos los tipos",
     "appointment": "Cita",
     "title": "Eventos",
     "Allergy": "Alergia",

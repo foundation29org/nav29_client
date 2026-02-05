@@ -216,9 +216,14 @@
                         <div class="btn-sm">
                             <span class="font-weight-bold">{{allEvents.length}}</span> {{'events.title' | translate }}
                         </div>
-                        <button routerLink="/events" class="btn btn-sm btn-white">
-                            {{'generics.View' | translate }}
-                        </button>
+                        <div>
+                            <button class="btn btn-sm btn-primary mr-1" (click)="openAddEventModal()" title="{{'events.NewEvent' | translate}}">
+                                <i class="fa fa-plus"></i>
+                            </button>
+                            <button routerLink="/events" class="btn btn-sm btn-white">
+                                {{'generics.View' | translate }}
+                            </button>
+                        </div>
                     </div>
 
                     <button class="btn btn-white btn-block btn-sm" (click)="openTimelineModal(timelineModal)"
@@ -1884,6 +1889,25 @@
             <form action="#" class="form form-horizontal" [formGroup]="eventsForm">
                 <div class="form-body">
                     <div class="">
+                        <!-- Type first -->
+                        <div>
+                            <div class="form-group">
+                                <label for="key">{{ 'events.Type' | translate }}</label>
+                                <select class="form-control" id="key" formControlName="key">
+                                    <option value="">{{ 'timeline.Select type' | translate }}</option>
+                                    <option value="diagnosis">🩺 {{ 'timeline.Diagnoses' | translate }}</option>
+                                    <option value="treatment">💉 {{ 'timeline.Treatment' | translate }}</option>
+                                    <option value="test">🔬 {{ 'timeline.Tests' | translate }}</option>
+                                    <option value="appointment">📅 {{ 'events.appointment' | translate }}</option>
+                                    <option value="symptom">🤒 {{ 'timeline.Symptoms' | translate }}</option>
+                                    <option value="medication">💊 {{ 'timeline.Medications' | translate }}</option>
+                                    <option value="activity">🏃 {{ 'timeline.Activity' | translate }}</option>
+                                    <option value="reminder">🔔 {{ 'timeline.Reminder' | translate }}</option>
+                                    <option value="other">🔍 {{ 'timeline.Other' | translate }}</option>
+                                </select>
+                            </div>
+                        </div>
+                        <!-- Name -->
                         <div class="">
                             <div class="form-group">
                                 <label>{{'generics.Name' | translate }}</label>
@@ -1894,6 +1918,7 @@
                                     translate }}</small>
                             </div>
                         </div>
+                        <!-- Date -->
                         <div class="">
                             <div class="form-group">
                                 <label class="mb-0">{{'generics.Date' | translate }}</label>
@@ -1912,7 +1937,6 @@
                                 </div>
                             </div>
                         </div>
-
                         <!-- Time field - visible for appointments/reminders, collapsable for others -->
                         <div class="" *ngIf="eventsForm.value.key === 'appointment' || eventsForm.value.key === 'reminder' || showTimeField">
                             <div class="form-group">
@@ -1920,34 +1944,29 @@
                                     {{'timeline.Time' | translate }}
                                     <span *ngIf="eventsForm.value.key === 'appointment' || eventsForm.value.key === 'reminder'" class="text-primary">*</span>
                                 </label>
-                                <div class="">
-                                    <input type="time" class="form-control" formControlName="time" style="max-width: 150px;">
+                                <div class="d-flex align-items-center">
+                                    <input type="number" class="form-control" style="width: 60px;" formControlName="timeHour" min="1" max="12" placeholder="HH">
+                                    <span class="mx-1">:</span>
+                                    <input type="number" class="form-control" style="width: 60px;" formControlName="timeMinute" min="0" max="59" placeholder="MM">
+                                    <div class="btn-group btn-group-sm ml-2" role="group">
+                                        <button type="button" class="btn" 
+                                            [class.btn-primary]="eventsForm.value.timePeriod === 'AM'"
+                                            [class.btn-outline-secondary]="eventsForm.value.timePeriod !== 'AM'"
+                                            (click)="eventsForm.get('timePeriod').setValue('AM')">AM</button>
+                                        <button type="button" class="btn" 
+                                            [class.btn-primary]="eventsForm.value.timePeriod === 'PM'"
+                                            [class.btn-outline-secondary]="eventsForm.value.timePeriod !== 'PM'"
+                                            (click)="eventsForm.get('timePeriod').setValue('PM')">PM</button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                         <div class="" *ngIf="eventsForm.value.key !== 'appointment' && eventsForm.value.key !== 'reminder' && !showTimeField">
-                            <button type="button" class="btn btn-link btn-sm p-0 mb-2" (click)="showTimeField = true">
+                            <button type="button" class="btn btn-outline-secondary btn-sm mb-2" (click)="showTimeField = true">
                                 <i class="fa fa-clock-o mr-1"></i>{{'timeline.Add time' | translate }}
                             </button>
                         </div>
-
-                        <div>
-                            <div class="form-group">
-                                <label for="key">{{ 'events.Type' | translate }}</label>
-                                <select class="form-control" id="key" formControlName="key">
-                                    <option value="">{{ 'timeline.Select type' | translate }}</option>
-                                    <option value="diagnosis">🩺 {{ 'timeline.Diagnoses' | translate }}</option>
-                                    <option value="treatment">💉 {{ 'timeline.Treatment' | translate }}</option>
-                                    <option value="test">🔬 {{ 'timeline.Tests' | translate }}</option>
-                                    <option value="appointment">📅 {{ 'events.appointment' | translate }}</option>
-                                    <option value="symptom">🤒 {{ 'timeline.Symptoms' | translate }}</option>
-                                    <option value="medication">💊 {{ 'timeline.Medications' | translate }}</option>
-                                    <option value="activity">🏃 {{ 'timeline.Activity' | translate }}</option>
-                                    <option value="reminder">🔔 {{ 'timeline.Reminder' | translate }}</option>
-                                    <option value="other">🔍 {{ 'timeline.Other' | translate }}</option>
-                                </select>
-                            </div>
-                        </div>
+                        <!-- Notes -->
                         <div class="">
                             <div class="form-group">
                                 <label>{{'generics.notes' | translate }}</label>

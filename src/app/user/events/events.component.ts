@@ -81,8 +81,12 @@ export class EventsComponent implements OnInit, OnDestroy, AfterViewInit {
   submitted = false;
   showTimeField = false;
   events: any = [];
-  eventsCopy: any = [];
+  eventsCopy: any = []; // Copia original sin filtros
   documents: any = []; // Para almacenar los documentos y poder buscar por docId
+  
+  // Contadores para mostrar en UI
+  totalEventsCount: number = 0;
+  filteredEventsCount: number = 0;
 
   displayedColumns: string[] = ['select', 'name', 'origin', 'date', 'actions'];
   columnsToDisplayWithExpand  = [...this.displayedColumns, 'expand'];
@@ -106,6 +110,20 @@ export class EventsComponent implements OnInit, OnDestroy, AfterViewInit {
   // Sorting
   sortField: string = 'date';
   sortDirection: 'asc' | 'desc' = 'desc';
+  
+  // Filtro por tipo de evento
+  filterType: string = '';
+  eventTypes = [
+    { value: '', label: 'events.AllTypes', icon: '' },
+    { value: 'wizard', label: 'events.originWizard', icon: '📋' },
+    { value: 'diagnosis', label: 'timeline.Diagnoses', icon: '🩺' },
+    { value: 'treatment', label: 'timeline.Treatment', icon: '💉' },
+    { value: 'test', label: 'timeline.Tests', icon: '🔬' },
+    { value: 'appointment', label: 'events.appointment', icon: '📅' },
+    { value: 'symptom', label: 'timeline.Symptoms', icon: '🤒' },
+    { value: 'medication', label: 'timeline.Medications', icon: '💊' },
+    { value: 'other', label: 'timeline.Other', icon: '🔍' }
+  ];
 
   constructor(private http: HttpClient, private authService: AuthService, private authGuard: AuthGuard, private modalService: NgbModal, public translate: TranslateService, public toastr: ToastrService, private dateService: DateService, private formBuilder: FormBuilder, private sortService: SortService, private patientService: PatientService, private deviceService: DeviceDetectorService, public insightsService: InsightsService) {}
 
@@ -120,7 +138,9 @@ export class EventsComponent implements OnInit, OnDestroy, AfterViewInit {
       origin: [''],
       date: [new Date()],
       dateEnd: [null],
-      time: [''],
+      timeHour: [''],
+      timeMinute: [''],
+      timePeriod: ['AM'],
       key: [''],
       notes: [],
       _id: []
@@ -182,6 +202,8 @@ export class EventsComponent implements OnInit, OnDestroy, AfterViewInit {
       if(res.message){
         //no tiene información
         this.dataSource = new MatTableDataSource([]);
+        this.totalEventsCount = 0;
+        this.filteredEventsCount = 0;
       }else{
         if(res.length>0){
           // Procesar eventos y precalcular datos para mejorar rendimiento
@@ -222,9 +244,18 @@ export class EventsComponent implements OnInit, OnDestroy, AfterViewInit {
           this.events = res;
           // Usar spread operator en lugar de JSON.parse/stringify para mejor rendimiento
           this.eventsCopy = res.map(e => ({...e}));
+          // Inicializar contadores
+          this.totalEventsCount = res.length;
+          this.filteredEventsCount = res.length;
+        } else {
+          this.totalEventsCount = 0;
+          this.filteredEventsCount = 0;
         }
         this.dataSource = new MatTableDataSource(this.events);
         this.setFilter();
+        // Resetear filtros al recargar
+        this.filterType = '';
+        this.range.reset();
         // Aplicar ordenamiento inicial
         this.applySort();
       }
@@ -316,9 +347,17 @@ export class EventsComponent implements OnInit, OnDestroy, AfterViewInit {
     // Combine date and time if time is set
     if (this.seizuresForm.value.date != null) {
       let dateObj = new Date(this.seizuresForm.value.date);
-      const hasTime = this.seizuresForm.value.time && this.seizuresForm.value.time !== '';
+      const hasTime = this.seizuresForm.value.timeHour && this.seizuresForm.value.timeHour !== '';
       if (hasTime) {
-        const [hours, minutes] = this.seizuresForm.value.time.split(':').map(Number);
+        let hours = parseInt(this.seizuresForm.value.timeHour, 10);
+        const minutes = parseInt(this.seizuresForm.value.timeMinute || '0', 10);
+        const period = this.seizuresForm.value.timePeriod || 'AM';
+        // Convert 12h to 24h format
+        if (period === 'PM' && hours !== 12) {
+          hours += 12;
+        } else if (period === 'AM' && hours === 12) {
+          hours = 0;
+        }
         dateObj.setHours(hours, minutes, 0, 0);
         this.seizuresForm.value.date = this.dateService.transformDateTime(dateObj);
       } else {
@@ -328,8 +367,10 @@ export class EventsComponent implements OnInit, OnDestroy, AfterViewInit {
     if (this.seizuresForm.value.dateEnd != null) {
       this.seizuresForm.value.dateEnd = this.dateService.transformDate(this.seizuresForm.value.dateEnd);
     }
-    // Remove time field before sending to API
-    delete this.seizuresForm.value.time;
+    // Remove time fields before sending to API
+    delete this.seizuresForm.value.timeHour;
+    delete this.seizuresForm.value.timeMinute;
+    delete this.seizuresForm.value.timePeriod;
 
     if(this.authGuard.testtoken()){
       this.saving = true;
@@ -365,9 +406,17 @@ export class EventsComponent implements OnInit, OnDestroy, AfterViewInit {
     // Combine date and time if time is set
     if (this.seizuresForm.value.date != null) {
       let dateObj = new Date(this.seizuresForm.value.date);
-      const hasTime = this.seizuresForm.value.time && this.seizuresForm.value.time !== '';
+      const hasTime = this.seizuresForm.value.timeHour && this.seizuresForm.value.timeHour !== '';
       if (hasTime) {
-        const [hours, minutes] = this.seizuresForm.value.time.split(':').map(Number);
+        let hours = parseInt(this.seizuresForm.value.timeHour, 10);
+        const minutes = parseInt(this.seizuresForm.value.timeMinute || '0', 10);
+        const period = this.seizuresForm.value.timePeriod || 'AM';
+        // Convert 12h to 24h format
+        if (period === 'PM' && hours !== 12) {
+          hours += 12;
+        } else if (period === 'AM' && hours === 12) {
+          hours = 0;
+        }
         dateObj.setHours(hours, minutes, 0, 0);
         this.seizuresForm.value.date = this.dateService.transformDateTime(dateObj);
       } else {
@@ -377,8 +426,10 @@ export class EventsComponent implements OnInit, OnDestroy, AfterViewInit {
     if (this.seizuresForm.value.dateEnd != null) {
       this.seizuresForm.value.dateEnd = this.dateService.transformDate(this.seizuresForm.value.dateEnd);
     }
-    // Remove time field before sending to API
-    delete this.seizuresForm.value.time;
+    // Remove time fields before sending to API
+    delete this.seizuresForm.value.timeHour;
+    delete this.seizuresForm.value.timeMinute;
+    delete this.seizuresForm.value.timePeriod;
     
     if(this.authGuard.testtoken()){
       this.saving = true;
@@ -450,7 +501,9 @@ export class EventsComponent implements OnInit, OnDestroy, AfterViewInit {
       const today = new Date();
       this.seizuresForm.get('date').setValue(today);
       this.seizuresForm.get('dateEnd').setValue(null);
-      this.seizuresForm.get('time').setValue('');
+      this.seizuresForm.get('timeHour').setValue('');
+      this.seizuresForm.get('timeMinute').setValue('');
+      this.seizuresForm.get('timePeriod').setValue('AM');
       this.showTimeField = false;
     }
   }
@@ -472,15 +525,17 @@ export class EventsComponent implements OnInit, OnDestroy, AfterViewInit {
     if (this.dataSource.paginator) {
       this.dataSource.paginator.firstPage();
     }
+    
+    // Actualizar contador de eventos filtrados
+    this.filteredEventsCount = this.dataSource.filteredData.length;
   }
 
   applySort() {
     if (!this.events || this.events.length === 0) return;
     
-    // Ordenar los eventos actuales (que pueden estar filtrados por fecha)
-    const sortedEvents = [...this.events];
-    
-    sortedEvents.sort((a, b) => {
+    // Ordenar los eventos actuales (que pueden estar filtrados)
+    // NO modificar eventsCopy - siempre debe mantener los datos originales
+    this.events.sort((a, b) => {
       let aValue: any;
       let bValue: any;
       
@@ -511,11 +566,6 @@ export class EventsComponent implements OnInit, OnDestroy, AfterViewInit {
       return 0;
     });
     
-    this.events = sortedEvents;
-    // Solo actualizar eventsCopy si no hay filtro de fechas activo
-    if (this.range.value.start == null && this.range.value.end == null) {
-      this.eventsCopy = sortedEvents.map(e => ({...e}));
-    }
     this.dataSource.data = this.events;
   }
 
@@ -528,6 +578,61 @@ export class EventsComponent implements OnInit, OnDestroy, AfterViewInit {
     const target = event.target as HTMLSelectElement;
     this.sortField = target.value;
     this.applySort();
+  }
+
+  onTypeFilterChange(event: Event) {
+    const target = event.target as HTMLSelectElement;
+    this.filterType = target.value;
+    this.applyTypeFilter();
+  }
+
+  applyTypeFilter() {
+    // Empezar siempre desde eventsCopy (datos originales sin filtros)
+    let filteredEvents = [...this.eventsCopy];
+    
+    // Aplicar filtro de rango de fechas si está activo
+    if (this.range.value.start != null && this.range.value.end != null) {
+      const test = this.dateService.transformDate(this.range.value.start);
+      const test2 = this.dateService.transformDate(this.range.value.end);
+      filteredEvents = filteredEvents.filter(x => {
+        const eventStart = x.date ? new Date(x.date) : null;
+        const eventEnd = x.dateEnd ? new Date(x.dateEnd) : eventStart;
+        const rangeStart = new Date(test);
+        const rangeEnd = new Date(test2);
+        
+        return eventStart && (
+          (eventStart <= rangeEnd && (!eventEnd || eventEnd >= rangeStart)) ||
+          (eventEnd && eventEnd >= rangeStart && eventEnd <= rangeEnd)
+        );
+      });
+    }
+    
+    // Aplicar filtro por tipo si está seleccionado
+    if (this.filterType && this.filterType !== '') {
+      if (this.filterType === 'wizard') {
+        // Filtrar por origen wizard (Formulario inicial del paciente)
+        filteredEvents = filteredEvents.filter(event => event.origin === 'wizard');
+      } else {
+        // Filtrar por key (tipo de evento)
+        filteredEvents = filteredEvents.filter(event => event.key === this.filterType);
+      }
+    }
+    
+    this.events = filteredEvents;
+    this.filteredEventsCount = filteredEvents.length;
+    this.dataSource = new MatTableDataSource(this.events);
+    this.setFilter();
+    this.dataSource.paginator = this.paginator;
+    this.dataSource.sort = this.sort;
+    this.applySort();
+  }
+  
+  // Verificar si hay algún filtro activo
+  hasActiveFilters(): boolean {
+    return this.filterType !== '' || 
+           this.range.value.start != null || 
+           this.range.value.end != null ||
+           (this.dataSource && this.dataSource.filter && this.dataSource.filter.trim() !== '');
   }
 
   showDates(contentDates){
@@ -547,28 +652,8 @@ export class EventsComponent implements OnInit, OnDestroy, AfterViewInit {
 
   applyRangeDates(){
     this.closeModal();
-    //range.value.start - range.value.end
-    var test = this.dateService.transformDate(this.range.value.start );
-    var test2 = this.dateService.transformDate(this.range.value.end );
-    // Filtrar eventos: incluir si la fecha inicio o fin está dentro del rango, o si el evento abarca el rango
-    this.events = this.eventsCopy.filter(x => {
-      const eventStart = x.date ? new Date(x.date) : null;
-      const eventEnd = x.dateEnd ? new Date(x.dateEnd) : eventStart;
-      const rangeStart = new Date(test);
-      const rangeEnd = new Date(test2);
-      
-      // Evento dentro del rango: fecha inicio del evento <= fin del rango Y (fecha fin del evento >= inicio del rango O no tiene fecha fin)
-      return eventStart && (
-        (eventStart <= rangeEnd && (!eventEnd || eventEnd >= rangeStart)) ||
-        (eventEnd && eventEnd >= rangeStart && eventEnd <= rangeEnd)
-      );
-    });
-    this.dataSource = new MatTableDataSource(this.events);
-    this.setFilter();
-    this.dataSource.paginator = this.paginator;
-    this.dataSource.sort = this.sort;
-    // Aplicar ordenamiento después del filtro
-    this.applySort();
+    // Usar applyTypeFilter que ahora maneja ambos filtros (fecha y tipo)
+    this.applyTypeFilter();
   }
 
   clear(){
@@ -576,26 +661,31 @@ export class EventsComponent implements OnInit, OnDestroy, AfterViewInit {
       this.modalReference.close();
       this.modalReference = undefined;
     }
-    this.range.value.start = null;
-    this.range.value.end = null;
-    this.events = this.eventsCopy;
-    this.dataSource = new MatTableDataSource(this.events);
-    this.setFilter();
-    this.dataSource.paginator = this.paginator;
-    this.dataSource.sort = this.sort;
-    // Aplicar ordenamiento después de limpiar
-    this.applySort();
+    // Usar reset() o patchValue() para actualizar correctamente el FormGroup
+    this.range.reset();
+    // Usar applyTypeFilter para mantener el filtro por tipo si está activo
+    this.applyTypeFilter();
+  }
+
+  clearTypeFilter() {
+    this.filterType = '';
+    this.applyTypeFilter();
   }
 
   showForm(row){
     if(row.date != null){
       const dateObj = new Date(row.date);
       row.date = dateObj;
-      // Extract time from the date
-      const hours = dateObj.getHours();
+      // Extract time from the date and convert to 12h format
+      const hours24 = dateObj.getHours();
       const minutes = dateObj.getMinutes();
-      if (hours !== 0 || minutes !== 0) {
-        row.time = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+      if (hours24 !== 0 || minutes !== 0) {
+        const period = hours24 >= 12 ? 'PM' : 'AM';
+        let hours12 = hours24 % 12;
+        if (hours12 === 0) hours12 = 12;
+        row.timeHour = hours12;
+        row.timeMinute = minutes;
+        row.timePeriod = period;
       }
     }else{
       row.date = new Date();
@@ -604,7 +694,7 @@ export class EventsComponent implements OnInit, OnDestroy, AfterViewInit {
       row.dateEnd = new Date(row.dateEnd);
     }
     // Show time field for appointments/reminders or if time is already set
-    this.showTimeField = row.key === 'appointment' || row.key === 'reminder' || !!row.time;
+    this.showTimeField = row.key === 'appointment' || row.key === 'reminder' || !!row.timeHour;
     this.actualRow = row;
     this.step = '0';
     this.editing = true;

@@ -3571,7 +3571,9 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
       name: ['', Validators.required],
       date: [new Date()],
       dateEnd: [null],
-      time: [''],
+      timeHour: [''],
+      timeMinute: [''],
+      timePeriod: ['AM'],
       key: [''],
       notes: []
     });
@@ -3582,14 +3584,19 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     // Extract time from date if it exists and is not midnight
     if (info.date) {
       const dateObj = new Date(info.date);
-      const hours = dateObj.getHours();
+      const hours24 = dateObj.getHours();
       const minutes = dateObj.getMinutes();
-      if (hours !== 0 || minutes !== 0) {
-        info.time = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+      if (hours24 !== 0 || minutes !== 0) {
+        const period = hours24 >= 12 ? 'PM' : 'AM';
+        let hours12 = hours24 % 12;
+        if (hours12 === 0) hours12 = 12;
+        info.timeHour = hours12;
+        info.timeMinute = minutes;
+        info.timePeriod = period;
       }
     }
     // Show time field for appointments and reminders, or if time already set
-    this.showTimeField = info.key === 'appointment' || info.key === 'reminder' || !!info.time;
+    this.showTimeField = info.key === 'appointment' || info.key === 'reminder' || !!info.timeHour;
     //info.date = this.dateService.transformDate(new Date());
     this.eventsForm.patchValue(info);
     this.showProposedEvents();
@@ -3623,9 +3630,17 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
       // Combine date and time if time is set
       if (this.eventsForm.value.date != null) {
         let dateObj = new Date(this.eventsForm.value.date);
-        const hasTime = this.eventsForm.value.time && this.eventsForm.value.time !== '';
+        const hasTime = this.eventsForm.value.timeHour && this.eventsForm.value.timeHour !== '';
         if (hasTime) {
-          const [hours, minutes] = this.eventsForm.value.time.split(':').map(Number);
+          let hours = parseInt(this.eventsForm.value.timeHour, 10);
+          const minutes = parseInt(this.eventsForm.value.timeMinute || '0', 10);
+          const period = this.eventsForm.value.timePeriod || 'AM';
+          // Convert 12h to 24h format
+          if (period === 'PM' && hours !== 12) {
+            hours += 12;
+          } else if (period === 'AM' && hours === 12) {
+            hours = 0;
+          }
           dateObj.setHours(hours, minutes, 0, 0);
           // Use transformDateTime to include the time in the output
           this.eventsForm.value.date = this.dateService.transformDateTime(dateObj);
@@ -3636,8 +3651,10 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
       if (this.eventsForm.value.dateEnd != null) {
         this.eventsForm.value.dateEnd = this.dateService.transformDate(this.eventsForm.value.dateEnd);
       }
-      // Remove time field before sending to API (it's already merged into date)
-      delete this.eventsForm.value.time;
+      // Remove time fields before sending to API (they're already merged into date)
+      delete this.eventsForm.value.timeHour;
+      delete this.eventsForm.value.timeMinute;
+      delete this.eventsForm.value.timePeriod;
 
       if (this.authGuard.testtoken()) {
         this.saving = true;
@@ -4460,23 +4477,47 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     this.modalReference = this.modalService.open(this.contentviewProposedEvents, ngbModalOptions);
   }
 
+  openAddEventModal() {
+    // Initialize empty form for new event
+    this.eventsForm = this.formBuilder.group({
+      name: ['', Validators.required],
+      date: [new Date()],
+      dateEnd: [null],
+      timeHour: [''],
+      timeMinute: [''],
+      timePeriod: ['AM'],
+      key: [''],
+      notes: []
+    });
+    this.showTimeField = false;
+    this.submitted = false;
+    this.showProposedEvents();
+  }
+
   addProposedEvent(event) {
     this.eventsForm = this.formBuilder.group({
       name: ['', Validators.required],
       date: [new Date()],
       dateEnd: [null],
-      time: [''],
+      timeHour: [''],
+      timeMinute: [''],
+      timePeriod: ['AM'],
       notes: [],
       key: []
     });
     if (event.date != undefined) {
       const dateObj = new Date(event.date);
       event.date = dateObj;
-      // Extract time from the date
-      const hours = dateObj.getHours();
+      // Extract time from the date and convert to 12h format
+      const hours24 = dateObj.getHours();
       const minutes = dateObj.getMinutes();
-      if (hours !== 0 || minutes !== 0) {
-        event.time = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+      if (hours24 !== 0 || minutes !== 0) {
+        const period = hours24 >= 12 ? 'PM' : 'AM';
+        let hours12 = hours24 % 12;
+        if (hours12 === 0) hours12 = 12;
+        event.timeHour = hours12;
+        event.timeMinute = minutes;
+        event.timePeriod = period;
       }
     } else {
       event.date = new Date();
@@ -4544,7 +4585,9 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
         name: ['', Validators.required],
         date: [new Date()],
         dateEnd: [null],
-        time: [''],
+        timeHour: [''],
+        timeMinute: [''],
+        timePeriod: ['AM'],
         notes: [],
         key: []
       });
