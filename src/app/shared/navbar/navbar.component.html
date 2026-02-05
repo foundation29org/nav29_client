@@ -235,7 +235,7 @@
                 </ng-container></strong>
                 <small class="d-block">{{ activity.addedBy.userName }}</small>
                 <small class="text-muted d-block">{{ activity.addedBy.email }}</small>
-                <small class="text-muted d-block">{{ activity.date | date:'medium' }}</small>
+                <small class="text-muted d-block">{{ 'timeline.Registered on' | translate }}: {{ activity.date | date:'mediumDate' }}</small>
               </p>
               
             </div>

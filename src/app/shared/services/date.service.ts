@@ -9,6 +9,10 @@ export class DateService {
     return this.datePipe.transform(dates, 'yyyy-MM-dd'); //whatever format you need.
   }
 
+  transformDateTime(dates) {
+    return this.datePipe.transform(dates, "yyyy-MM-dd'T'HH:mm:ss"); // Include time
+  }
+
   transformFormatDate(dates, format) {
     return this.datePipe.transform(dates, format); //whatever format you need.
   }

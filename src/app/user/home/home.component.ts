@@ -147,6 +147,7 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
   dataFile: any = {};
   tempDocs: any = [];
   submitted = false;
+  showTimeField = false;
   saving: boolean = false;
   showTextAreaFlag: boolean = false;
   medicalText: string = '';
@@ -169,7 +170,7 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
   message = '';
   callingOpenai: boolean = false;
   chatRecording: boolean = false;
-  chatMode: 'fast' | 'advanced' = 'fast'; // Modo de respuesta: fast (gpt4omini) o advanced (gpt5mini)
+  chatMode: 'fast' | 'advanced' = 'fast'; // Modo de respuesta: fast (gpt-4.1-mini) o advanced (gpt5mini)
   showChatOptions: boolean = false; // Mostrar menú de opciones del chat
   chatVoiceSupported: boolean = false;
   private chatSpeechSubscription: Subscription;
@@ -2108,13 +2109,13 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     }
     
     // Detectar eventos del navegador (extracción automática de eventos de la respuesta)
+    // Los eventos se obtienen de la BD en el servidor para asegurar datos frescos
     const messageToUse = this.tempInput || this.message;
     const query = {
       question: messageToUse,
       answer: parsedData.answer,
       userId: this.authService.getIdUser(),
-      patientId: this.currentPatient,
-      initialEvents: this.initialEvents
+      patientId: this.currentPatient
     };
 
     this.subscription.add(
@@ -2559,9 +2560,18 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
         for (let i = 0; i < eventsResponse.length; i++) {
           eventsResponse[i].dateInput = new Date(eventsResponse[i].dateInput);
           let dateWithoutTime = '';
+          let dateWithTime = '';
           let dateEndWithoutTime = '';
           if (eventsResponse[i].date != undefined && eventsResponse[i].date.indexOf("T") != -1) {
             dateWithoutTime = eventsResponse[i].date.split("T")[0];
+            // For appointments and reminders, include the time if it's not midnight
+            const timePart = eventsResponse[i].date.split("T")[1];
+            if (timePart && !timePart.startsWith("00:00")) {
+              const timeOnly = timePart.substring(0, 5); // Get HH:mm
+              dateWithTime = `${dateWithoutTime} ${timeOnly}`;
+            } else {
+              dateWithTime = dateWithoutTime;
+            }
           }
           if (eventsResponse[i].dateEnd != undefined && eventsResponse[i].dateEnd.indexOf("T") != -1) {
             dateEndWithoutTime = eventsResponse[i].dateEnd.split("T")[0];
@@ -2577,7 +2587,12 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
             }
             this.initialEvents.push(initialEvent);
           }
-          const metadataItem: any = { name: eventsResponse[i].name, date: dateWithoutTime };
+          // For appointments and reminders, include time in metadata so the AI knows the scheduled time
+          const isTimeSensitive = eventsResponse[i].key === 'appointment' || eventsResponse[i].key === 'reminder';
+          const metadataItem: any = { 
+            name: eventsResponse[i].name, 
+            date: isTimeSensitive ? dateWithTime : dateWithoutTime 
+          };
           if (dateEndWithoutTime) {
             metadataItem.dateEnd = dateEndWithoutTime;
           }
@@ -2591,9 +2606,16 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
       if (this.appointments.length > 0) {
         for (let i = 0; i < this.appointments.length; i++) {
           this.appointments[i].date = new Date(this.appointments[i].date);
-          let fechaFormatoISO = this.appointments[i].date.toISOString();
-          let soloFecha = fechaFormatoISO.split('T')[0];
-          this.metadata.push({ name: this.appointments[i].notes, date: soloFecha });
+          const appointmentDate = this.appointments[i].date;
+          const hours = appointmentDate.getHours();
+          const minutes = appointmentDate.getMinutes();
+          // Include time if it's not midnight
+          let dateStr = appointmentDate.toISOString().split('T')[0];
+          if (hours !== 0 || minutes !== 0) {
+            const timeStr = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+            dateStr = `${dateStr} ${timeStr}`;
+          }
+          this.metadata.push({ name: this.appointments[i].notes, date: dateStr });
         }
       }
 
@@ -3549,6 +3571,7 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
       name: ['', Validators.required],
       date: [new Date()],
       dateEnd: [null],
+      time: [''],
       key: [''],
       notes: []
     });
@@ -3556,6 +3579,17 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     if (!info.date) {
       info.date = new Date();
     }
+    // Extract time from date if it exists and is not midnight
+    if (info.date) {
+      const dateObj = new Date(info.date);
+      const hours = dateObj.getHours();
+      const minutes = dateObj.getMinutes();
+      if (hours !== 0 || minutes !== 0) {
+        info.time = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+      }
+    }
+    // Show time field for appointments and reminders, or if time already set
+    this.showTimeField = info.key === 'appointment' || info.key === 'reminder' || !!info.time;
     //info.date = this.dateService.transformDate(new Date());
     this.eventsForm.patchValue(info);
     this.showProposedEvents();
@@ -3586,12 +3620,24 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
 
       this.submitted = true;
 
+      // Combine date and time if time is set
       if (this.eventsForm.value.date != null) {
-        this.eventsForm.value.date = this.dateService.transformDate(this.eventsForm.value.date);
+        let dateObj = new Date(this.eventsForm.value.date);
+        const hasTime = this.eventsForm.value.time && this.eventsForm.value.time !== '';
+        if (hasTime) {
+          const [hours, minutes] = this.eventsForm.value.time.split(':').map(Number);
+          dateObj.setHours(hours, minutes, 0, 0);
+          // Use transformDateTime to include the time in the output
+          this.eventsForm.value.date = this.dateService.transformDateTime(dateObj);
+        } else {
+          this.eventsForm.value.date = this.dateService.transformDate(dateObj);
+        }
       }
       if (this.eventsForm.value.dateEnd != null) {
         this.eventsForm.value.dateEnd = this.dateService.transformDate(this.eventsForm.value.dateEnd);
       }
+      // Remove time field before sending to API (it's already merged into date)
+      delete this.eventsForm.value.time;
 
       if (this.authGuard.testtoken()) {
         this.saving = true;
@@ -3636,6 +3682,7 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
 
   cancelData() {
     this.submitted = false;
+    this.showTimeField = false;
     if (this.modalReference != null) {
       this.modalReference.close();
     }
@@ -4418,11 +4465,19 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
       name: ['', Validators.required],
       date: [new Date()],
       dateEnd: [null],
+      time: [''],
       notes: [],
       key: []
     });
     if (event.date != undefined) {
-      event.date = new Date(event.date);
+      const dateObj = new Date(event.date);
+      event.date = dateObj;
+      // Extract time from the date
+      const hours = dateObj.getHours();
+      const minutes = dateObj.getMinutes();
+      if (hours !== 0 || minutes !== 0) {
+        event.time = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+      }
     } else {
       event.date = new Date();
     }
@@ -4447,6 +4502,26 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     this.showForm(info)
   }
 
+  getProposedEventTime(event): string {
+    if (!event.date) return '09:00'; // Default time for appointments
+    const dateObj = new Date(event.date);
+    const hours = dateObj.getHours();
+    const minutes = dateObj.getMinutes();
+    // If time is midnight (00:00), return default appointment time
+    if (hours === 0 && minutes === 0) {
+      return '09:00';
+    }
+    return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+  }
+
+  updateProposedEventTime(event, timeValue: string) {
+    if (!timeValue) return;
+    const [hours, minutes] = timeValue.split(':').map(Number);
+    const dateObj = new Date(event.date);
+    dateObj.setHours(hours, minutes, 0, 0);
+    event.date = dateObj.toISOString();
+  }
+
   deleteProposedEvent(index) {
     this.proposedEvents.splice(index, 1);
     if (this.proposedEvents.length == 0 && this.suggestions.length == 0) {
@@ -4469,10 +4544,16 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
         name: ['', Validators.required],
         date: [new Date()],
         dateEnd: [null],
+        time: [''],
         notes: [],
         key: []
       });
-      event.date = new Date();
+      // Use the event's original date if available, otherwise use today
+      if (event.date) {
+        event.date = new Date(event.date);
+      } else {
+        event.date = new Date();
+      }
       if (event.dateEnd) {
         event.dateEnd = new Date(event.dateEnd);
       }

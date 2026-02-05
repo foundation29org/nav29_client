@@ -567,9 +567,16 @@
                                                     class="ml-1">{{proposedEvent.insight}}</span></p>
                                             <p class=""><strong>{{'generics.Date' | translate}}:</strong><span
                                                     class="ml-1">
-                                                    <span *ngIf="!proposedEvent.dateEnd">{{proposedEvent.date | date: timeformat}}</span>
-                                                    <span *ngIf="proposedEvent.dateEnd">{{proposedEvent.date | date: timeformat}} - {{proposedEvent.dateEnd | date: timeformat}}</span>
+                                                    <span *ngIf="!proposedEvent.dateEnd">{{proposedEvent.date | date: 'mediumDate'}}</span>
+                                                    <span *ngIf="proposedEvent.dateEnd">{{proposedEvent.date | date: 'mediumDate'}} - {{proposedEvent.dateEnd | date: 'mediumDate'}}</span>
                                                 </span></p>
+                                            <!-- Time selector for appointments and reminders -->
+                                            <p class="" *ngIf="proposedEvent.key === 'appointment' || proposedEvent.key === 'reminder'">
+                                                <strong>{{'timeline.Time' | translate}}:</strong>
+                                                <input type="time" class="form-control d-inline-block ml-2" style="width: 120px; height: 30px;" 
+                                                    [value]="getProposedEventTime(proposedEvent)"
+                                                    (change)="updateProposedEventTime(proposedEvent, $event.target.value)">
+                                            </p>
                                             <p class=""><strong>{{'timeline.Event type' | translate }}:</strong>
                                                 <span class="ml-1"> {{getEventTypeDisplay(proposedEvent.key)}}
 
@@ -1904,6 +1911,24 @@
                                     </mat-form-field>
                                 </div>
                             </div>
+                        </div>
+
+                        <!-- Time field - visible for appointments/reminders, collapsable for others -->
+                        <div class="" *ngIf="eventsForm.value.key === 'appointment' || eventsForm.value.key === 'reminder' || showTimeField">
+                            <div class="form-group">
+                                <label class="mb-0">
+                                    {{'timeline.Time' | translate }}
+                                    <span *ngIf="eventsForm.value.key === 'appointment' || eventsForm.value.key === 'reminder'" class="text-primary">*</span>
+                                </label>
+                                <div class="">
+                                    <input type="time" class="form-control" formControlName="time" style="max-width: 150px;">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="" *ngIf="eventsForm.value.key !== 'appointment' && eventsForm.value.key !== 'reminder' && !showTimeField">
+                            <button type="button" class="btn btn-link btn-sm p-0 mb-2" (click)="showTimeField = true">
+                                <i class="fa fa-clock-o mr-1"></i>{{'timeline.Add time' | translate }}
+                            </button>
                         </div>
 
                         <div>

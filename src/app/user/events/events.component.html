@@ -58,6 +58,23 @@
 												</div>
 											</div>
 										</div>
+										<!-- Time field - visible for appointments/reminders, collapsable for others -->
+										<div class="" *ngIf="seizuresForm.value.key === 'appointment' || seizuresForm.value.key === 'reminder' || showTimeField">
+											<div class="form-group">
+												<label class="mb-0">
+													{{'timeline.Time' | translate }}
+													<span *ngIf="seizuresForm.value.key === 'appointment' || seizuresForm.value.key === 'reminder'" class="text-primary">*</span>
+												</label>
+												<div class="">
+													<input type="time" class="form-control" formControlName="time" style="max-width: 150px;">
+												</div>
+											</div>
+										</div>
+										<div class="" *ngIf="seizuresForm.value.key !== 'appointment' && seizuresForm.value.key !== 'reminder' && !showTimeField">
+											<button type="button" class="btn btn-link btn-sm p-0 mb-2" (click)="showTimeField = true">
+												<i class="fa fa-clock-o mr-1"></i>{{'timeline.Add time' | translate }}
+											</button>
+										</div>
 										<div class="">
 											<div class="form-group">
 												<label class="mb-0">{{'events.End Date' | translate }} <small class="text-muted">({{'generics.Optional' | translate}})</small></label>
@@ -244,6 +261,9 @@
 											<span class="meta-value">
 												<span *ngIf="!event.dateEnd">
 													{{event.date ? (event.date | date:'mediumDate') : '--/--/--'}}
+													<span *ngIf="(event.key === 'appointment' || event.key === 'reminder') && event.date && (event.date | date:'HH:mm') !== '00:00'">
+														- {{event.date | date:'HH:mm'}}
+													</span>
 												</span>
 												<span *ngIf="event.dateEnd">
 													{{event.date ? (event.date | date:'mediumDate') : '--/--/--'}} - {{event.dateEnd | date:'mediumDate'}}

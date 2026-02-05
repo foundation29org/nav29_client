@@ -79,6 +79,7 @@ export class EventsComponent implements OnInit, OnDestroy, AfterViewInit {
   modalReference: NgbModalRef;
   seizuresForm: FormGroup;
   submitted = false;
+  showTimeField = false;
   events: any = [];
   eventsCopy: any = [];
   documents: any = []; // Para almacenar los documentos y poder buscar por docId
@@ -119,6 +120,7 @@ export class EventsComponent implements OnInit, OnDestroy, AfterViewInit {
       origin: [''],
       date: [new Date()],
       dateEnd: [null],
+      time: [''],
       key: [''],
       notes: [],
       _id: []
@@ -311,12 +313,23 @@ export class EventsComponent implements OnInit, OnDestroy, AfterViewInit {
         return;
     }
     
+    // Combine date and time if time is set
     if (this.seizuresForm.value.date != null) {
-      this.seizuresForm.value.date = this.dateService.transformDate(this.seizuresForm.value.date);
+      let dateObj = new Date(this.seizuresForm.value.date);
+      const hasTime = this.seizuresForm.value.time && this.seizuresForm.value.time !== '';
+      if (hasTime) {
+        const [hours, minutes] = this.seizuresForm.value.time.split(':').map(Number);
+        dateObj.setHours(hours, minutes, 0, 0);
+        this.seizuresForm.value.date = this.dateService.transformDateTime(dateObj);
+      } else {
+        this.seizuresForm.value.date = this.dateService.transformDate(dateObj);
+      }
     }
     if (this.seizuresForm.value.dateEnd != null) {
       this.seizuresForm.value.dateEnd = this.dateService.transformDate(this.seizuresForm.value.dateEnd);
     }
+    // Remove time field before sending to API
+    delete this.seizuresForm.value.time;
 
     if(this.authGuard.testtoken()){
       this.saving = true;
@@ -349,12 +362,23 @@ export class EventsComponent implements OnInit, OnDestroy, AfterViewInit {
         return;
     }
     
+    // Combine date and time if time is set
     if (this.seizuresForm.value.date != null) {
-      this.seizuresForm.value.date = this.dateService.transformDate(this.seizuresForm.value.date);
+      let dateObj = new Date(this.seizuresForm.value.date);
+      const hasTime = this.seizuresForm.value.time && this.seizuresForm.value.time !== '';
+      if (hasTime) {
+        const [hours, minutes] = this.seizuresForm.value.time.split(':').map(Number);
+        dateObj.setHours(hours, minutes, 0, 0);
+        this.seizuresForm.value.date = this.dateService.transformDateTime(dateObj);
+      } else {
+        this.seizuresForm.value.date = this.dateService.transformDate(dateObj);
+      }
     }
     if (this.seizuresForm.value.dateEnd != null) {
       this.seizuresForm.value.dateEnd = this.dateService.transformDate(this.seizuresForm.value.dateEnd);
     }
+    // Remove time field before sending to API
+    delete this.seizuresForm.value.time;
     
     if(this.authGuard.testtoken()){
       this.saving = true;
@@ -426,6 +450,8 @@ export class EventsComponent implements OnInit, OnDestroy, AfterViewInit {
       const today = new Date();
       this.seizuresForm.get('date').setValue(today);
       this.seizuresForm.get('dateEnd').setValue(null);
+      this.seizuresForm.get('time').setValue('');
+      this.showTimeField = false;
     }
   }
 
@@ -563,13 +589,22 @@ export class EventsComponent implements OnInit, OnDestroy, AfterViewInit {
 
   showForm(row){
     if(row.date != null){
-      row.date =  new Date(row.date);
+      const dateObj = new Date(row.date);
+      row.date = dateObj;
+      // Extract time from the date
+      const hours = dateObj.getHours();
+      const minutes = dateObj.getMinutes();
+      if (hours !== 0 || minutes !== 0) {
+        row.time = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+      }
     }else{
       row.date = new Date();
     }
     if(row.dateEnd != null){
       row.dateEnd = new Date(row.dateEnd);
     }
+    // Show time field for appointments/reminders or if time is already set
+    this.showTimeField = row.key === 'appointment' || row.key === 'reminder' || !!row.time;
     this.actualRow = row;
     this.step = '0';
     this.editing = true;
