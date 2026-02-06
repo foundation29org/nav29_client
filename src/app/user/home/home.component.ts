@@ -499,6 +499,8 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
   private accumulatedText: string = '';
   private speechSubscription: Subscription;
   tempFileName: string = '';
+  consultationText: string = '';
+  consultationFileName: string = '';
   showCameraButton: boolean = false;
   langs: any[] = [];
   editingTitle: boolean = false;
@@ -976,8 +978,9 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
   async ngOnInit() {
     this.showCameraButton = this.isMobileDevice();
 
-    // Inicializar soporte de voz para el chat
+    // Inicializar soporte de voz para el chat y documentos
     this.chatVoiceSupported = this.speechRecognitionService.isSupported();
+    this.supported = this.speechRecognitionService.isSupported();
     
     // Suscribirse a los resultados del reconocimiento de voz para el chat
     if (this.chatVoiceSupported) {
@@ -4780,6 +4783,19 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
         windowClass: 'ModalClass-lg'
       };
       this.modalReference = this.modalService.open(content, ngbModalOptions);
+    } else if (opt == 'opt3') {
+      this.setupConsultationRecognition();
+      this.consultationText = '';
+      this.consultationFileName = '';
+      if (this.modalReference != undefined) {
+        this.modalReference.close();
+      }
+      let ngbModalOptions: NgbModalOptions = {
+        backdrop: 'static',
+        keyboard: false,
+        windowClass: 'ModalClass-lg'
+      };
+      this.modalReference = this.modalService.open(content, ngbModalOptions);
     }
 
   }
@@ -5394,6 +5410,156 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
       this.tempFileName += '.txt';
     }
     let file = new File([this.medicalText], this.tempFileName, { type: 'text/plain' });
+    await this.processFile(file);
+    if (this.tempDocs.length > 0) {
+      this.processFilesSequentially();
+    } else {
+      console.log("All files were either invalid or cancelled.");
+    }
+    if (this.modalReference != undefined) {
+      this.modalReference.close();
+      this.modalReference = undefined;
+    }
+  }
+
+  setupConsultationRecognition() {
+    // Usar el servicio de reconocimiento de voz para consultas médicas
+    this.supported = this.speechRecognitionService.isSupported();
+    
+    // Limpiar suscripciones anteriores si existen
+    if (this.speechSubscription) {
+      this.speechSubscription.unsubscribe();
+    }
+    
+    // Suscribirse a los resultados del reconocimiento
+    let lastFinalText = '';
+    this.speechSubscription = this.speechRecognitionService.results$.subscribe((result) => {
+      if (result && result.text) {
+        if (result.isFinal) {
+          const newText = result.text.replace(lastFinalText, '').trim();
+          if (newText) {
+            if (this.consultationText && !this.consultationText.endsWith(' ')) {
+              this.consultationText += ' ';
+            }
+            this.consultationText += newText;
+            lastFinalText = result.text;
+            this.cdr.detectChanges();
+          }
+        } else {
+          // Para resultados intermedios, mostrar texto actual + nuevo
+          const interimText = result.text.replace(lastFinalText, '').trim();
+          if (interimText) {
+            // No actualizar consultationText con texto intermedio para evitar duplicados
+          }
+        }
+      }
+    });
+
+    this.speechSubscription.add(
+      this.speechRecognitionService.errors$.subscribe((error) => {
+        this.toastr.error('', error);
+        if (this.recording) {
+          this.stopTimer();
+          this.recording = false;
+        }
+      })
+    );
+
+    this.speechSubscription.add(
+      this.speechRecognitionService.status$.subscribe((status) => {
+        if (status === 'recording' && !this.recording) {
+          this.recording = true;
+          this.cdr.detectChanges();
+        } else if (status === 'stopped' && this.recording) {
+          this.recording = false;
+          this.stopTimer();
+          this.cdr.detectChanges();
+        }
+      })
+    );
+  }
+
+  toggleConsultationRecording() {
+    if (this.recording) {
+      // Detener grabación
+      Swal.fire({
+        title: this.translate.instant("voice.Processing audio..."),
+        allowOutsideClick: false,
+        showConfirmButton: false,
+        timer: 2000
+      });
+      
+      this.speechRecognitionService.stop();
+      this.stopTimer();
+      
+      const finalText = this.speechRecognitionService.getAccumulatedText();
+      if (finalText && !this.consultationText.includes(finalText)) {
+        this.consultationText += finalText;
+      }
+      
+      setTimeout(() => {
+        this.recording = false;
+      }, 2000);
+    } else {
+      // Iniciar grabación
+      if (this.consultationText) {
+        // Si ya hay texto, preguntar si quiere continuar o empezar de nuevo
+        Swal.fire({
+          title: this.translate.instant("voice.Do you want to continue recording?"),
+          icon: 'warning',
+          showCancelButton: true,
+          confirmButtonColor: '#0CC27E',
+          cancelButtonColor: '#FF586B',
+          confirmButtonText: this.translate.instant("voice.Yes, continue."),
+          cancelButtonText: this.translate.instant("voice.No, I want to start a new recording."),
+          showLoaderOnConfirm: true,
+          allowOutsideClick: false
+        }).then((result) => {
+          if (result.value) {
+            this.startConsultationRecording(false);
+          } else {
+            this.consultationText = '';
+            this.startConsultationRecording(true);
+          }
+        });
+      } else {
+        this.startConsultationRecording(true);
+      }
+    }
+  }
+
+  private startConsultationRecording(clearPrevious: boolean) {
+    if (clearPrevious) {
+      this.speechRecognitionService.clearAccumulatedText();
+    }
+    this.recording = true;
+    this.startTimer(clearPrevious);
+    this.speechRecognitionService.start();
+    this.cdr.detectChanges();
+  }
+
+  async createConsultationFile() {
+    if (!this.consultationFileName.trim()) {
+      // Si el usuario no ha introducido un nombre, generamos uno por defecto
+      let today = new Date();
+      let date = today.getFullYear().toString() +
+        (today.getMonth() + 1).toString().padStart(2, '0') +
+        today.getDate().toString().padStart(2, '0') +
+        today.getHours().toString().padStart(2, '0') +
+        today.getMinutes().toString().padStart(2, '0') +
+        today.getSeconds().toString().padStart(2, '0') +
+        today.getMilliseconds().toString().padStart(3, '0');
+
+      this.consultationFileName = localStorage.getItem('lang') == 'es' ? 'consulta-' : 'consultation-';
+      this.consultationFileName += date + '.txt';
+    } else if (!this.consultationFileName.endsWith('.txt')) {
+      this.consultationFileName += '.txt';
+    }
+    
+    // Añadir marcador especial para identificar como consulta médica
+    const consultationContent = '[CONSULTATION_TRANSCRIPTION]\n' + this.consultationText;
+    
+    let file = new File([consultationContent], this.consultationFileName, { type: 'text/plain' });
     await this.processFile(file);
     if (this.tempDocs.length > 0) {
       this.processFilesSequentially();

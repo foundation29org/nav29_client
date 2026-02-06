@@ -2328,6 +2328,15 @@
                         <p class="option-description">{{'demo.Write text description' | translate }}</p>
                     </div>
                 </div>
+                <div [ngClass]="{'col-md-4 mt-3': showCameraButton, 'col-6 mt-3': !showCameraButton}">
+                    <div class="document-option-card" (click)="entryOpt('opt3', contentConsultation)">
+                        <div class="option-icon-wrapper">
+                            <i class="fa-solid fa-user-doctor option-icon"></i>
+                        </div>
+                        <h5 class="option-title">{{'demo.Record consultation' | translate }}</h5>
+                        <p class="option-description">{{'demo.Record consultation description' | translate }}</p>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -2399,6 +2408,82 @@
                     [disabled]="callingSummary || recording || medicalText.length==0"
                     [title]="'generics.Save' | translate" 
                     (click)="createFile();">
+                    <i class="fa fa-save mr-2"></i>
+                    <span>{{'generics.Save' | translate }}</span>
+                </button>
+            </div>
+        </div>
+    </div>
+</ng-template>
+<ng-template #contentConsultation id="contentConsultation" let-c="close" let-d="dismiss" appendTo="body">
+    <div class="modal-header modern-modal-header consultation-modal-header" id="idHeader">
+        <div class="content-header text-left">
+            <h4 class="mb-0 modern-modal-title">
+                <i class="fa-solid fa-user-doctor mr-2"></i>
+                {{'demo.Record consultation' | translate }}
+            </h4>
+        </div>
+        <button type="button" class="close modern-close-btn" aria-label="Close" (click)="closeModal();">
+            <span aria-hidden="true">&times;</span>
+        </button>
+    </div>
+    <div class="modal-body modern-modal-body consultation-modal" id="idBody">
+        <div class="consultation-form">
+            <div class="consultation-instructions" *ngIf="!recording && !consultationText">
+                <div class="instruction-icon">
+                    <i class="fa-solid fa-microphone-lines"></i>
+                </div>
+                <h5>{{'voice.Consultation instructions title' | translate }}</h5>
+                <p class="text-muted">{{'voice.Consultation instructions' | translate }}</p>
+                <ul class="instruction-list">
+                    <li><i class="fa fa-check text-success mr-2"></i>{{'voice.Consultation tip 1' | translate }}</li>
+                    <li><i class="fa fa-check text-success mr-2"></i>{{'voice.Consultation tip 2' | translate }}</li>
+                    <li><i class="fa fa-check text-success mr-2"></i>{{'voice.Consultation tip 3' | translate }}</li>
+                </ul>
+            </div>
+
+            <div class="recording-area text-center">
+                <div class="recording-button-container">
+                    <button class="btn consultation-record-btn" 
+                        (click)="toggleConsultationRecording()"
+                        [ngClass]="{'recording-active': recording}">
+                        <i class="fa" [ngClass]="recording ? 'fa-stop' : 'fa-microphone'"></i>
+                    </button>
+                    <p class="recording-status mt-2" *ngIf="!recording && !consultationText">
+                        {{'voice.Click to start recording' | translate }}
+                    </p>
+                    <p class="recording-status mt-2 text-danger" *ngIf="recording">
+                        <i class="fa fa-circle record-pulse mr-1"></i>
+                        {{'voice.Recording consultation' | translate }} - {{ timerDisplay }}
+                    </p>
+                </div>
+            </div>
+
+            <div class="consultation-preview" *ngIf="consultationText">
+                <label class="form-label">{{'voice.Transcription preview' | translate }}</label>
+                <div class="transcription-preview-box">
+                    <textarea class="form-control modern-textarea data-hj-allow" 
+                        [(ngModel)]="consultationText" name="consultationText"
+                        rows="8"
+                        placeholder="{{'voice.Transcription will appear here' | translate }}"></textarea>
+                </div>
+                <small class="text-muted">
+                    <i class="fa fa-info-circle mr-1"></i>
+                    {{'voice.Diarization note' | translate }}
+                </small>
+            </div>
+
+            <div class="form-group mt-3" *ngIf="consultationText">
+                <label class="form-label">{{'voice.Consultation name' | translate }}</label>
+                <input type="text" class="form-control modern-input" [(ngModel)]="consultationFileName"
+                    placeholder="{{'voice.Consultation name placeholder' | translate }}" />
+            </div>
+
+            <div class="form-actions mt-4">
+                <button type="button" class="btn btn-primary btn-save"
+                    [disabled]="callingSummary || recording || !consultationText || consultationText.length==0"
+                    [title]="'generics.Save' | translate" 
+                    (click)="createConsultationFile();">
                     <i class="fa fa-save mr-2"></i>
                     <span>{{'generics.Save' | translate }}</span>
                 </button>

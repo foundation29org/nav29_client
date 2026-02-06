@@ -5175,3 +5175,128 @@ display: none !important;
   justify-content: flex-end;
   gap: 0.75rem;
 }
+
+// Consultation Recording Styles
+.consultation-modal {
+  .consultation-form {
+    padding: 1rem;
+  }
+
+  .consultation-instructions {
+    text-align: center;
+    padding: 1.5rem;
+    background: #f8f9fa;
+    border-radius: 12px;
+    margin-bottom: 1.5rem;
+
+    .instruction-icon {
+      font-size: 2.5rem;
+      color: #6c757d;
+      margin-bottom: 1rem;
+    }
+
+    h5 {
+      color: #333;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+    }
+
+    .instruction-list {
+      list-style: none;
+      padding: 0;
+      margin: 1rem 0 0 0;
+      text-align: left;
+      display: inline-block;
+
+      li {
+        padding: 0.35rem 0;
+        color: #555;
+        font-size: 0.9rem;
+      }
+    }
+  }
+
+  .recording-area {
+    padding: 1.5rem;
+  }
+
+  .recording-button-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .consultation-record-btn {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border: none;
+    color: white;
+    font-size: 1.75rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    &:hover {
+      transform: scale(1.05);
+      box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5);
+    }
+
+    &:active {
+      transform: scale(0.98);
+    }
+
+    &.recording-active {
+      background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+      box-shadow: 0 4px 15px rgba(220, 53, 69, 0.4);
+      animation: pulse-consultation 1.5s infinite;
+    }
+  }
+
+  .recording-status {
+    font-size: 0.9rem;
+    color: #666;
+  }
+
+  .record-pulse {
+    animation: blink-recording 1s infinite;
+  }
+
+  .consultation-preview {
+    margin-top: 1.5rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid #e0e0e0;
+
+    .transcription-preview-box {
+      textarea {
+        min-height: 150px;
+        resize: vertical;
+      }
+    }
+  }
+}
+
+@keyframes pulse-consultation {
+  0% {
+    box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.5);
+  }
+  70% {
+    box-shadow: 0 0 0 15px rgba(220, 53, 69, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(220, 53, 69, 0);
+  }
+}
+
+@keyframes blink-recording {
+  0%, 50% {
+    opacity: 1;
+  }
+  51%, 100% {
+    opacity: 0;
+  }
+}
