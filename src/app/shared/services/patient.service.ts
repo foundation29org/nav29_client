@@ -109,9 +109,9 @@ export class PatientService {
         map((res: any) => {
           if(res.listpatients.length>0){
             this.authService.setPatientList(res.listpatients);
-            if(this.authService.getCurrentPatient()== null){
-              this.authService.setCurrentPatient(res.listpatients[0]);
-            }
+            // NO auto-seleccionar aquí - dejar que el navbar decida
+            // considerando tanto pacientes propios como compartidos
+            // para evitar seleccionar automáticamente cuando hay múltiples pacientes
             return this.authService.getCurrentPatient();
           }else{
             return null;
@@ -556,6 +556,47 @@ export class PatientService {
         catchError((err) => {
           console.log(err);
           return err;
+        })
+      );
+    }
+
+    // ==================== WHATSAPP METHODS ====================
+
+    getWhatsAppStatus() {
+      return this.http.get(environment.api + '/api/whatsapp/status').pipe(
+        map((res: any) => {
+          return res;
+        }),
+        catchError((err) => {
+          console.log(err);
+          this.insightsService.trackException(err);
+          return err;
+        })
+      );
+    }
+
+    generateWhatsAppCode() {
+      return this.http.post(environment.api + '/api/whatsapp/generate-code', {}).pipe(
+        map((res: any) => {
+          return res;
+        }),
+        catchError((err) => {
+          console.log(err);
+          this.insightsService.trackException(err);
+          throw err;
+        })
+      );
+    }
+
+    unlinkWhatsApp() {
+      return this.http.delete(environment.api + '/api/whatsapp/unlink').pipe(
+        map((res: any) => {
+          return res;
+        }),
+        catchError((err) => {
+          console.log(err);
+          this.insightsService.trackException(err);
+          throw err;
         })
       );
     }

@@ -21,9 +21,15 @@ import { EventsService } from 'app/shared/services/events.service';
 import { WebPubSubService } from 'app/shared/services/web-pub-sub.service';
 import { jsPDFService } from 'app/shared/services/jsPDF.service'
 import { Clipboard } from "@angular/cdk/clipboard"
+import { jsPDF } from "jspdf";
+import { Chart, registerables, ChartConfiguration } from 'chart.js';
+import 'chartjs-adapter-date-fns';
+import annotationPlugin from 'chartjs-plugin-annotation';
+Chart.register(...registerables, annotationPlugin);
 
 import { InsightsService } from 'app/shared/services/azureInsights.service';
 import { LangService } from 'app/shared/services/lang.service';
+import { SpeechRecognitionService } from 'app/shared/services/speech-recognition.service';
 import * as QRCode from 'qrcode';
 import { FeedbackSummaryPageComponent } from 'app/user/feedback-summary/feedback-summary-page.component';
 import { EditMedicalEventComponent } from 'app/user/edit-event-modal/edit-medical-event.component';
@@ -33,7 +39,7 @@ declare var webkitSpeechRecognition: any;
 import * as hopscotch from 'hopscotch';
 import { HighlightService } from 'app/shared/services/highlight.service';
 import { interval } from 'rxjs';
-import { filter, take } from 'rxjs/operators';
+import { filter, take, timeout } from 'rxjs/operators';
 import { ActivityService } from 'app/shared/services/activity.service';
 
 // Interfaces para tipar los datos (como dataclasses en Python)
@@ -138,10 +144,10 @@ interface DxGptResponse {
 export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
   private subscription: Subscription = new Subscription();
   eventsForm: FormGroup;
-  appointmentsForm: FormGroup;
   dataFile: any = {};
   tempDocs: any = [];
   submitted = false;
+  showTimeField = false;
   saving: boolean = false;
   showTextAreaFlag: boolean = false;
   medicalText: string = '';
@@ -163,8 +169,13 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
   messages = [];
   message = '';
   callingOpenai: boolean = false;
+  chatRecording: boolean = false;
+  chatMode: 'fast' | 'advanced' = 'fast'; // Modo de respuesta: fast (gpt-4.1-mini) o advanced (gpt5mini)
+  showChatOptions: boolean = false; // Mostrar menú de opciones del chat
+  chatVoiceSupported: boolean = false;
+  private chatSpeechSubscription: Subscription;
+  lastProcessedAnswerId: string = ''; // Para evitar procesar respuestas duplicadas
 
-  valueProm: any = {};
   tempInput: string = '';
   detectedLang: string = 'en';
   preferredResponseLanguage: string = 'en';
@@ -202,13 +213,129 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
   summaryJson: any = {};
   needFeedback: boolean = true;
   private messageSubscription: Subscription;
+  private processedAnomalies: Set<string> = new Set(); // Control para evitar duplicados de anomalías
   @ViewChild('contentviewSummary', { static: false }) contentviewSummary: TemplateRef<any>;
   @ViewChild('contentviewDoc', { static: false }) contentviewDoc: TemplateRef<any>;
   @ViewChild('contentSummaryDoc', { static: false }) contentSummaryDoc: TemplateRef<any>;
+  @ViewChild('documentContextModal', { static: false }) documentContextModal: TemplateRef<any>;
   @ViewChild('contentviewProposedEvents', { static: false }) contentviewProposedEvents: TemplateRef<any>;
-  @ViewChild('contentviewProposedAppointments', { static: false }) contentviewProposedAppointments: TemplateRef<any>;
   @ViewChild('shareCustom', { static: false }) contentshareCustom: TemplateRef<any>;
   @ViewChild('qrPanel', { static: false }) contentqrPanel: TemplateRef<any>;
+  @ViewChild('dxGptModal', { static: false }) dxGptModal: TemplateRef<any>;
+  @ViewChild('notesModal', { static: false }) notesModal: TemplateRef<any>;
+  @ViewChild('rarescopeModal', { static: false }) rarescopeModal: TemplateRef<any>;
+  @ViewChild('diaryModal', { static: false }) diaryModal: TemplateRef<any>;
+  @ViewChild('timelineModal', { static: false }) timelineModal: TemplateRef<any>;
+  @ViewChild('prepareConsultModal', { static: false }) prepareConsultModal: TemplateRef<any>;
+  @ViewChild('soapModal', { static: false }) soapModal: TemplateRef<any>;
+  @ViewChild('trackingModal', { static: false }) trackingModal: TemplateRef<any>;
+  @ViewChild('trackingEvolutionChart', { static: false }) trackingEvolutionChartRef: ElementRef;
+  @ViewChild('trackingTimeChart', { static: false }) trackingTimeChartRef: ElementRef;
+
+  // Variables para Preparar Consulta
+  prepareConsultData = {
+    specialist: '',
+    consultDate: '',
+    comments: ''
+  };
+  prepareConsultEditMode = {
+    specialist: false,
+    consultDate: false,
+    comments: false
+  };
+  
+  // Variables para SOAP Notes (Clinical)
+  soapStep = 1;
+  soapLoading = false;
+  soapData = {
+    patientSymptoms: '',
+    suggestedQuestions: [] as Array<{question: string, answer: string}>,
+    result: null as {subjective: string, objective: string, assessment: string, plan: string} | null
+  };
+  
+  // Variables para Patient Tracking (Clinical)
+  trackingStep = 1;
+  trackingLoading = false;
+  isDragOver = false;
+  trackingEvolutionChart: any = null;
+  trackingTimeChart: any = null;
+  trackingCombinedChart: any = null;
+  
+  // Filtros para tracking
+  trackingFilters = {
+    groupBy: 'month' as 'day' | 'month' | 'year',
+    dateRange: 'all' as 'all' | '1year' | '6months' | '3months' | '1month' | 'custom',
+    customStartDate: '',
+    customEndDate: '',
+    seizureType: 'all',
+    maxSeizureScale: null as number | null,
+    maxMedicationScale: null as number | null,
+    showMedicationChanges: true,
+    selectedYears: [] as number[]  // Años seleccionados para filtrar
+  };
+  availableSeizureTypes: string[] = [];
+  availableYears: number[] = [];  // Años disponibles para el slicer
+  
+  // Variables para gestión de datos
+  deleteRangeStart = '';
+  deleteRangeEnd = '';
+  
+  trackingData = {
+    patientId: '',
+    conditionType: 'epilepsy' as 'epilepsy',  // Solo epilepsia
+    entries: [] as Array<{
+      date: Date;
+      type: string;
+      duration?: number;
+      severity?: number;
+      triggers?: string[];
+      notes?: string;
+      value?: number;
+      customFields?: Record<string, any>;
+    }>,
+    medications: [] as Array<{
+      name: string;
+      dose: string;
+      startDate: Date;
+      endDate?: Date;
+      sideEffects?: string[];
+    }>,
+    metadata: {
+      source: 'manual' as 'seizuretracker' | 'manual' | 'other',
+      importDate: new Date(),
+      originalFile: ''
+    }
+  };
+  trackingManualEntry = {
+    conditionType: 'epilepsy' as 'epilepsy',  // Solo epilepsia
+    date: '',
+    type: 'Tonic Clonic',  // Tipo por defecto
+    duration: 0,
+    severity: 5,  // Severidad por defecto
+    triggers: [] as string[],
+    notes: ''
+  };
+  trackingImportPreview: {
+    type: string;
+    entriesCount: number;
+    medicationsCount: number;
+    dateRange: string;
+    rawData: any;
+  } | null = null;
+  trackingStats = {
+    totalEvents: 0,
+    daysSinceLast: 0,
+    monthlyAvg: 0,
+    trend: '' as 'improving' | 'worsening' | '',
+    trendPercent: 0
+  };
+  trackingInsights: Array<{
+    icon: string;
+    title: string;
+    description: string;
+  }> = [];
+  availableTriggers = ['Stress', 'Sleep deprivation', 'Missed medication', 'Alcohol', 'Illness', 'Hormonal', 'Diet', 'Light sensitivity', 'Overheated', 'Other'];
+  
   tasksUpload: any[] = [];
   taskAnonimize: any[] = [];
   translateYouCanAskInChat: string = '';
@@ -237,10 +364,12 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
   private questionSymptoms = new Map<string, any[]>();
   isEditingPatientInfo: boolean = false;
   editedPatientInfo: string = '';
+  isPatientInfoExpanded: boolean = false;
   isLoadingMoreDiagnoses: boolean = false;
   loadingDoc: boolean = false;
   summaryDate: Date = null;
   generatingPDF: boolean = false;
+  regeneratingSummary: boolean = false;
   msgDownload: string;
   msgtoDownload: string;
   actualStatus: string = '';
@@ -248,10 +377,10 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
   sendingVote: boolean = false;
   actualParam: string = '';
   proposedEvents = [];
-  proposedAppointments = [];
   currentPatient: string = '';
   actualPatient: any = {};
   containerName: string = '';
+  hasShownCountryWarning: boolean = false;
   gettingSuggestions: boolean = false;
   newPermission: any;
   mode: string = 'Custom';
@@ -283,6 +412,25 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
   sortDirection: number = -1;
 
   timeline: any = [];
+  eventsNeedingReviewCount: number = 0;
+  
+  // Timeline consolidado
+  consolidatedTimeline: any = null;
+  loadingConsolidatedTimeline: boolean = false;
+  showConsolidatedView: boolean = true; // Por defecto mostrar vista consolidada
+  consolidatedTimelineError: string = null;
+
+  updateNeedingReviewCount(): void {
+    if (!this.allEvents || this.allEvents.length === 0) {
+      this.eventsNeedingReviewCount = 0;
+      return;
+    }
+    this.eventsNeedingReviewCount = this.allEvents.filter(event => 
+      event.needsDateReview || 
+      (event.date === null && event.dateConfidence === 'missing') || 
+      event.dateConfidence === 'estimated'
+    ).length;
+  }
   showFilters = false;
   groupedEvents: any = [];
   startDate: Date;
@@ -292,6 +440,8 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
   isOldestFirst = false;
   userId = '';
   openingSummary = false;
+  generatingInfographic = false;
+  infographicImageData: string = null;
   role = 'Unknown';
   medicalLevel: string = '1';
   valueGeneralFeedback: string = '';
@@ -300,11 +450,43 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
   selectedIndexTab: number = 0;
   sidebarOpen = false;
   notesSidebarOpen: boolean = false;
+  leftSidebarCollapsed: boolean = false;
+  rightSidebarCollapsed: boolean = false;
+  rightSidebarOpenMobile: boolean = false;
+  scrollToBottomVisible: boolean = false;
   notes: { _id: string, content: string, date: Date, isEditing?: boolean, editContent?: string }[] = [];
   newNoteContent: string = '';
   savingNote: boolean = false;
   editableDiv: ElementRef | null = null;
   deletingNote: boolean = false;
+  selectedNoteForModal: any = null;
+  noteMaxLength: number = 500; // Límite de caracteres para mostrar preview
+  editingNoteIndex: number | null = null; // Índice de la nota que se está editando en el modal
+  
+  // Quill Editor Configuration
+  quillConfig = {
+    toolbar: [
+      ['bold', 'italic', 'underline', 'strike'],        // toggled buttons
+      ['blockquote', 'code-block'],
+      [{ 'header': 1 }, { 'header': 2 }],               // custom button values
+      [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+      [{ 'script': 'sub'}, { 'script': 'super' }],      // superscript/subscript
+      [{ 'indent': '-1'}, { 'indent': '+1' }],          // outdent/indent
+      [{ 'direction': 'rtl' }],                         // text direction
+      [{ 'size': ['small', false, 'large', 'huge'] }],  // custom dropdown
+      [{ 'header': [1, 2, 3, 4, 5, 6, false] }],
+      [{ 'color': [] }, { 'background': [] }],          // dropdown with defaults from theme
+      [{ 'font': [] }],
+      [{ 'align': [] }],
+      ['clean'],                                         // remove formatting button
+      ['link', 'image']                                 // link and image, video
+    ]
+  };
+  
+  quillEditorStyles = {
+    height: '300px',
+    'min-height': '200px'
+  };
   selectAllDocuments: boolean = true;
   searchTerm: string = '';
   filteredDocs: any[] = [];
@@ -314,7 +496,11 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
   timer: number = 0;
   timerDisplay: string = '00:00';
   private interval: any;
+  private accumulatedText: string = '';
+  private speechSubscription: Subscription;
   tempFileName: string = '';
+  consultationText: string = '';
+  consultationFileName: string = '';
   showCameraButton: boolean = false;
   langs: any[] = [];
   editingTitle: boolean = false;
@@ -331,7 +517,7 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
   private isInitialLoad = true;
   currentPatientId: string | null = null;
 
-  constructor(private http: HttpClient, private authService: AuthService, public translate: TranslateService, private formBuilder: FormBuilder, private authGuard: AuthGuard, public toastr: ToastrService, private patientService: PatientService, private sortService: SortService, private modalService: NgbModal, private apiDx29ServerService: ApiDx29ServerService, private dateService: DateService, private eventsService: EventsService, private webPubSubService: WebPubSubService, private searchService: SearchService, public jsPDFService: jsPDFService, private clipboard: Clipboard, public trackEventsService: TrackEventsService, private route: ActivatedRoute, public insightsService: InsightsService, private cdr: ChangeDetectorRef, private router: Router, private langService: LangService, private highlightService: HighlightService, private activityService: ActivityService) {
+  constructor(private http: HttpClient, private authService: AuthService, public translate: TranslateService, private formBuilder: FormBuilder, private authGuard: AuthGuard, public toastr: ToastrService, private patientService: PatientService, private sortService: SortService, private modalService: NgbModal, private apiDx29ServerService: ApiDx29ServerService, private dateService: DateService, private eventsService: EventsService, private webPubSubService: WebPubSubService, private searchService: SearchService, public jsPDFService: jsPDFService, private clipboard: Clipboard, public trackEventsService: TrackEventsService, private route: ActivatedRoute, public insightsService: InsightsService, private cdr: ChangeDetectorRef, private router: Router, private langService: LangService, private highlightService: HighlightService, private activityService: ActivityService, private speechRecognitionService: SpeechRecognitionService) {
     this.screenWidth = window.innerWidth;
     this.categoriesPatients = [
       { "title": this.translate.instant('categoriesPatients.list.cat1'), "icon": "data:image/webp;base64,UklGRoAHAABXRUJQVlA4WAoAAAAwAAAAOwAAOwAASUNDUKACAAAAAAKgbGNtcwRAAABtbnRyUkdCIFhZWiAH5wALAB4AEQAdAClhY3NwTVNGVAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA9tYAAQAAAADTLWxjbXMAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA1kZXNjAAABIAAAAEBjcHJ0AAABYAAAADZ3dHB0AAABmAAAABRjaGFkAAABrAAAACxyWFlaAAAB2AAAABRiWFlaAAAB7AAAABRnWFlaAAACAAAAABRyVFJDAAACFAAAACBnVFJDAAACFAAAACBiVFJDAAACFAAAACBjaHJtAAACNAAAACRkbW5kAAACWAAAACRkbWRkAAACfAAAACRtbHVjAAAAAAAAAAEAAAAMZW5VUwAAACQAAAAcAEcASQBNAFAAIABiAHUAaQBsAHQALQBpAG4AIABzAFIARwBCbWx1YwAAAAAAAAABAAAADGVuVVMAAAAaAAAAHABQAHUAYgBsAGkAYwAgAEQAbwBtAGEAaQBuAABYWVogAAAAAAAA9tYAAQAAAADTLXNmMzIAAAAAAAEMQgAABd7///MlAAAHkwAA/ZD///uh///9ogAAA9wAAMBuWFlaIAAAAAAAAG+gAAA49QAAA5BYWVogAAAAAAAAJJ8AAA+EAAC2xFhZWiAAAAAAAABilwAAt4cAABjZcGFyYQAAAAAAAwAAAAJmZgAA8qcAAA1ZAAAT0AAACltjaHJtAAAAAAADAAAAAKPXAABUfAAATM0AAJmaAAAmZwAAD1xtbHVjAAAAAAAAAAEAAAAMZW5VUwAAAAgAAAAcAEcASQBNAFBtbHVjAAAAAAAAAAEAAAAMZW5VUwAAAAgAAAAcAHMAUgBHAEJBTFBISgEAAAGQQ22bIVm9RmibmW3U2plt27bt3ci8tm3btt03u6eCQddfex1FxAQw/8mr6+lo6+qpK6lr6+np6enqilJj1H0bE/ywJZwG2QFM/IoZmOwRDMi6QO3AoKwJTAoW+vvtG7cvvBQKHwcReSpckzNCyEU4jCB8sPBdCCHkyGEOohHuIcQ4h04eew6Yii8dDW3toTxuhU3tTafo2uKKhG+ia9WKQwtdRxDHJrquc+mgi+1srm4O4XGuriotPUUX33YeB8yRni4ex1/RkAdCyGWtvFm/devmw2uFLNj7keLIhITU+KTUtCnqtlrHj25a5n+ats3GuzBZdgNLgdU0JvzMI4OCMEz8lOlVuBvk8MBzoHYM/gYiBG4rhNQnsBgIpgnqrhSI7C0gfwZW9ylILgPok1PaMLQd4npzbk5OCqn9mMofeoQktaiUY/53BlZQOCBoAwAAkBQAnQEqPAA8AD4xGIlDoiGhFAQAIAMEsgBm/KCel/d+Oj5qM3evL8z9wHaA8S3pReYD9bv1g97T0YegB/XP5z1l/oX9KR+2/o4ZhzokvsdkwLwBnyf939oHxuf4H9V9AH0X7BH6hf73gVUtay9FSidNdcSqkfNA/8a/+Pr91rouwuB/SBa/ZK0+vGACxCB+AfAdCiFHQzODPVbL4hXPv4xAtz+elf8/6gQQ3UAA/v/zxTR//mhiT2bVfGwDXbPYafQJO/TOyb62/7sdR+bVJt/evdSuzij4TL9u+/sxjNRD+hHubZv7vqijVS/S6HEdDzl/36zviV7/ihSeG643QEmcS4YHqQDRJTdBC1ehGnh8P6cYFVuQ7FNaCjBixcB+f8CKsl30iwPvQ1+43VrGyx5ku4vwNmIVmjLV9FUfFsJB3yVkAERbsyi/zOXjdbg36lZMiCZBoPp13u4NOXNaLejqvQUeHnLTbw5KMR4M90TST1FS1zkujkt3I2sdr6xh2V/f/R6TKh7MNvQKMuKnVUJHUrYLR9sWNPU3x0gP8QB3mfFRAcxLNkbPxxeW1+JL6PpUyrnlTiFPvYS1IuDdf/OcyDmur7161W32ngHMcLpR+NUgJ+qQEDQRES0wf85U3NQlu8BXUinpJNCo3V2HwG7DKD9oMh91427yMUHXN6v3LmtQ3X1bk8rjpqkP4VALf//zPEHJsZgOCl99i2/0IVOVUJxLsWofdnwxA+akncXD+6dSVZiQ2u4UIPtNeZ0oH4UUICMPbCcqnxROp9Cu6xTASl3Iv/dEHWHEWdf+Nfjd2TfvwK9BSDyckfrAb2Kny5vUAH3Nu9/v0/SFYko0+XFfEUlzt2k/o7c+/e2V8yisqYo0xngw5QNePnu4KBmy39pd9XOEgZxQ0k+YIFIXqsOj5jhDWjOQoELXn/gWb10AXqA1beeSgh1EaOl6QgZJ4lyi36hiJSgKKOZMJ8B+Rc968ApfG3gjvdaP93AzZZW4f4O1RQ/HW2Z/6ctbyhwCsHg+nLp804tELkn6DYbRCbq5iJ6r8IRr4ZHFW/0akFMIPpwYITjgfqKSewTELtW+tYsYh+Er0XkEHnHA3ISHUMF7B9fyfWsmLL/sVMRXHe11hpCT9R5kO71YFfQ/ACkSeUSh3PyAAAA=", "idCat": "treatAndDrugs", "questions": [] },
@@ -568,13 +754,29 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
   }
 
   get ef() { return this.eventsForm.controls; }
-  get efappointment() { return this.appointmentsForm.controls; }
 
   async ngOnDestroy() {
-    //save this.messages in bbdd
-    if (this.currentPatient) {
-      await this.saveMessages(this.currentPatient);
+    // Detener reconocimiento de voz si está activo
+    if (this.recording) {
+      this.speechRecognitionService.stop();
     }
+    
+    // Detener reconocimiento de voz del chat si está activo
+    if (this.chatRecording) {
+      this.speechRecognitionService.stop();
+    }
+    
+    // Limpiar suscripciones de reconocimiento de voz
+    if (this.speechSubscription) {
+      this.speechSubscription.unsubscribe();
+    }
+    
+    // Limpiar suscripciones de reconocimiento de voz del chat
+    if (this.chatSpeechSubscription) {
+      this.chatSpeechSubscription.unsubscribe();
+    }
+    
+    // El backend ahora guarda los mensajes automáticamente
 
     // Unsubscribe de todas las subscripciones
     this.subscription.unsubscribe();
@@ -594,46 +796,55 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     this.highlightService.highlightAll();
   }
 
-  saveMessages(pacient) {
+  /**
+   * Elimina todos los mensajes del chat en el servidor
+   */
+  deleteMessagesFromServer(): Promise<any> {
     return new Promise((resolve, reject) => {
-      //delete messages with task 
-      var messages = [];
-      this.messages.forEach(element => {
-        if (element.task == undefined && element.file == undefined) {
-          if (element.text.toString().indexOf('<form>') == -1) {
-            messages.push(element);
-          }
-          /*if (element.text.toString().indexOf('<strong>') == -1 && element.text.toString().indexOf('<form>') == -1 ) {
-            messages.push(element);
-          }*/
-        }
-      });
-      var info = { 'messages': messages };
-      this.subscription.add(this.http.post(environment.api + '/api/messages/' + this.authService.getIdUser() + '/' + pacient, info)
-        .subscribe((res: any) => {
-          resolve(res);
-        }, (err) => {
-          console.log(err);
-          this.insightsService.trackException(err);
-          resolve(err);
-        }));
+      this.subscription.add(
+        this.http.delete(environment.api + '/api/messages/' + this.authService.getIdUser() + '/' + this.currentPatient)
+          .subscribe(
+            (res: any) => {
+              console.log('✅ Mensajes eliminados del servidor');
+              resolve(res);
+            },
+            (err) => {
+              console.error('Error eliminando mensajes:', err);
+              this.insightsService.trackException(err);
+              resolve(err);
+            }
+          )
+      );
     });
   }
 
   getMessages() {
     this.subscription.add(this.http.get(environment.api + '/api/messages/' + this.authService.getIdUser() + '/' + this.currentPatient)
       .subscribe(async (res: any) => {
+        console.log('getMessages', res);
         if (res.messages != undefined) {
           if (res.messages.length > 0) {
-            this.messages = res.messages;
-            await this.delay(200);
-            this.scrollToBottom();
+            // Procesar referencias de documentos en mensajes cargados de la BD
+            this.messages = res.messages.map((msg: any) => {
+              if (!msg.isUser && msg.text) {
+                msg.text = this.processDocumentReferences(msg.text, msg.references);
+              }
+              return msg;
+            });
           } else {
             this.messages = [];
           }
         } else {
           this.messages = [];
         }
+        
+        // Cargar sugerencias del último mensaje si el backend las devuelve
+        if (res.lastSuggestions && res.lastSuggestions.length > 0) {
+          this.translateSuggestions(res.lastSuggestions);
+        }
+        
+        await this.delay(200);
+        this.scrollToBottom();
       }, (err) => {
         console.log(err);
         this.insightsService.trackException(err);
@@ -687,7 +898,19 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
   }
 
   isDateMissing(date: any): boolean {
-    return date === null;
+    if (date === null || date === undefined) {
+      return true;
+    }
+    // También verificar si es una fecha inválida (como 1 de enero de 1970 que puede ser un valor por defecto)
+    const dateObj = new Date(date);
+    if (isNaN(dateObj.getTime())) {
+      return true;
+    }
+    // Si la fecha es 1 de enero de 1970 (epoch 0), considerarla como fecha faltante
+    if (dateObj.getTime() === 0) {
+      return true;
+    }
+    return false;
   }
 
   /**
@@ -701,16 +924,47 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
       // Paciente válido
       this.isInitialLoad = false;
       this.currentPatientId = patient.sub;
+      
+      // IMPORTANTE: Resetear estados de carga del chat cuando cambias de paciente
+      // Esto evita que el chat quede bloqueado si había una petición pendiente del paciente anterior
+      this.callingOpenai = false;
+      this.gettingSuggestions = false;
+      
+      // Limpiar sugerencias del paciente anterior
+      this.suggestions = [];
+      
+      // Limpiar mensajes del paciente anterior mientras se cargan los nuevos
+      this.messages = [];
+      
+      // Limpiar contexto de conversación del paciente anterior
+      this.context = [{ role: 'system', content: '' }];
+      
+      // Limpiar control de anomalías procesadas del paciente anterior
+      this.processedAnomalies.clear();
+      
       this.initEnvironment();
       
-      // Limpiar resultados de DxGPT si cambias de paciente
-      if (this.currentView === 'dxgpt') {
-        this.dxGptResults = null;
-      }
+      // Limpiar resultados de DxGPT siempre cuando cambias de paciente
+      this.dxGptResults = null;
+      this.isDxGptLoading = false;
+      
+      // Limpiar datos de Rarescope (Mis Necesidades) cuando cambias de paciente
+      this.rarescopeNeeds = [''];
+      this.additionalNeeds = [];
+      this.rarescopeError = null;
+      this.isLoadingRarescope = false;
+      
+      // Limpiar timeline cuando cambias de paciente
+      this.timeline = [];
+      this.consolidatedTimeline = null;
+      this.loadingConsolidatedTimeline = false;
+      this.consolidatedTimelineError = null;
     } else {
       // No hay paciente
       this.currentPatientId = null;
       this.dxGptResults = null;
+      this.suggestions = [];
+      this.messages = [];
       
       // Redirigir solo si no es la carga inicial
       if (!this.isInitialLoad) {
@@ -723,6 +977,61 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
 
   async ngOnInit() {
     this.showCameraButton = this.isMobileDevice();
+
+    // Inicializar soporte de voz para el chat y documentos
+    this.chatVoiceSupported = this.speechRecognitionService.isSupported();
+    this.supported = this.speechRecognitionService.isSupported();
+    
+    // Suscribirse a los resultados del reconocimiento de voz para el chat
+    if (this.chatVoiceSupported) {
+      let lastFinalText = '';
+      let lastInterimText = '';
+      this.chatSpeechSubscription = this.speechRecognitionService.results$.subscribe((result) => {
+        if (result && result.text && this.chatRecording) {
+          if (result.isFinal) {
+            // Para resultados finales, extraer solo el nuevo texto
+            const newText = result.text.replace(lastFinalText, '').trim();
+            if (newText) {
+              // Remover el último texto intermedio si existe
+              if (lastInterimText && this.message.endsWith(lastInterimText)) {
+                this.message = this.message.slice(0, -lastInterimText.length);
+              }
+              this.message = (this.message.trim() ? this.message.trim() + ' ' : '') + newText;
+            }
+            lastFinalText = result.text;
+            lastInterimText = '';
+          } else {
+            // Para resultados intermedios, reemplazar el último texto intermedio
+            if (lastInterimText && this.message.endsWith(lastInterimText)) {
+              this.message = this.message.slice(0, -lastInterimText.length) + result.text;
+            } else {
+              // Si no hay texto intermedio previo, añadir el nuevo
+              const baseMessage = this.message.trim();
+              this.message = (baseMessage ? baseMessage + ' ' : '') + result.text;
+            }
+            lastInterimText = result.text;
+          }
+          
+          // Forzar el redimensionamiento del textarea cuando se actualiza el mensaje por voz
+          setTimeout(() => {
+            const textarea = document.querySelector('#chat-container textarea') as HTMLTextAreaElement;
+            if (textarea) {
+              // Disparar evento input para que autoResize se ejecute
+              const event = new Event('input', { bubbles: true });
+              textarea.dispatchEvent(event);
+            }
+          }, 0);
+        }
+      });
+
+      // Suscribirse a errores del reconocimiento de voz del chat
+      this.speechRecognitionService.errors$.subscribe((error) => {
+        if (error && this.chatRecording) {
+          this.toastr.error('', error);
+          this.chatRecording = false;
+        }
+      });
+    }
 
     // Precargar imagen DxGPT
     const dxGptLogo = new Image();
@@ -738,15 +1047,15 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     await this.updateSuggestions(currentLang);
     this.getTranslations();
     this.suggestions = this.getAllSuggestions(4);
-
+    
     this.messageSubscription = this.webPubSubService.getMessageObservable().subscribe(message => {
       this.handleMessage(message);
     });
 
     this.eventsService.on('eventTask', this.handleEventTask.bind(this));
     this.eventsService.on('changelang', this.handleChangeLang.bind(this));
-    this.eventsService.on('patientChanged', this.handlePatientChanged.bind(this));
     this.eventsService.on('changeView', this.handleChangeView.bind(this));
+    this.eventsService.on('reload-messages', () => this.getMessages());
     
 
     /*if (this.authService.getRole() === 'Caregiver') {
@@ -757,8 +1066,15 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
       this.currentView = 'chat';
   }
 
-  setView(view: string) {
+  async setView(view: string) {
     this.currentView = view;
+    
+    // Cerrar el sidebar móvil de herramientas cuando se cambia a cualquier vista
+    // (las herramientas no son una vista, solo un sidebar que se muestra sobre chat)
+    if (this.isSmallScreen() && this.rightSidebarOpenMobile) {
+      this.rightSidebarOpenMobile = false;
+    }
+    
     if(view === 'documents'){
       this.sidebarOpen = true;
       this.notesSidebarOpen = false;
@@ -768,6 +1084,9 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     }else if(view === 'chat'){
       this.sidebarOpen = false;
       this.notesSidebarOpen = false;
+      //scroll to bottom
+      await this.delay(200);
+      this.scrollToBottom();
     }else if(view === 'notes'){
       this.sidebarOpen = false;
       this.notesSidebarOpen = true;
@@ -785,7 +1104,7 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
       this.sidebarOpen = false;
       this.notesSidebarOpen = false;
     } 
-    this.scrollToTop();
+    //this.scrollToTop();
   }
 
   handleChangeView(view: string) {
@@ -874,13 +1193,14 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
   }
   
   loadRarescopeData() {
-    if (!this.currentPatient?.sub) {
+    const currentPatient = this.authService.getCurrentPatient();
+    if (!currentPatient?.sub) {
       console.warn('No hay paciente seleccionado para cargar datos de Rarescope');
       return;
     }
 
     // Cargar desde la base de datos
-    this.http.get(environment.api + '/api/rarescope/load/'+this.authService.getCurrentPatient().sub)
+    this.http.get(environment.api + '/api/rarescope/load/'+currentPatient.sub)
       .subscribe({
         next: (response: any) => {
           if (response.success && response.data) {
@@ -976,13 +1296,41 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
   }
 
 
-  handlePatientChanged(patient: any) {
-    this.saveMessages(patient.sub);
-  }
-
-
   private async handleMessage(message: any) {
     console.log('Message received in component:', message);
+    
+    // Verificar si el usuario está autenticado antes de procesar mensajes
+    if (!this.authService.isAuthenticated()) {
+      console.warn('⚠️ Mensaje WebPubSub recibido pero usuario no autenticado, ignorando:', message);
+      return;
+    }
+    
+    // Validar que el mensaje no sea demasiado antiguo (más de 5 minutos)
+    try {
+      const parsedData = JSON.parse(message.data);
+      
+      // Manejar mensajes de DxGPT (procesamiento asíncrono)
+      if (parsedData.type === 'dxgpt-processing' || parsedData.type === 'dxgpt-result') {
+        this.handleDxGptMessage(parsedData);
+        return;
+      }
+      
+      if (parsedData.time) {
+        const messageTime = new Date(parsedData.time).getTime();
+        const currentTime = Date.now();
+        const messageAge = currentTime - messageTime;
+        const maxAge = 5 * 60 * 1000; // 5 minutos en milisegundos
+        
+        if (messageAge > maxAge) {
+          console.warn(`⚠️ Mensaje WebPubSub demasiado antiguo (${Math.round(messageAge / 1000 / 60)} minutos), ignorando:`, parsedData);
+          return;
+        }
+      }
+    } catch (error) {
+      console.error('Error parsing message data:', error);
+      // Continuar con el procesamiento normal si hay error al parsear
+    }
+    
     this.actualStatus = '';
 
     const parsedData = JSON.parse(message.data);
@@ -992,6 +1340,20 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
         this.handleNoStep(parsedData);
       }
     } else {
+      // IMPORTANTE: Para mensajes de navigator y extract events, validar patientId ANTES de procesar
+      // Si el mensaje no es para el paciente actual, ignorarlo completamente
+      // El navbar se encargará de almacenarlo como pendiente
+      if (parsedData.step === 'navigator' || parsedData.step === 'extract events') {
+        if (parsedData.patientId && !this.isActualPatient(parsedData.patientId)) {
+          console.log('⚠️ Mensaje de', parsedData.step, 'ignorado: no corresponde al paciente actual');
+          console.log('  - Mensaje patientId:', parsedData.patientId);
+          console.log('  - Paciente actual:', this.authService.getCurrentPatient()?.sub);
+          console.log('  - El navbar almacenará este mensaje como pendiente');
+          return; // Ignorar completamente el mensaje
+        }
+      }
+      
+      // Para otros tipos de mensajes, intentar cambiar de paciente si es necesario
       if (!this.isActualPatient(parsedData.patientId)) {
         //change patient
         const patientsList = this.authService.getPatientList();
@@ -1018,11 +1380,107 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     }
   }
 
+  /**
+   * Maneja mensajes de WebPubSub relacionados con DxGPT
+   */
+  private handleDxGptMessage(parsedData: any) {
+    console.log('📨 Mensaje DxGPT recibido:', parsedData);
+    console.log('📨 Current patient ID:', this.currentPatientId);
+    
+    // Validar que el mensaje sea para el paciente actual
+    if (parsedData.patientId && this.currentPatientId) {
+      // El servidor envía el patientId encriptado, comparar con el actual
+      const currentEncrypted = this.currentPatientId; // Ya viene encriptado desde el componente
+      console.log('📨 Comparando patientIds:');
+      console.log('  - Mensaje patientId:', parsedData.patientId);
+      console.log('  - Paciente actual:', currentEncrypted);
+      console.log('  - ¿Coinciden?', parsedData.patientId === currentEncrypted);
+      
+      if (parsedData.patientId !== currentEncrypted) {
+        console.log('⚠️ Mensaje DxGPT ignorado: no corresponde al paciente actual');
+        return;
+      }
+      console.log('✅ PatientId válido, procesando mensaje...');
+    } else {
+      console.log('⚠️ Mensaje DxGPT sin patientId o sin paciente actual seleccionado');
+      console.log('  - parsedData.patientId:', parsedData.patientId);
+      console.log('  - this.currentPatientId:', this.currentPatientId);
+      // Continuar de todas formas si no hay patientId (por compatibilidad)
+    }
+    
+    if (parsedData.type === 'dxgpt-processing') {
+      // Actualización de progreso
+      if (parsedData.message) {
+        const timeMessage = this.translate.instant('dxgpt.async.timeMessage') || 'Este proceso puede tardar varios minutos dependiendo del número de documentos.';
+        
+        // Actualizar el mensaje de SweetAlert si está abierto
+        Swal.update({
+          html: `<div style="text-align: left;">
+            <p><strong>${parsedData.message}</strong></p>
+            ${parsedData.progress ? `<div class="progress" style="margin-top: 10px; margin-bottom: 10px;">
+              <div class="progress-bar" role="progressbar" style="width: ${parsedData.progress}%">${parsedData.progress}%</div>
+            </div>` : ''}
+            <p style="font-size: 0.9em; color: #666; margin-top: 10px;"><em>${timeMessage}</em></p>
+          </div>`
+        });
+      }
+    } else if (parsedData.type === 'dxgpt-result') {
+      // Resultado final
+      Swal.close();
+      
+      if (parsedData.success && parsedData.analysis) {
+        this.dxGptResults = {
+          success: true,
+          analysis: parsedData.analysis
+        };
+        this.isDxGptLoading = false;
+        this.cdr.detectChanges();
+        
+        Swal.fire({
+          title: this.translate.instant('dxgpt.async.completed') || 'Análisis completado',
+          text: this.translate.instant('dxgpt.async.success') || 'El análisis de diagnóstico diferencial se ha completado correctamente.',
+          icon: 'success',
+          confirmButtonText: 'OK'
+        });
+      } else {
+        this.dxGptResults = {
+          success: false,
+          analysis: parsedData.error || this.translate.instant('dxgpt.errorMessage')
+        };
+        this.isDxGptLoading = false;
+        this.cdr.detectChanges();
+        
+        Swal.fire({
+          title: this.translate.instant('dxgpt.async.error') || 'Error en el análisis',
+          text: parsedData.error || this.translate.instant('dxgpt.errorMessage'),
+          icon: 'error',
+          confirmButtonText: 'OK'
+        });
+      }
+    }
+  }
+
   isActualPatient(patientId: string): boolean {
+    if (!patientId) {
+      return false;
+    }
+    
     const currentPatient = this.authService.getCurrentPatient();
-    if (currentPatient && currentPatient.sub == patientId) {
+    if (!currentPatient) {
+      return false;
+    }
+    
+    // Comparar por sub (usar == para comparación débil)
+    if (currentPatient.sub == patientId) {
       return true;
     }
+    
+    // Si no coincide por sub, comparar por _id (ID de MongoDB)
+    const currentPatientId = (currentPatient as any)._id;
+    if (currentPatientId && currentPatientId == patientId) {
+      return true;
+    }
+    
     return false;
   }
   private handleNoStep(parsedData: any) {
@@ -1060,20 +1518,69 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
       const doc = { ...this.docs[docIndex] };
 
       if (parsedData.status === 'categoriria done') {
+        const oldOriginalDate = doc.originaldate;
         doc.badge = this.getBadgeClass(parsedData.value);
         doc.categoryTag = this.getTranslatedCategoryTag(parsedData.value);
         doc.originaldate = this.isValidDate(parsedData.date) ? new Date(parsedData.date) : null;
+        this.docs[docIndex] = doc;
+        
+        // Si cambió el originaldate (de null a fecha o viceversa), reordenar
+        const hadOriginalDate = !this.isDateMissing(oldOriginalDate);
+        const hasOriginalDate = !this.isDateMissing(doc.originaldate);
+        if (hadOriginalDate !== hasOriginalDate) {
+          this.reorderDocumentsByStatus();
+        }
       }
 
       if (!this.isDocStatusFinal(doc.status)) {
+        const oldStatus = doc.status;
         doc.status = this.getNewDocStatus(parsedData.status);
         this.docs[docIndex] = doc;
+        
+        // Si el estado cambió de 'inProcess' a otro, reordenar los documentos
+        if (oldStatus === 'inProcess' && doc.status !== 'inProcess') {
+          this.reorderDocumentsByStatus();
+        }
       }
     }
   }
 
-  private isValidDate(date: string): boolean {
-    return !isNaN(new Date(date).getTime());
+  // Ordena un array de documentos: procesando -> sin fecha original -> con fecha original
+  private sortDocumentsByStatus(documents: any[]): any[] {
+    // Separar en 3 grupos: procesando, sin fecha original, con fecha original
+    const processingDocs = documents.filter(doc => doc.status === 'inProcess');
+    const docsWithoutOriginalDate = documents.filter(doc => doc.status !== 'inProcess' && this.isDateMissing(doc.originaldate));
+    const docsWithOriginalDate = documents.filter(doc => doc.status !== 'inProcess' && !this.isDateMissing(doc.originaldate));
+    
+    // Ordenar documentos en procesamiento por fecha de subida (más recientes primero)
+    processingDocs.sort(this.sortService.DateSortInver("date"));
+    
+    // Ordenar documentos sin fecha original por fecha de subida (más recientes primero)
+    docsWithoutOriginalDate.sort(this.sortService.DateSortInver("date"));
+    
+    // Ordenar documentos con fecha original por originaldate (más recientes primero)
+    docsWithOriginalDate.sort((a, b) => {
+      const dateA = a.originaldate ? new Date(a.originaldate).getTime() : 0;
+      const dateB = b.originaldate ? new Date(b.originaldate).getTime() : 0;
+      return dateB - dateA; // Más recientes primero
+    });
+    
+    // Combinar: procesando -> sin fecha original -> con fecha original
+    return [...processingDocs, ...docsWithoutOriginalDate, ...docsWithOriginalDate];
+  }
+
+  // Reordena los documentos: procesando -> sin fecha original -> con fecha original
+  reorderDocumentsByStatus() {
+    this.docs = this.sortDocumentsByStatus(this.docs);
+    this.updateDocumentSelection();
+  }
+
+  private isValidDate(date: string | null | undefined): boolean {
+    if (date === null || date === undefined || date === '') {
+      return false;
+    }
+    const dateObj = new Date(date);
+    return !isNaN(dateObj.getTime());
   }
 
   private isDocStatusFinal(status: string): boolean {
@@ -1099,8 +1606,42 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     } catch (err) { }
   }
 
+  scrollToBottomPage(): void {
+    window.scroll({
+      top: document.body.scrollHeight,
+      left: 0,
+      behavior: 'smooth'
+    });
+  }
+
+  @HostListener("window:scroll", [])
+  onWindowScroll() {
+    // Solo detectar scroll cuando estamos en la vista de chat
+    if (this.currentView !== 'chat') {
+      this.scrollToBottomVisible = false;
+      return;
+    }
+
+    let number = window.pageYOffset || document.documentElement.scrollTop || document.body.scrollTop || 0;
+    const windowHeight = window.innerHeight;
+    const documentHeight = document.documentElement.scrollHeight;
+    
+    // Scroll to bottom button visibility
+    // Mostrar cuando estamos cerca del inicio y ocultar cuando nos acercamos al final
+    if (number < (documentHeight - windowHeight - 600)) {
+      this.scrollToBottomVisible = true;
+    } else {
+      this.scrollToBottomVisible = false;
+    }
+  }
+
   addMessage(message: any) {
     if (message.text) {
+      // Procesar referencias de documentos usando las referencias del backend si están disponibles
+      // (guardadas temporalmente desde processNavigatorAnswer)
+      const references = (this as any).pendingReferences || message.references;
+      message.text = this.processDocumentReferences(message.text, references);
+      
       message.text = message.text.replace(/<h1>/g, '<h6>').replace(/<\/h1>/g, '</h5>');
       message.text = message.text.replace(/<h2>/g, '<h6>').replace(/<\/h2>/g, '</h6>');
       message.text = message.text.replace(/<h3>/g, '<h6>').replace(/<\/h3>/g, '</h6>');
@@ -1223,15 +1764,88 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     }
 
     if (parsedData.status === 'anomalies found') {
-      this.translateAnomalies(parsedData.anomalies).then(translatedAnomalies => {
-        this.addMessage({
-          text: '<span class="badge badge-warning mb-1 mr-2"><i class="fa fa-exclamation-triangle"></i></span><strong>' + parsedData.filename + '</strong>: ' + this.translate.instant('messages.anomaliesFound') + '<br>' + translatedAnomalies,
-          isUser: false
+      // Crear un ID único para esta anomalía para evitar duplicados
+      const anomalyKey = `${parsedData.docId}_${parsedData.filename}_anomalies`;
+      
+      // Solo procesar si no se ha mostrado ya
+      if (!this.processedAnomalies.has(anomalyKey)) {
+        this.processedAnomalies.add(anomalyKey);
+        
+        this.translateAnomalies(parsedData.anomalies).then(translatedAnomalies => {
+          this.addMessage({
+            text: '<span class="badge badge-warning mb-1 mr-2"><i class="fa fa-exclamation-triangle"></i></span><strong>' + parsedData.filename + '</strong>: ' + this.translate.instant('messages.anomaliesFound') + '<br>' + translatedAnomalies,
+            isUser: false
+          });
         });
-      });
+      } else {
+        console.log('⚠️ Anomalías ya mostradas para:', anomalyKey);
+      }
     }
   }
 
+  /**
+   * Inicializa paneles de progreso para documentos que están en proceso
+   * pero no tienen un panel creado (ej: usuario viene del wizard)
+   */
+  private initializeInProgressDocuments() {
+    const inProgressStatuses = ['pending', 'inProcess', 'extracted done', 'extracted_translated done', 
+                                 'categorizando texto', 'clean ready', 'creando resumen'];
+    
+    for (const doc of this.docs) {
+      if (inProgressStatuses.includes(doc.status)) {
+        const docIdEnc = doc._id; // El ID ya viene encriptado del servidor
+        
+        // Solo crear el panel si no existe
+        if (!this.tasksUpload[docIdEnc]) {
+          console.log(`[initializeInProgressDocuments] Creando panel para doc en proceso: ${doc.title} (${doc.status})`);
+          
+          // Crear el panel de progreso
+          const task = {
+            index: this.messages.length,
+            steps: [
+              { name: this.translate.instant('messages.m1.1'), status: 'pending' },
+              { name: this.translate.instant('messages.m4.1'), status: 'pending' },
+              { name: this.translateYouCanAskInChat, status: 'pending' },
+              {
+                name: this.translate.instant('messages.m3.1'),
+                status: 'pending',
+                action: `<resumen id='${docIdEnc}' class="round ml-1 btn btn-success btn-sm bg-light-success">${this.translate.instant('generics.View')}</resumen>`
+              }
+            ]
+          };
+          
+          // Actualizar estados basados en el status actual del documento
+          if (doc.status === 'extracted done' || doc.status === 'extracted_translated done') {
+            task.steps[0].status = 'finished';
+          } else if (doc.status === 'categorizando texto') {
+            task.steps[0].status = 'finished';
+            task.steps[1].status = 'inProcess';
+          } else if (doc.status === 'clean ready') {
+            task.steps[0].status = 'finished';
+            task.steps[1].status = 'finished';
+            task.steps[2].status = 'finished';
+          } else if (doc.status === 'creando resumen') {
+            task.steps[0].status = 'finished';
+            task.steps[1].status = 'finished';
+            task.steps[2].status = 'finished';
+            task.steps[3].status = 'inProcess';
+          } else if (doc.status === 'inProcess') {
+            task.steps[0].status = 'inProcess';
+          }
+          
+          this.tasksUpload[docIdEnc] = task;
+          
+          const msg1 = this.translate.instant("messages.m0", { value: doc.title });
+          this.addMessage({
+            text: msg1,
+            isUser: false,
+            task: task,
+            index: docIdEnc
+          });
+        }
+      }
+    }
+  }
 
   private handleDocTypeDetected(parsedData: any) {
     const docTypeMapping: { [key: string]: string } = {
@@ -1247,6 +1861,15 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
   }
 
   private handleNavigator(parsedData: any) {
+    // Validar una vez más que el mensaje sea para el paciente actual
+    // Esto es una doble verificación por si acaso
+    if (parsedData.patientId && !this.isActualPatient(parsedData.patientId)) {
+      console.warn('⚠️ handleNavigator: mensaje ignorado, no corresponde al paciente actual');
+      console.warn('  - Mensaje patientId:', parsedData.patientId);
+      console.warn('  - Paciente actual:', this.authService.getCurrentPatient()?.sub);
+      return;
+    }
+    
     if (parsedData.status === 'generando sugerencias') {
       // Solo activar gettingSuggestions si no estamos procesando una respuesta
       if (this.callingOpenai) {
@@ -1257,38 +1880,245 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     } else if (parsedData.status === 'sugerencias generadas') {
       this.translateSuggestions(parsedData.suggestions);
     } else if (parsedData.status === 'error') {
+      // Limpiar el estado cuando hay un error
       this.callingOpenai = false;
-      console.error(parsedData.error);
-      this.insightsService.trackException(parsedData.error);
+      this.gettingSuggestions = false;
+      
+      // Manejar diferentes tipos de errores
+      const errorMessage = parsedData.message || parsedData.error || 'ERROR_PROCESSING_REQUEST';
+      const errorDetails = parsedData.error || errorMessage;
+      
+      console.error('Error en navigator:', errorDetails, parsedData);
+      
+      // Registrar el error en insights
+      this.insightsService.trackException(new Error(`Navigator error: ${errorMessage}`));
+      
+      // Mostrar mensaje de error al usuario
+      if (errorMessage === 'ERROR_PROCESSING_REQUEST') {
+        this.toastr.error(
+          this.translate.instant('messages.errorProcessingRequest') || 'Error procesando la solicitud. Por favor, inténtalo de nuevo.',
+          this.translate.instant('generics.Error') || 'Error'
+        );
+      } else {
+        this.toastr.error(
+          errorMessage,
+          this.translate.instant('generics.Error') || 'Error'
+        );
+      }
     } else {
       this.updateNavigatorStatus(parsedData);
     }
   }
 
+  /**
+   * Procesa las referencias de documentos en el texto HTML y las convierte en enlaces clickeables
+   * Usa las referencias estructuradas del backend cuando están disponibles, o hace fallback a búsqueda local
+   * @param htmlText Texto HTML con referencias en formato [filename, date]
+   * @param references Array de referencias estructuradas del backend (opcional)
+   */
+  /**
+   * Procesa las referencias de documentos en el texto HTML y las convierte en enlaces clickeables
+   * Soporta múltiples referencias separadas por punto y coma dentro de los mismos corchetes
+   * @param htmlText Texto HTML con referencias en formato [filename, date] o [file1, date1; file2, date2]
+   * @param references Array de referencias estructuradas del backend (opcional)
+   */
+  private processDocumentReferences(htmlText: string, references?: any[]): string {
+    if (!htmlText) {
+      return htmlText;
+    }
+
+    // Contador para superíndices
+    let refCounter = 0;
+
+    // Patrones para detectar placeholders internos que no deben mostrarse
+    const internalPlaceholders = /^\[?(PATIENT PROFILE|PERFIL DEL PACIENTE|PROFIL PATIENT|PATIENTENPROFIL|RELEVANT CLINICAL DATA|DATOS CLÍNICOS|HISTORICAL CONTEXT|CONTEXTO HISTÓRICO)/i;
+
+    // Patrón para capturar todo lo que hay dentro de corchetes
+    const bracketPattern = /\[([^\]]+?)\]/g;
+
+    return htmlText.replace(bracketPattern, (fullMatch, content) => {
+      // Ocultar placeholders internos del curateContext
+      if (internalPlaceholders.test(content)) {
+        return '';
+      }
+
+      // Referencias sin coma pero que son memorias/contexto (ej: "Memoria de conversación reciente 1")
+      if (!content.includes(',')) {
+        // Detectar si es una referencia a memoria/contexto/conversación
+        const memoryPattern = /(memoria|memory|contexto|context|historial|history|conversaci[oó]n|conversation)/i;
+        if (memoryPattern.test(content)) {
+          refCounter++;
+          const tooltipText = content.trim();
+          return `<span class="context-reference" style="cursor: help;" title="${tooltipText}"><sup style="font-size: 0.7em; background: #f3e5f5; color: #6f42c1; padding: 1px 4px; border-radius: 3px;">💬${refCounter}</sup></span>`;
+        }
+        // No es una cita válida, dejarlo como está
+        return fullMatch;
+      }
+
+      // Dividir el contenido por punto y coma para manejar múltiples citas
+      const parts = content.split(';');
+      
+      const processedParts = parts.map(part => {
+        const trimmedPart = part.trim();
+        // Intentar capturar nombre de archivo y fecha/undated
+        // El regex busca el último fragmento después de la última coma como la fecha
+        const lastCommaIndex = trimmedPart.lastIndexOf(',');
+        if (lastCommaIndex === -1) {
+          return trimmedPart;
+        }
+
+        const fileName = trimmedPart.substring(0, lastCommaIndex).trim();
+        let date = trimmedPart.substring(lastCommaIndex + 1).trim();
+        const displayDate = date; // Guardar la fecha original para mostrar
+
+        // Normalizar formato de fecha: aceptar YYYY-MM-DD, DD-MM-YYYY, DD/MM/YYYY
+        const isoDatePattern = /^(\d{4})-(\d{2})-(\d{2})$/;
+        const euDatePattern = /^(\d{2})[-\/](\d{2})[-\/](\d{4})$/;
+        // Equivalentes de "undated" en varios idiomas
+        const undatedPattern = /^(undated|sin fecha|ohne datum|sans date|sem data|senza data|no date|fecha desconocida|unknown date)$/i;
+        
+        if (isoDatePattern.test(date)) {
+          // Ya está en formato correcto YYYY-MM-DD
+        } else if (euDatePattern.test(date)) {
+          // Convertir DD-MM-YYYY o DD/MM/YYYY a YYYY-MM-DD
+          const match = date.match(euDatePattern);
+          date = `${match[3]}-${match[2]}-${match[1]}`;
+        } else if (undatedPattern.test(date)) {
+          // Normalizar a "undated" internamente
+          date = 'undated';
+        } else {
+          // Fecha no reconocida, devolver sin procesar
+          return trimmedPart;
+        }
+
+        refCounter++;
+        const partFullCitation = `[${fileName}, ${date}]`;
+
+        // 1. Intentar usar las referencias del backend si existen
+        if (references && references.length > 0) {
+          const ref = references.find(r => r.fullCitation === partFullCitation || r.filename === fileName);
+          if (ref && ref.documentId) {
+            const tooltipText = `${fileName} (${displayDate})`;
+            return `<a href="javascript:void(0)" 
+                        class="document-reference-link" 
+                        data-doc-id="${ref.documentId}"
+                        style="color: #007bff; text-decoration: none; cursor: pointer;"
+                        title="${tooltipText}"><sup style="font-size: 0.7em; background: #e3f2fd; padding: 1px 4px; border-radius: 3px;">📄${refCounter}</sup></a>`;
+          }
+        }
+
+        // 2. Detectar si NO es un archivo real (sin extensión conocida)
+        // Las citaciones de contexto/conversación no tienen extensión de archivo
+        const hasFileExtension = /\.(pdf|docx?|txt|xlsx?|csv|png|jpg|jpeg|gif|html?|xml|json)$/i.test(fileName);
+
+        // 3. Búsqueda local por nombre (solo si parece un archivo)
+        if (hasFileExtension && this.docs && this.docs.length > 0) {
+          // Función para normalizar nombres (quitar tildes, guiones, etc.)
+          const normalize = (str: string) => str
+            .toLowerCase()
+            .trim()
+            .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // Quitar tildes
+            .replace(/[-_\s]+/g, '') // Normalizar separadores
+            .replace(/\.(pdf|txt|docx?)$/i, ''); // Quitar extensión
+          
+          // Extraer posible ID numérico del nombre (ej: 19702982 de "Hematología-19702982.pdf")
+          const numericIdMatch = fileName.match(/(\d{8,})/);
+          const searchNumericId = numericIdMatch ? numericIdMatch[1] : null;
+          
+          const searchFileName = normalize(fileName);
+          
+          const doc = this.docs.find(d => {
+            if (!d.title && !d.url) return false;
+            const docTitle = normalize(d.title || '');
+            const docFileName = normalize((d.url || '').split('/').pop() || '');
+            
+            // Match exacto normalizado
+            if (docTitle === searchFileName || docFileName === searchFileName) return true;
+            
+            // Match parcial (uno contiene al otro)
+            if (docTitle.includes(searchFileName) || searchFileName.includes(docTitle)) return true;
+            if (docFileName.includes(searchFileName) || searchFileName.includes(docFileName)) return true;
+            
+            // Match por ID numérico
+            if (searchNumericId && (docTitle.includes(searchNumericId) || docFileName.includes(searchNumericId))) return true;
+            
+            return false;
+          });
+
+          if (doc) {
+            const docId = doc._id || doc.id || '';
+            const tooltipText = `${fileName} (${displayDate})`;
+            return `<a href="javascript:void(0)" 
+                        class="document-reference-link" 
+                        data-doc-id="${docId}"
+                        style="color: #007bff; text-decoration: none; cursor: pointer;"
+                        title="${tooltipText}"><sup style="font-size: 0.7em; background: #e3f2fd; padding: 1px 4px; border-radius: 3px;">📄${refCounter}</sup></a>`;
+          }
+        }
+
+        // 4. Si no es archivo o no se encontró: mostrar como referencia de contexto (morado)
+        // o como documento no encontrado (gris) dependiendo del caso
+        if (!hasFileExtension) {
+          // Es una referencia al contexto/conversación/historial - mostrar en morado compacto
+          const tooltipText = `${fileName} (${displayDate})`;
+          return `<span class="context-reference" style="cursor: help;" title="${tooltipText}"><sup style="font-size: 0.7em; background: #f3e5f5; color: #6f42c1; padding: 1px 4px; border-radius: 3px;">👤${refCounter}</sup></span>`;
+        } else {
+          // Es un archivo pero no se encontró - mostrar en gris compacto
+          const tooltipText = `${fileName} (${displayDate})`;
+          const bgColor = date === 'undated' ? '#fff3cd' : '#f5f5f5';
+          return `<span class="document-reference" style="cursor: help;" title="${tooltipText}"><sup style="font-size: 0.7em; background: ${bgColor}; color: #6c757d; padding: 1px 4px; border-radius: 3px;">📄${refCounter}</sup></span>`;
+        }
+      });
+
+      // En modo compacto, no envolvemos con corchetes
+      return processedParts.join('');
+    });
+  }
+
   private async processNavigatorAnswer(parsedData: any) {
+    // Protección contra respuestas duplicadas: usar timestamp + answer como ID único
+    const answerId = `${parsedData.time || Date.now()}_${parsedData.answer?.substring(0, 50) || ''}`;
+    if (this.lastProcessedAnswerId === answerId) {
+      console.warn('⚠️ Respuesta duplicada detectada (mismo ID), ignorando:', answerId);
+      return;
+    }
+    this.lastProcessedAnswerId = answerId;
+    
     // Limpiar el estado inmediatamente al recibir la respuesta
     this.callingOpenai = false;
     this.gettingSuggestions = false;
     this.actualStatus = '';
     
-    this.context.push({ role: 'user', content: this.message });
+    // Si el mensaje NO viene de notificación, añadir también la pregunta al contexto
+    const isFromNotification = parsedData.fromNotification === true;
+    if (!isFromNotification) {
+      const messageToUse = this.tempInput || this.message;
+      this.context.push({ role: 'user', content: messageToUse });
+    }
+    
+    // Añadir la respuesta al contexto
     this.context.push({ role: 'assistant', content: parsedData.answer });
-    let tempMessage = this.message;
-    this.message = '';
-
+    
+    // Mostrar el mensaje (el backend ya traduce y guarda)
     try {
+      const references = parsedData.references || [];
+      (this as any).pendingReferences = references;
       await this.translateInverse(parsedData.answer);
+      (this as any).pendingReferences = null;
     } catch (error) {
       console.error('Error al procesar el mensaje:', error);
       this.insightsService.trackException(error);
+      (this as any).pendingReferences = null;
     }
-
+    
+    // Detectar eventos del navegador (extracción automática de eventos de la respuesta)
+    // Los eventos se obtienen de la BD en el servidor para asegurar datos frescos
+    const messageToUse = this.tempInput || this.message;
     const query = {
-      question: tempMessage,
+      question: messageToUse,
       answer: parsedData.answer,
       userId: this.authService.getIdUser(),
-      patientId: this.currentPatient,
-      initialEvents: this.initialEvents
+      patientId: this.currentPatient
     };
 
     this.subscription.add(
@@ -1304,11 +2134,20 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
 
   private updateNavigatorStatus(parsedData: any) {
     const statusMapping: { [key: string]: string } = {
-      'intent detectado': parsedData.intent,
-      'generando respuesta': 'generando respuesta',
-      'generando sugerencias': 'generando sugerencias',
-      'respuesta generada': 'respuesta generada',
-      'sugerencias generadas': 'sugerencias generadas'
+      // Nuevos estados del pipeline
+      'detectando intención': this.translate.instant('navigator.detecting_intent') || 'Analizando tu pregunta...',
+      'intent detectado': this.translate.instant('navigator.intent_detected') || 'Pregunta analizada',
+      'recuperando historial': this.translate.instant('navigator.retrieving_history') || 'Recuperando historial...',
+      'buscando en documentos': this.translate.instant('navigator.searching_documents') || 'Buscando en tus documentos...',
+      'analizando documentos': this.translate.instant('navigator.analyzing_documents') || `Analizando ${parsedData.documentsFound || ''} documentos...`,
+      'extrayendo datos clínicos': this.translate.instant('navigator.extracting_data') || 'Extrayendo datos clínicos...',
+      'preparando contexto': this.translate.instant('navigator.preparing_context') || 'Preparando contexto...',
+      'invocando modelo': this.translate.instant('navigator.invoking_model') || 'Pensando...',
+      // Estados existentes
+      'generando respuesta': this.translate.instant('navigator.generating_response') || 'Generando respuesta...',
+      'generando sugerencias': this.translate.instant('navigator.generating_suggestions') || 'Generando sugerencias...',
+      'respuesta generada': this.translate.instant('navigator.response_generated') || 'Respuesta generada',
+      'sugerencias generadas': this.translate.instant('navigator.suggestions_generated') || 'Sugerencias generadas'
     };
 
     const actionMapping: { [key: string]: string } = {
@@ -1338,8 +2177,6 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
       this.setLastMessageLoading();
     } else if (parsedData.status === 'respuesta analizada') {
       this.processExtractedEvents(parsedData.events);
-    } else if (parsedData.status === 'respuesta timeline analizada') {
-      this.processExtractedAppointments(parsedData.events);
     }
   }
 
@@ -1386,48 +2223,6 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
 
   }
 
-  private processExtractedAppointments(events: any[]) {
-    let index = this.messages.length - 1;
-    while (index >= 0) {
-      if (!this.messages[index].isUser) {
-        if (events.length > 0) {
-          this.messages[index].events = events;
-          const jsontestLangText = events.map(event => ({
-            Text: event.insight
-          }));
-
-          if (this.detectedLang !== 'en') {
-            this.subscription.add(
-              this.apiDx29ServerService.getTranslationInvert(this.detectedLang, jsontestLangText)
-                .subscribe({
-                  next: (res2: any) => {
-                    if (res2[0]) {
-                      res2.forEach((translation: any, i: number) => {
-                        if (translation.translations[0]) {
-                          events[i].insight = translation.translations[0].text;
-                        }
-                      });
-                    }
-                    this.proposedAppointments = events;
-                  },
-                  error: (err) => {
-                    console.log(err);
-                    this.insightsService.trackException(err);
-                    this.proposedAppointments = events;
-                  }
-                })
-            );
-          } else {
-            this.proposedAppointments = events;
-          }
-        }
-        break;
-      }
-      index--;
-    }
-  }
-
-
   private async handleEventTask(info: any) {
     const doc = this.docs.find(x => x._id === info.task.docId);
     if (info.step.name === this.translateGeneratingSummary) {
@@ -1449,7 +2244,8 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     }
     this.messagesExpectOutPut = '';
 
-    this.messagesExpect = this.translate.instant(`messages.${this.actualStatus}`);
+    // actualStatus ya viene traducido del statusMapping, usarlo directamente
+    this.messagesExpect = this.actualStatus;
     this.delay(100);
     const words = this.messagesExpect.split(' ');
     let index = 0;
@@ -1492,6 +2288,39 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
 
   onMessageClick(event: MouseEvent, index: number) {
     const target = event.target as HTMLElement;
+    
+    // Manejar clics en enlaces de documentos
+    if (target.classList.contains('document-reference-link') || target.closest('.document-reference-link')) {
+      event.preventDefault();
+      const linkElement = target.classList.contains('document-reference-link') 
+        ? target 
+        : target.closest('.document-reference-link') as HTMLElement;
+      
+      if (linkElement) {
+        const docId = linkElement.getAttribute('data-doc-id');
+        if (docId) {
+          const doc = this.docs.find(x => x._id === docId);
+          if (doc) {
+            this.openResults(doc, this.contentSummaryDoc);
+          } else {
+            this.toastr.warning(
+              this.translate.instant('messages.documentNotFound') || 'Documento no encontrado',
+              ''
+            );
+          }
+        }
+      }
+      return;
+    }
+
+    // Manejar clics en enlaces de contexto (conversation_context)
+    if (target.classList.contains('context-reference-link') || target.closest('.context-reference-link')) {
+      event.preventDefault();
+      this.openTimelineModal(this.timelineModal);
+      return;
+    }
+    
+    // Manejar clics en elementos resumen (código original)
     if (target.tagName.toLowerCase() === 'resumen') {
       event.preventDefault();
       //search in docs where _id = target.id
@@ -1500,7 +2329,6 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
         this.openResults(doc, this.contentSummaryDoc);
       }
     }
-
   }
 
   initChat() {
@@ -1526,10 +2354,11 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     this.messages = [];
     this.suggestions = [];
     this.proposedEvents = [];
-    this.proposedAppointments = [];
     this.initChat();
     this.context.splice(1, this.context.length - 1);
-    await this.saveMessages(this.currentPatient);
+    
+    // Eliminar mensajes en el backend
+    await this.deleteMessagesFromServer();
     // get 4 random suggestions from the hardcoded pool or the summary
     try {
       this.suggestions = this.getAllSuggestions(4);
@@ -1627,8 +2456,9 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
       .subscribe((resDocs: any) => {
         console.log(resDocs)
         if (resDocs.length > 0) {
-          resDocs.sort(this.sortService.DateSortInver("date"));
-          this.docs = resDocs;
+          // Ordenar documentos: procesando -> sin fecha original -> con fecha original
+          this.docs = this.sortDocumentsByStatus(resDocs);
+          
           for (var i = 0; i < this.docs.length; i++) {
             const fileName = this.docs[i].url.split("/").pop();
             this.docs[i].title = fileName;
@@ -1640,9 +2470,18 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
           this.docs.forEach(doc => doc.selected = true);
           this.updateDocumentSelection();
           this.defaultDoc = this.docs[0];
+          
+          // Inicializar paneles de progreso para documentos que están en proceso
+          // (por si el usuario viene del wizard y los eventos WebPubSub se perdieron)
+          this.initializeInProgressDocuments();
         }
         this.loadedDocs = true;
-        this.assignFeedbackToDocs(this.docs);
+        //this.assignFeedbackToDocs(this.docs);
+        
+        // Hacer scroll después de que se carguen los documentos
+        setTimeout(() => {
+          this.scrollToBottom();
+        }, 300);
       }, (err) => {
         console.log(err);
         this.insightsService.trackException(err);
@@ -1716,7 +2555,7 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
       const eventsResponse: any = await this.http.get(environment.api + '/api/events/' + this.currentPatient).toPromise();
 
       if (!eventsResponse.message && eventsResponse.length > 0) {
-        eventsResponse.sort(this.sortService.DateSort("dateInput"));
+        eventsResponse.sort(this.sortService.DateSort("date"));
         if (!newEvent) {
           this.allTypesEvents = eventsResponse;
           this.allEvents = eventsResponse;
@@ -1724,17 +2563,43 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
         for (let i = 0; i < eventsResponse.length; i++) {
           eventsResponse[i].dateInput = new Date(eventsResponse[i].dateInput);
           let dateWithoutTime = '';
+          let dateWithTime = '';
+          let dateEndWithoutTime = '';
           if (eventsResponse[i].date != undefined && eventsResponse[i].date.indexOf("T") != -1) {
             dateWithoutTime = eventsResponse[i].date.split("T")[0];
+            // For appointments and reminders, include the time if it's not midnight
+            const timePart = eventsResponse[i].date.split("T")[1];
+            if (timePart && !timePart.startsWith("00:00")) {
+              const timeOnly = timePart.substring(0, 5); // Get HH:mm
+              dateWithTime = `${dateWithoutTime} ${timeOnly}`;
+            } else {
+              dateWithTime = dateWithoutTime;
+            }
+          }
+          if (eventsResponse[i].dateEnd != undefined && eventsResponse[i].dateEnd.indexOf("T") != -1) {
+            dateEndWithoutTime = eventsResponse[i].dateEnd.split("T")[0];
           }
           if (eventsResponse[i].key != undefined) {
-            this.initialEvents.push({
+            const initialEvent: any = {
               "insight": eventsResponse[i].name,
               "date": dateWithoutTime,
               "key": eventsResponse[i].key
-            });
+            };
+            if (dateEndWithoutTime) {
+              initialEvent.dateEnd = dateEndWithoutTime;
+            }
+            this.initialEvents.push(initialEvent);
           }
-          this.metadata.push({ name: eventsResponse[i].name, date: dateWithoutTime });
+          // For appointments and reminders, include time in metadata so the AI knows the scheduled time
+          const isTimeSensitive = eventsResponse[i].key === 'appointment' || eventsResponse[i].key === 'reminder';
+          const metadataItem: any = { 
+            name: eventsResponse[i].name, 
+            date: isTimeSensitive ? dateWithTime : dateWithoutTime 
+          };
+          if (dateEndWithoutTime) {
+            metadataItem.dateEnd = dateEndWithoutTime;
+          }
+          this.metadata.push(metadataItem);
         }
         this.events = eventsResponse;
       }
@@ -1744,9 +2609,16 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
       if (this.appointments.length > 0) {
         for (let i = 0; i < this.appointments.length; i++) {
           this.appointments[i].date = new Date(this.appointments[i].date);
-          let fechaFormatoISO = this.appointments[i].date.toISOString();
-          let soloFecha = fechaFormatoISO.split('T')[0];
-          this.metadata.push({ name: this.appointments[i].notes, date: soloFecha });
+          const appointmentDate = this.appointments[i].date;
+          const hours = appointmentDate.getHours();
+          const minutes = appointmentDate.getMinutes();
+          // Include time if it's not midnight
+          let dateStr = appointmentDate.toISOString().split('T')[0];
+          if (hours !== 0 || minutes !== 0) {
+            const timeStr = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+            dateStr = `${dateStr} ${timeStr}`;
+          }
+          this.metadata.push({ name: this.appointments[i].notes, date: dateStr });
         }
       }
 
@@ -1756,6 +2628,9 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
       } else {
         this.context.push({ role: "assistant", content: patientInfo });
       }
+
+      // Calcular eventos que necesitan revisión de fecha
+      this.updateNeedingReviewCount();
 
       this.loadedEvents = true;
     } catch (err) {
@@ -1804,6 +2679,15 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
   openUpdateDocDate(doc, PanelChangeDate) {
     // create a copy on this.tempDoc
     this.tempDoc = JSON.parse(JSON.stringify(doc));
+    
+    // Si no hay originaldate, usar la fecha de subida (date) como valor por defecto
+    if (!this.tempDoc.originaldate) {
+      this.tempDoc.originaldate = this.tempDoc.date ? new Date(this.tempDoc.date) : new Date();
+    } else {
+      // Asegurar que originaldate sea un objeto Date si es una cadena
+      this.tempDoc.originaldate = new Date(this.tempDoc.originaldate);
+    }
+    
     if (this.modalReference2 != undefined) {
       this.modalReference2.close();
       this.modalReference2 = undefined;
@@ -1910,6 +2794,25 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
 
   async startEditing() {
     this.editingTitle = true;
+  }
+  
+  // Calcular el ancho del input basado en el contenido
+  getInputWidth(text: string): number {
+    if (!text) return 200; // Ancho mínimo
+    // Aproximadamente 8px por carácter (ajustable según la fuente)
+    const charWidth = 8;
+    const minWidth = 200;
+    const maxWidth = 600;
+    const calculatedWidth = text.length * charWidth + 40; // +40 para padding
+    return Math.max(minWidth, Math.min(calculatedWidth, maxWidth));
+  }
+  
+  // Ajustar el ancho del input mientras se escribe
+  adjustInputWidth(event: any) {
+    const input = event.target;
+    const text = input.value;
+    const newWidth = this.getInputWidth(text);
+    input.style.width = newWidth + 'px';
   }
 
   cancelEditing() {
@@ -2213,8 +3116,20 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     this.notallergy = value;
   }
 
+  onChatInputKeydown(event: KeyboardEvent) {
+    // Si se presiona Enter sin Shift, enviar el mensaje
+    if (event.key === 'Enter' && !event.shiftKey) {
+      event.preventDefault(); // Prevenir el salto de línea
+      this.sendMessage();
+    }
+    // Si se presiona Shift+Enter, permitir el salto de línea (comportamiento por defecto)
+  }
+
   sendMessage() {
-    if (!this.message) {
+    // Limpiar espacios en blanco y saltos de línea al inicio y final
+    const trimmedMessage = this.message ? this.message.trim() : '';
+    
+    if (!trimmedMessage) {
       Swal.fire(this.translate.instant("generics.Please write a message"), '', "warning");
       return;
     }
@@ -2223,12 +3138,19 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
       return;
     }
 
+    // Guardar el mensaje antes de limpiarlo
+    const messageToSend = trimmedMessage;
+    
     this.addMessage({
-      text: this.message,
+      text: messageToSend,
       isUser: true
     });
     this.suggestions = [];
-    this.detectIntent();
+    this.message = ''; // Limpiar el textarea después de enviar
+    
+    // Pasar el mensaje guardado a detectIntent
+    this.tempInput = messageToSend;
+    this.detectIntent(messageToSend);
   }
 
   selectCustomSuggestion(suggestion) {
@@ -2275,66 +3197,30 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     }
   }
 
-  detectIntent() {
-    this.proposedEvents = [];
-    this.proposedAppointments = [];
-    this.callingOpenai = true;
-    this.actualStatus = 'procesando intent';
-    this.statusChange();
-    var promIntent = this.translate.instant("promts.0", {
-      value: this.message,
-    });
-    this.valueProm = { value: promIntent };
-    this.tempInput = this.message;
-    var testLangText = this.message
-    if (testLangText.length > 0) {
-      this.subscription.add(this.apiDx29ServerService.getDetectLanguage(testLangText)
-        .subscribe((res: any) => {
-          if (res[0].language != 'en') {
-            const detectedLanguage = res[0].language;
-            const confidenceScore = res[0].score;
-            const confidenceThreshold = 0.7;
-            if (confidenceScore < confidenceThreshold) {
-              console.warn('Confianza baja en la detección del idioma, usando el idioma preferido del usuario.');
-              this.detectedLang = this.preferredResponseLanguage || 'en'; // Fallback a ingles si no hay preferencia
-            } else {
-              this.detectedLang = detectedLanguage; // Usa el idioma detectado
-
-            }
-
-            var info = [{ "Text": this.message }]
-            this.subscription.add(this.apiDx29ServerService.getTranslationDictionary(this.detectedLang, info)
-              .subscribe((res2: any) => {
-                var textToTA = this.message;
-                if (res2[0] != undefined) {
-                  if (res2[0].translations[0] != undefined) {
-                    textToTA = res2[0].translations[0].text;
-                    this.tempInput = res2[0].translations[0].text;
-                  }
-                }
-                promIntent = this.translate.instant("promts.0", {
-                  value: textToTA,
-                });
-                this.valueProm = { value: promIntent };
-                this.continueSendIntent(textToTA);
-              }, (err) => {
-                console.log(err);
-                this.insightsService.trackException(err);
-                this.continueSendIntent(this.message);
-              }));
-          } else {
-            this.detectedLang = 'en';
-            this.continueSendIntent(this.message);
-          }
-
-        }, (err) => {
-          console.log(err);
-          this.insightsService.trackException(err);
-          this.toastr.error('', this.translate.instant("generics.error try again"));
-        }));
-    } else {
-      this.continueSendIntent(this.message);
+  detectIntent(msg?: string) {
+    // Protección adicional: evitar múltiples llamadas simultáneas
+    if (this.callingOpenai) {
+      console.warn('detectIntent: Ya hay una llamada en curso, ignorando esta solicitud');
+      return;
     }
+    
+    // Usar el mensaje pasado como parámetro, o this.message como fallback
+    const messageToProcess = msg || this.message || this.tempInput;
+    
+    if (!messageToProcess || messageToProcess.trim() === '') {
+      console.error('detectIntent: No hay mensaje para procesar!');
+      return;
+    }
+    
+    this.proposedEvents = [];
+    this.actualStatus = this.translate.instant('navigator.processing') || 'Procesando...';
+    this.statusChange();
+
+    // La detección de idioma y traducción ahora se hace en el backend
+    // Simplemente llamar directamente a continueSendIntent con el mensaje original
+    // continueSendIntent establecerá callingOpenai = true
+    this.tempInput = messageToProcess;
+    this.continueSendIntent(messageToProcess);
   }
 
   private initializeContext() {
@@ -2347,6 +3233,31 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
   }
 
   continueSendIntent(msg) {
+    // Protección adicional: evitar múltiples llamadas simultáneas a callnavigator
+    // Usar verificación síncrona inmediata para evitar condiciones de carrera
+    if (this.callingOpenai) {
+      console.warn('continueSendIntent: Ya hay una llamada en curso, ignorando esta solicitud. Mensaje:', msg?.substring(0, 50));
+      return;
+    }
+    
+    // Verificar si ya hay una llamada pendiente con el mismo mensaje (protección contra duplicados)
+    const msgHash = msg ? msg.substring(0, 50).replace(/\s+/g, '') : '';
+    const lastCallKey = `lastCall_${msgHash}`;
+    const lastCallTime = (this as any)[lastCallKey];
+    const now = Date.now();
+    
+    if (lastCallTime && (now - lastCallTime) < 5000) { // 5 segundos de protección
+      console.warn(`continueSendIntent: Llamada duplicada detectada (última llamada hace ${Math.round((now - lastCallTime) / 1000)}s), ignorando. Mensaje:`, msg?.substring(0, 50));
+      return;
+    }
+    
+    // Guardar el tiempo de esta llamada
+    (this as any)[lastCallKey] = now;
+    
+    // Marcar que estamos haciendo una llamada INMEDIATAMENTE para evitar condiciones de carrera
+    this.callingOpenai = true;
+    console.log('continueSendIntent: Iniciando llamada a callnavigator. Mensaje:', msg?.substring(0, 50));
+    
     console.log('Context before call:', this.context);
     // Ensure context is not empty
     if (!this.context || this.context.length === 0) {
@@ -2356,13 +3267,35 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
 
     let docsSelected = this.docs.filter(doc => doc.selected && (doc.status == 'finished' || doc.status == 'done' || doc.status == 'resumen ready')).map(doc => doc.url);
     console.log(docsSelected)
-    var query = { "question": msg, "context": this.context, "containerName": this.containerName, "index": this.currentPatient, "userId": this.authService.getIdUser(), "docs": docsSelected };
+    
+    // Generar un ID único para esta llamada para rastrear llamadas duplicadas
+    const callId = `${Date.now()}_${Math.random().toString(36).substring(7)}`;
+    console.log(`[${callId}] continueSendIntent: Preparando llamada HTTP a callnavigator`);
+    
+    // Mostrar aviso si el paciente no tiene país configurado (solo una vez por sesión)
+    if (!this.hasShownCountryWarning && this.actualPatient && !this.actualPatient.country) {
+      this.hasShownCountryWarning = true;
+      this.toastr.info(
+        this.translate.instant('messages.countryNotConfiguredDesc') || 'Puedes añadirlo desde la lista de pacientes para obtener respuestas más contextualizadas.',
+        this.translate.instant('messages.countryNotConfigured') || 'País no configurado',
+        { timeOut: 8000, positionClass: 'toast-bottom-right' }
+      );
+    }
+    
+    var query = { "question": msg, "context": this.context, "containerName": this.containerName, "index": this.currentPatient, "userId": this.authService.getIdUser(), "docs": docsSelected, "detectedLang": this.detectedLang, "chatMode": this.chatMode };
     this.subscription.add(this.http.post(environment.api + '/api/callnavigator/'+this.authService.getCurrentPatient().sub, query)
       .subscribe(async (res: any) => {
+        console.log(`[${callId}] continueSendIntent: Respuesta HTTP recibida:`, res.action);
         if (res.action == 'Data') {
 
         } else if (res.action == 'Question') {
-
+          // Respuesta HTTP antigua - ignorar, la respuesta real viene por WebPubSub
+          // No hacer nada aquí para evitar respuestas duplicadas
+          console.warn(`[${callId}] continueSendIntent: Recibida respuesta HTTP antigua (Question), ignorando. La respuesta real viene por WebPubSub`);
+        } else if (res.action == 'Processing') {
+          // Respuesta HTTP indicando que se procesará por WebPubSub
+          // No hacer nada, esperar la respuesta por WebPubSub
+          console.log(`[${callId}] continueSendIntent: Respuesta HTTP Processing recibida, esperando respuesta por WebPubSub`);
         } else if (res.action == 'Share') {
           this.message = '';
           this.addMessage({
@@ -2402,8 +3335,16 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
 
       }, (err) => {
         this.callingOpenai = false;
-        console.log(err);
+        console.error(`[${callId}] Error en continueSendIntent:`, err);
         this.insightsService.trackException(err);
+        
+        // Si es un error CORS o de red, no mostrar mensaje de error al usuario
+        // ya que puede ser una llamada duplicada que se canceló
+        if (err.status === 0 || err.status === null) {
+          console.warn(`[${callId}] Error de red/CORS detectado, probablemente llamada duplicada cancelada. Ignorando.`);
+          return;
+        }
+        
         //this.message = '';
         this.addMessage({
           text: '<strong>' + this.translate.instant("generics.error try again") + '</strong>',
@@ -2449,38 +3390,21 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     });
   }
 
-  translateSuggestions(info, hardcodedSuggestion = undefined) {
-    if (this.detectedLang != 'en') {
-      var jsontestLangText = [];
-      for (var i = 0; i < info.length; i++) {
-        if (info[i] !== hardcodedSuggestion) {
-          jsontestLangText.push({ "Text": info[i] });
-        } else {
-          info[i] = hardcodedSuggestion;
-        }
-      }
+  /**
+   * Asigna las sugerencias directamente (ya vienen traducidas del backend)
+   */
+  setSuggestions(suggestions: string[]) {
+    this.suggestions = suggestions || [];
+    this.gettingSuggestions = false;
+  }
 
-      this.subscription.add(this.apiDx29ServerService.getTranslationInvert(this.detectedLang, jsontestLangText)
-        .subscribe((res2: any) => {
-          if (res2[0] != undefined) {
-            for (var i = 0; i < res2.length; i++) {
-              if (res2[i].translations[0] != undefined && info[i] !== hardcodedSuggestion) {
-                info[i] = res2[i].translations[0].text;
-              }
-            }
-          }
-          this.suggestions = info;
-          this.gettingSuggestions = false;
-        }, (err) => {
-          console.log(err);
-          this.insightsService.trackException(err);
-          this.suggestions = info;
-          this.gettingSuggestions = false;
-        }));
-    } else {
-      this.suggestions = info;
-      this.gettingSuggestions = false;
-    }
+  /**
+   * Asigna las sugerencias (ya vienen traducidas del backend)
+   */
+  translateSuggestions(info, hardcodedSuggestion = undefined) {
+    // El backend ahora devuelve las sugerencias ya traducidas
+    this.suggestions = info || [];
+    this.gettingSuggestions = false;
   }
 
 
@@ -2583,43 +3507,20 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     return info;
   }
 
+  /**
+   * Muestra el mensaje de respuesta del asistente
+   * El backend ahora envía el mensaje ya traducido y lo guarda en la BD
+   */
   async translateInverse(msg): Promise<string> {
     return new Promise((resolve, reject) => {
-
-      if (this.detectedLang != 'en') {
-        var jsontestLangText = [{ "Text": msg }]
-        this.subscription.add(this.apiDx29ServerService.getDeepLTranslationInvert(this.detectedLang, jsontestLangText)
-          .subscribe((res2: any) => {
-            if (res2.text != undefined) {
-              msg = res2.text;
-            }
-            this.addMessage({
-              text: msg,
-              isUser: false
-            });
-            this.callingOpenai = false;
-            this.saveMessages(this.currentPatient);
-            resolve('ok')
-          }, (err) => {
-            console.log(err);
-            this.insightsService.trackException(err);
-            this.addMessage({
-              text: msg,
-              isUser: false
-            });
-            this.callingOpenai = false;
-            this.saveMessages(this.currentPatient);
-            resolve('ok')
-          }));
-      } else {
-        this.addMessage({
-          text: msg,
-          isUser: false
-        });
-        this.callingOpenai = false;
-        this.saveMessages(this.currentPatient);
-        resolve('ok')
-      }
+      // El backend ahora traduce y guarda, solo necesitamos mostrar el mensaje
+      this.addMessage({
+        text: msg,
+        isUser: false
+      });
+      this.callingOpenai = false;
+      // Ya no llamamos a saveMessages porque el backend ya guarda
+      resolve('ok');
     });
   }
 
@@ -2672,6 +3573,10 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     this.eventsForm = this.formBuilder.group({
       name: ['', Validators.required],
       date: [new Date()],
+      dateEnd: [null],
+      timeHour: [''],
+      timeMinute: [''],
+      timePeriod: ['AM'],
       key: [''],
       notes: []
     });
@@ -2679,6 +3584,22 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     if (!info.date) {
       info.date = new Date();
     }
+    // Extract time from date if it exists and is not midnight
+    if (info.date) {
+      const dateObj = new Date(info.date);
+      const hours24 = dateObj.getHours();
+      const minutes = dateObj.getMinutes();
+      if (hours24 !== 0 || minutes !== 0) {
+        const period = hours24 >= 12 ? 'PM' : 'AM';
+        let hours12 = hours24 % 12;
+        if (hours12 === 0) hours12 = 12;
+        info.timeHour = hours12;
+        info.timeMinute = minutes;
+        info.timePeriod = period;
+      }
+    }
+    // Show time field for appointments and reminders, or if time already set
+    this.showTimeField = info.key === 'appointment' || info.key === 'reminder' || !!info.timeHour;
     //info.date = this.dateService.transformDate(new Date());
     this.eventsForm.patchValue(info);
     this.showProposedEvents();
@@ -2686,67 +3607,9 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     this.callingOpenai = false;
   }
 
-  showFormAppointment(info) {
-    if (this.detectedLang != 'en') {
-      var textToExtract = info.name;
-      var jsontestLangText = [{ "Text": textToExtract }]
-      this.subscription.add(this.apiDx29ServerService.getDeepLTranslationInvert(this.detectedLang, jsontestLangText)
-        .subscribe((res2: any) => {
-          if (res2.text != undefined) {
-            info.name = res2.text;
-          }
-          this.addFormAppointment(info);
-        }, (err) => {
-          console.log(err);
-          this.insightsService.trackException(err);
-          this.addFormAppointment(info);
-        }));
-
-    } else {
-      this.addFormAppointment(info);
-    }
-  }
-
-  addFormAppointment(info) {
-    Swal.close();
-    //this.eventsForm.reset();
-    this.appointmentsForm = this.formBuilder.group({
-      name: ['', Validators.required],
-      date: [new Date()],
-      key: ['appointment'],
-      notes: []
-    });
-    //if no date, set today
-    if (!info.date) {
-      info.date = new Date();
-    }
-    //info.date = this.dateService.transformDate(new Date());
-    this.appointmentsForm.patchValue(info);
-    this.showProposedAppointments();
-    this.callingTextAnalytics = false;
-    this.callingOpenai = false;
-  }
-
-  dateGreaterThan(dateField: string): any {
-    return (control: any): { [key: string]: any } => {
-      const dateInput = control.value;
-      const dateFieldControl = control.root.get(dateField);
-      if (dateFieldControl && dateInput && dateFieldControl.value && dateInput <= dateFieldControl.value) {
-        return { 'dateGreaterThan': true };
-      }
-      return null;
-    };
-  }
-
   get date() {
     //return this.seizuresForm.get('date').value;
     let minDate = new Date(this.eventsForm.get('date').value);
-    return minDate;
-  }
-
-  get dateAppointment() {
-    //return this.seizuresForm.get('date').value;
-    let minDate = new Date(this.appointmentsForm.get('date').value);
     return minDate;
   }
 
@@ -2767,9 +3630,34 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
 
       this.submitted = true;
 
+      // Combine date and time if time is set
       if (this.eventsForm.value.date != null) {
-        this.eventsForm.value.date = this.dateService.transformDate(this.eventsForm.value.date);
+        let dateObj = new Date(this.eventsForm.value.date);
+        const hasTime = this.eventsForm.value.timeHour && this.eventsForm.value.timeHour !== '';
+        if (hasTime) {
+          let hours = parseInt(this.eventsForm.value.timeHour, 10);
+          const minutes = parseInt(this.eventsForm.value.timeMinute || '0', 10);
+          const period = this.eventsForm.value.timePeriod || 'AM';
+          // Convert 12h to 24h format
+          if (period === 'PM' && hours !== 12) {
+            hours += 12;
+          } else if (period === 'AM' && hours === 12) {
+            hours = 0;
+          }
+          dateObj.setHours(hours, minutes, 0, 0);
+          // Use transformDateTime to include the time in the output
+          this.eventsForm.value.date = this.dateService.transformDateTime(dateObj);
+        } else {
+          this.eventsForm.value.date = this.dateService.transformDate(dateObj);
+        }
       }
+      if (this.eventsForm.value.dateEnd != null) {
+        this.eventsForm.value.dateEnd = this.dateService.transformDate(this.eventsForm.value.dateEnd);
+      }
+      // Remove time fields before sending to API (they're already merged into date)
+      delete this.eventsForm.value.timeHour;
+      delete this.eventsForm.value.timeMinute;
+      delete this.eventsForm.value.timePeriod;
 
       if (this.authGuard.testtoken()) {
         this.saving = true;
@@ -2814,6 +3702,7 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
 
   cancelData() {
     this.submitted = false;
+    this.showTimeField = false;
     if (this.modalReference != null) {
       this.modalReference.close();
     }
@@ -2874,7 +3763,8 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
         this.summaryDoc = res;
         //this.resultText = res;
         let documentsToCheck = [this.actualDoc];
-        this.checkIfNeedFeedback(contentSummaryDoc, documentsToCheck, 'individual')
+        //this.checkIfNeedFeedback(contentSummaryDoc, documentsToCheck, 'individual')
+        this.showContent(contentSummaryDoc);
         this.loadEventFromDoc(doc);
       }, (err) => {
         this.openingResults = false;
@@ -2882,6 +3772,25 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
         this.insightsService.trackException(err);
         this.toastr.error('', this.translate.instant('messages.msgError'));
       }));
+  }
+
+  async showContent(contentSummaryDoc) {
+    let ngbModalOptions: NgbModalOptions = {
+      backdrop: 'static',
+      keyboard: false,
+      windowClass: 'ModalClass-lg' // xl, lg, sm
+    };
+    if (this.modalReference != undefined) {
+      this.modalReference.close();
+      this.modalReference = undefined;
+    }
+    this.selectedIndexTab = 0;
+    this.modalReference = this.modalService.open(contentSummaryDoc, ngbModalOptions);
+    await this.delay(200)
+    document.getElementById('contentHeader').scrollIntoView(true);
+
+    // CLOSE SWAL MSG
+    Swal.close();
   }
 
   checkIfNeedFeedback(contentSummaryDoc, documentsToCheck, type) {
@@ -3148,6 +4057,111 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     });
   }
 
+  private lastInfographicRequestTime = 0;
+  
+  getPatientInfographic(regenerate: boolean = false) {
+    // Protección contra doble click - verificar si ya está generando
+    if (this.generatingInfographic) {
+      console.log('[Infographic] Already generating, ignoring duplicate request');
+      return;
+    }
+    
+    // Debounce: ignorar peticiones muy cercanas (menos de 2 segundos)
+    const now = Date.now();
+    if (now - this.lastInfographicRequestTime < 2000) {
+      console.log('[Infographic] Request too soon after previous, ignoring (debounce)');
+      return;
+    }
+    this.lastInfographicRequestTime = now;
+    
+    this.generatingInfographic = true;
+    console.log('[Infographic] Starting request, regenerate:', regenerate);
+    const info = { 
+      userId: this.authService.getIdUser(),
+      lang: this.preferredResponseLanguage || localStorage.getItem('lang') || 'en',
+      regenerate: regenerate
+    };
+    
+    // Timeout extendido para generación de imágenes (3 minutos)
+    this.subscription.add(this.http.post(environment.api + '/api/ai/infographic/' + this.currentPatient, info)
+      .pipe(timeout(180000))
+      .subscribe((res: any) => {
+        this.generatingInfographic = false;
+        console.log('[Infographic] Response received:', res);
+        
+        if (res.success && (res.imageUrl || res.imageData)) {
+          // Determinar la fuente de la imagen (URL o base64)
+          const imageSrc = res.imageUrl || `data:${res.mimeType || 'image/png'};base64,${res.imageData}`;
+          this.infographicImageData = res.imageData || null;
+          
+          // Formatear la fecha de generación
+          let dateInfo = '';
+          if (res.generatedAt) {
+            const genDate = new Date(res.generatedAt);
+            dateInfo = `<p style="font-size: 0.85rem; color: #666; margin-bottom: 10px;">
+              ${this.translate.instant('infographic.generatedOn')}: ${genDate.toLocaleDateString()} ${genDate.toLocaleTimeString()}
+              ${res.cached ? `<span style="color: #28a745; margin-left: 8px;">(${this.translate.instant('infographic.cached')})</span>` : ''}
+            </p>`;
+          }
+          
+          // Aviso si es infografía básica (sin resumen completo del paciente)
+          let basicWarning = '';
+          if (res.isBasic) {
+            basicWarning = `<p style="font-size: 0.85rem; color: #856404; background-color: #fff3cd; padding: 8px 12px; border-radius: 4px; margin-bottom: 10px; border: 1px solid #ffeeba;">
+              <i class="fa fa-info-circle" style="margin-right: 6px;"></i>
+              ${this.translate.instant('infographic.basicWarning')}
+            </p>`;
+          }
+          
+          Swal.fire({
+            title: this.translate.instant('infographic.title'),
+            html: `${dateInfo}${basicWarning}
+                   <img src="${imageSrc}" 
+                   style="display: block; margin: 0 auto; max-width: 100%; max-height: 65vh; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);" 
+                   alt="Patient Infographic"/>`,
+            width: '90%',
+            showCloseButton: true,
+            showConfirmButton: true,
+            confirmButtonText: this.translate.instant('infographic.download'),
+            showCancelButton: true,
+            cancelButtonText: this.translate.instant('generics.Close'),
+            showDenyButton: true,
+            denyButtonText: this.translate.instant('infographic.regenerate'),
+            denyButtonColor: '#6c757d',
+          }).then((result) => {
+            if (result.isConfirmed) {
+              // Descargar la imagen
+              const link = document.createElement('a');
+              link.href = imageSrc;
+              link.download = `patient_infographic_${Date.now()}.png`;
+              link.target = '_blank';
+              link.click();
+            } else if (result.isDenied) {
+              // Regenerar la infografía
+              this.getPatientInfographic(true);
+            }
+          });
+        } else {
+          this.toastr.error('', res.error || this.translate.instant('infographic.error'));
+        }
+      }, (err) => {
+        console.log('[Infographic] Error:', err);
+        
+        // Si es 429 (Too Many Requests), la generación está en progreso - esperar
+        if (err.status === 429) {
+          console.log('[Infographic] Generation in progress, waiting...');
+          // No resetear generatingInfographic, dejar que la otra petición termine
+          // Mostrar mensaje informativo en lugar de error
+          this.toastr.info('', this.translate.instant('infographic.inProgress') || 'Generation in progress, please wait...');
+          return;
+        }
+        
+        this.generatingInfographic = false;
+        this.insightsService.trackException(err);
+        this.toastr.error('', this.translate.instant("generics.error try again"));
+      }));
+  }
+
   checkDocs(): Promise<boolean> {
     return new Promise((resolve) => {
       this.subscription.add(this.patientService.getDocuments()
@@ -3223,8 +4237,9 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
         // mostrar toast diciendo que ha refrescado los documentos
         this.toastr.info('', this.translate.instant("generics.Documents have been refreshed"));
         if (resDocs.length > 0) {
-          resDocs.sort(this.sortService.DateSortInver("date"));
-          this.docs = resDocs;
+          // Ordenar documentos: procesando -> sin fecha original -> con fecha original
+          this.docs = this.sortDocumentsByStatus(resDocs);
+          
           for (var i = 0; i < this.docs.length; i++) {
             const fileName = this.docs[i].url.split("/").pop();
             this.docs[i].title = fileName;
@@ -3235,7 +4250,7 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
 
           }
           this.docs.forEach(doc => doc.selected = true);
-          this.assignFeedbackToDocs(this.docs);
+          //this.assignFeedbackToDocs(this.docs);
         }
 
       }, (err) => {
@@ -3258,20 +4273,11 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
         const currentVersion = environment.version + ' - ' + environment.subversion;
         if (this.summaryJson.version == currentVersion) {
           let documentsToCheck = this.docs;
-          this.checkIfNeedFeedback(this.contentviewSummary, documentsToCheck, 'general')
+          this.showContent(this.contentviewSummary);
+          //this.checkIfNeedFeedback(this.contentviewSummary, documentsToCheck, 'general')
         } else {
           this.getPatientSummary(true);
         }
-        //this.resultText = res;
-        /*let ngbModalOptions: NgbModalOptions = {
-          keyboard: false,
-          windowClass: 'ModalClass-sm' // xl, lg, sm
-        };
-        if (this.modalReference != undefined) {
-          this.modalReference.close();
-          this.modalReference = undefined;
-        }
-        this.modalReference = this.modalService.open(this.contentviewSummary, ngbModalOptions);*/
 
       }, (err) => {
         console.log(err);
@@ -3311,6 +4317,20 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
       allowOutsideClick: false
     })*/
     this.generatingPDF = false;
+  }
+
+  regenerateSummary() {
+    this.regeneratingSummary = true;
+    this.closeModal();
+    this.getPatientSummary(true);
+    this.regeneratingSummary = false;
+    // Show info message that the summary is being regenerated
+    /*Swal.fire({
+      icon: 'info',
+      title: this.translate.instant("messages.m6.1"),
+      text: this.translate.instant("messages.m6.3"),
+      showConfirmButton: true
+    });*/
   }
 
   copymsg(msg: any) {
@@ -3437,10 +4457,15 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
       'appointment': `${this.translate.instant('events.appointment')} 📅`,
       'symptom': `${this.translate.instant('timeline.Symptoms')} 🤒`,
       'medication': `${this.translate.instant('timeline.Medications')} 💊`,
+      'activity': `${this.translate.instant('timeline.Activity')} 🏃`,
+      'reminder': `${this.translate.instant('timeline.Reminder')} 🔔`,
       'other': `${this.translate.instant('timeline.Other')} 🔍`
     };
 
-    return types[type] || type;
+    if (!type || type === 'null') {
+      return `${this.translate.instant('timeline.Other')} 🔍`;
+    }
+    return types[type] || `${this.translate.instant('timeline.Other')} 🔍`;
   }
 
   showProposedEvents() {
@@ -3455,17 +4480,53 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     this.modalReference = this.modalService.open(this.contentviewProposedEvents, ngbModalOptions);
   }
 
+  openAddEventModal() {
+    // Initialize empty form for new event
+    this.eventsForm = this.formBuilder.group({
+      name: ['', Validators.required],
+      date: [new Date()],
+      dateEnd: [null],
+      timeHour: [''],
+      timeMinute: [''],
+      timePeriod: ['AM'],
+      key: [''],
+      notes: []
+    });
+    this.showTimeField = false;
+    this.submitted = false;
+    this.showProposedEvents();
+  }
+
   addProposedEvent(event) {
     this.eventsForm = this.formBuilder.group({
       name: ['', Validators.required],
       date: [new Date()],
+      dateEnd: [null],
+      timeHour: [''],
+      timeMinute: [''],
+      timePeriod: ['AM'],
       notes: [],
       key: []
     });
     if (event.date != undefined) {
-      event.date = new Date(event.date);
+      const dateObj = new Date(event.date);
+      event.date = dateObj;
+      // Extract time from the date and convert to 12h format
+      const hours24 = dateObj.getHours();
+      const minutes = dateObj.getMinutes();
+      if (hours24 !== 0 || minutes !== 0) {
+        const period = hours24 >= 12 ? 'PM' : 'AM';
+        let hours12 = hours24 % 12;
+        if (hours12 === 0) hours12 = 12;
+        event.timeHour = hours12;
+        event.timeMinute = minutes;
+        event.timePeriod = period;
+      }
     } else {
       event.date = new Date();
+    }
+    if (event.dateEnd != undefined) {
+      event.dateEnd = new Date(event.dateEnd);
     }
     event.name = event.insight;
     //info.date = this.dateService.transformDate(new Date());
@@ -3477,11 +4538,32 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     var info = {
       name: event.insight.toLowerCase(),
       date: event.date,
+      dateEnd: event.dateEnd || null,
       notes: '',
       data: event.data,
       key: event.key
     }
     this.showForm(info)
+  }
+
+  getProposedEventTime(event): string {
+    if (!event.date) return '09:00'; // Default time for appointments
+    const dateObj = new Date(event.date);
+    const hours = dateObj.getHours();
+    const minutes = dateObj.getMinutes();
+    // If time is midnight (00:00), return default appointment time
+    if (hours === 0 && minutes === 0) {
+      return '09:00';
+    }
+    return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+  }
+
+  updateProposedEventTime(event, timeValue: string) {
+    if (!timeValue) return;
+    const [hours, minutes] = timeValue.split(':').map(Number);
+    const dateObj = new Date(event.date);
+    dateObj.setHours(hours, minutes, 0, 0);
+    event.date = dateObj.toISOString();
   }
 
   deleteProposedEvent(index) {
@@ -3505,10 +4587,22 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
       this.eventsForm = this.formBuilder.group({
         name: ['', Validators.required],
         date: [new Date()],
+        dateEnd: [null],
+        timeHour: [''],
+        timeMinute: [''],
+        timePeriod: ['AM'],
         notes: [],
         key: []
       });
-      event.date = new Date();
+      // Use the event's original date if available, otherwise use today
+      if (event.date) {
+        event.date = new Date(event.date);
+      } else {
+        event.date = new Date();
+      }
+      if (event.dateEnd) {
+        event.dateEnd = new Date(event.dateEnd);
+      }
       //info.date = this.dateService.transformDate(new Date());
       this.eventsForm.patchValue(event);
       savePromises.push(this.saveData(false, false));
@@ -3526,156 +4620,6 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
       });
       this.loadEnvironmentMydata(); // llamar a loadEvents una vez que todos los datos se guarden
     });
-  }
-
-  editProposedAppointment(event) {
-    console.log(event);
-    var info = {
-      name: event.insight.toLowerCase(),
-      date: event.date,
-      notes: '',
-      data: event.data,
-      key: event.key
-    }
-    this.showFormAppointment(info)
-  }
-
-  addProposedAppointment(event) {
-    this.appointmentsForm = this.formBuilder.group({
-      name: ['', Validators.required],
-      date: [new Date()],
-      key: ['appointment'],
-      notes: []
-    });
-    if (event.date != undefined) {
-      event.date = new Date(event.date);
-    } else {
-      event.date = new Date();
-    }
-    event.name = event.insight;
-    event.key = 'appointment';
-    //info.date = this.dateService.transformDate(new Date());
-    this.appointmentsForm.patchValue(event);
-    this.saveAppointmentsData(false, true);
-  }
-
-  deleteProposedAppointment(index) {
-    this.proposedAppointments.splice(index, 1);
-    if (this.proposedAppointments.length == 0 && this.suggestions.length == 0) {
-      this.suggestions = this.getAllSuggestions(4);
-    }
-  }
-
-  deleteAllProposedAppointments() {
-    this.proposedAppointments = [];
-    if (this.proposedAppointments.length == 0 && this.suggestions.length == 0) {
-      this.suggestions = this.getAllSuggestions(4);
-    }
-  }
-
-  addAllProposedAppointments() {
-
-    let savePromises = [];
-    this.proposedAppointments.forEach(event => {
-      this.appointmentsForm = this.formBuilder.group({
-        name: ['', Validators.required],
-        date: [new Date()],
-        key: ['appointment'],
-        notes: []
-      });
-      event.date = new Date();
-      event.key = 'appointment';
-      //info.date = this.dateService.transformDate(new Date());
-      this.appointmentsForm.patchValue(event);
-      savePromises.push(this.saveAppointmentsData(false, false));
-    });
-    this.proposedAppointments = [];
-
-    Promise.all(savePromises).then(() => { // cuando todas las promesas se resuelven
-      if (this.proposedAppointments.length == 0 && this.suggestions.length == 0) {
-        this.suggestions = this.getAllSuggestions(4);
-      }
-      let newMsg = this.translate.instant('events.The events have been saved');
-      this.addMessage({
-        text: newMsg,
-        isUser: false
-      });
-      this.loadEnvironmentMydata(); // llamar a loadEvents una vez que todos los datos se guarden
-    });
-  }
-
-  saveAppointmentsData(checkForm, loadEvents) {
-    return new Promise((resolve, reject) => {
-      if (checkForm) {
-        if (this.appointmentsForm.invalid) {
-          return;
-        }
-      }
-      var actualIndex = 0;
-      this.proposedAppointments.forEach((element, index) => {
-        if (element.name == this.appointmentsForm.value.name) {
-          this.proposedAppointments[index].saving = true;
-          actualIndex = index;
-        }
-      });
-
-      this.submitted = true;
-      /*if (this.appointmentsForm.value.date != null) {
-        this.appointmentsForm.value.date = this.dateService.transformDate(this.appointmentsForm.value.date);
-      }
-      console.log(this.appointmentsForm.value.date)*/
-
-      if (this.authGuard.testtoken()) {
-        this.saving = true;
-        const userId = this.authService.getIdUser();
-        this.subscription.add(this.http.post(environment.api + '/api/events/' + this.currentPatient + '/' + userId, this.appointmentsForm.value)
-          .subscribe((res: any) => {
-            this.saving = false;
-            this.proposedAppointments.splice(actualIndex, 1);
-
-
-            if (this.modalReference != null) {
-              this.modalReference.close();
-            }
-            this.submitted = false;
-            if (loadEvents) {
-              let newMsg = this.translate.instant('home.botmsg3') + ': ' + this.appointmentsForm.value.name;
-              this.addMessage({
-                text: newMsg,
-                isUser: false
-              });
-              if (this.proposedAppointments.length == 0 && this.suggestions.length == 0) {
-                this.suggestions = this.getAllSuggestions(4);
-              }
-              this.loadEnvironmentMydata();
-            }
-            resolve(true);
-          }, (err) => {
-            this.proposedAppointments[actualIndex].saving = false;
-            this.submitted = false;
-            console.log(err);
-            this.insightsService.trackException(err);
-            this.saving = false;
-            if (err.error.message == 'Token expired' || err.error.message == 'Invalid Token') {
-              this.authGuard.testtoken();
-            } else {
-            }
-            reject(err);
-          }));
-      }
-    });
-  }
-
-  showProposedAppointments() {
-    if (this.modalReference != undefined) {
-      this.modalReference.close();
-      this.modalReference = undefined;
-    }
-    let ngbModalOptions: NgbModalOptions = {
-      keyboard: false,
-      windowClass: 'ModalClass-sm' // xl, lg, sm
-    };
-    this.modalReference = this.modalService.open(this.contentviewProposedAppointments, ngbModalOptions);
   }
 
   resetPermisions() {
@@ -3839,37 +4783,89 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
         windowClass: 'ModalClass-lg'
       };
       this.modalReference = this.modalService.open(content, ngbModalOptions);
+    } else if (opt == 'opt3') {
+      this.setupConsultationRecognition();
+      this.consultationText = '';
+      this.consultationFileName = '';
+      if (this.modalReference != undefined) {
+        this.modalReference.close();
+      }
+      let ngbModalOptions: NgbModalOptions = {
+        backdrop: 'static',
+        keyboard: false,
+        windowClass: 'ModalClass-lg'
+      };
+      this.modalReference = this.modalService.open(content, ngbModalOptions);
     }
 
   }
 
   setupRecognition() {
-    if ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window) {
-      // El navegador soporta la funcionalidad
-      console.log('soporta')
-      this.recognition = new webkitSpeechRecognition();
-      let lang = localStorage.getItem('lang');
-      if (lang == 'en') {
-        this.recognition.lang = 'en-US';
-      } else if (lang == 'es') {
-        this.recognition.lang = 'es-ES';
-      } else if (lang == 'fr') {
-        this.recognition.lang = 'fr-FR';
-      } else if (lang == 'de') {
-        this.recognition.lang = 'de-DE';
-      } else if (lang == 'it') {
-        this.recognition.lang = 'it-IT';
-      } else if (lang == 'pt') {
-        this.recognition.lang = 'pt-PT';
-      }
-      this.recognition.continuous = true;
-      this.recognition.maxAlternatives = 3;
-      this.supported = true;
-    } else {
-      // El navegador no soporta la funcionalidad
-      this.supported = false;
-      console.log('no soporta')
+    // Usar el servicio de reconocimiento de voz que maneja Web Speech API y Azure
+    this.supported = this.speechRecognitionService.isSupported();
+    
+    // Limpiar suscripciones anteriores si existen
+    if (this.speechSubscription) {
+      this.speechSubscription.unsubscribe();
     }
+    
+    // Suscribirse a los resultados del reconocimiento
+    let lastFinalText = '';
+    let lastInterimText = '';
+    this.speechSubscription = this.speechRecognitionService.results$.subscribe((result) => {
+      if (result && result.text) {
+        if (result.isFinal) {
+          // Para resultados finales, extraer solo el nuevo texto
+          const newText = result.text.replace(lastFinalText, '').trim();
+          if (newText) {
+            // Remover el último texto intermedio si existe
+            if (lastInterimText && this.medicalText.endsWith(lastInterimText)) {
+              this.medicalText = this.medicalText.slice(0, -lastInterimText.length);
+            }
+            this.medicalText += (this.medicalText && !this.medicalText.endsWith('\n') ? '\n' : '') + newText;
+          }
+          lastFinalText = result.text;
+          lastInterimText = '';
+        } else {
+          // Para resultados intermedios, reemplazar el último texto intermedio
+          if (lastInterimText && this.medicalText.endsWith(lastInterimText)) {
+            this.medicalText = this.medicalText.slice(0, -lastInterimText.length) + result.text;
+          } else {
+            // Si no hay texto intermedio previo, añadir el nuevo
+            const currentText = this.medicalText.trim();
+            if (currentText && !currentText.endsWith('\n')) {
+              this.medicalText += '\n' + result.text;
+            } else {
+              this.medicalText += result.text;
+            }
+          }
+          lastInterimText = result.text;
+        }
+      }
+    });
+
+    // Suscribirse a errores
+    this.speechSubscription.add(
+      this.speechRecognitionService.errors$.subscribe((error) => {
+        this.toastr.error('', error);
+        if (this.recording) {
+          this.stopTimer();
+          this.recording = false;
+        }
+      })
+    );
+
+    // Suscribirse a cambios de estado
+    this.speechSubscription.add(
+      this.speechRecognitionService.status$.subscribe((status) => {
+        if (status === 'recording' && !this.recording) {
+          this.recording = true;
+        } else if (status === 'stopped' && this.recording) {
+          this.recording = false;
+          this.stopTimer();
+        }
+      })
+    );
   }
 
   startTimer(restartClock) {
@@ -3896,28 +4892,33 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
 
   toggleRecording() {
     if (this.recording) {
-      //mosstrar el swal durante dos segundos diciendo que es está procesando
+      // Mostrar el swal durante unos segundos diciendo que está procesando
       Swal.fire({
         title: this.translate.instant("voice.Processing audio..."),
         html: this.translate.instant("voice.Please wait a few seconds."),
         showCancelButton: false,
         showConfirmButton: false,
         allowOutsideClick: false
-      })
-      //esperar 4 segundos
-      console.log('esperando 4 segundos')
-      setTimeout(function () {
-        console.log('cerrando swal')
-        this.stopTimer();
-        this.recognition.stop();
+      });
+      
+      // Detener el reconocimiento
+      this.speechRecognitionService.stop();
+      this.stopTimer();
+      
+      // Obtener el texto acumulado y añadirlo al campo
+      const finalText = this.speechRecognitionService.getAccumulatedText();
+      if (finalText && !this.medicalText.includes(finalText)) {
+        this.medicalText += finalText;
+      }
+      
+      setTimeout(() => {
         Swal.close();
-      }.bind(this), 4000);
-
-      this.recording = !this.recording;
+        this.recording = false;
+      }, 2000);
 
     } else {
       if (this.medicalText.length > 0) {
-        //quiere continuar con la grabacion o empezar una nueva
+        // Quiere continuar con la grabación o empezar una nueva
         Swal.fire({
           title: this.translate.instant("voice.Do you want to continue recording?"),
           icon: 'warning',
@@ -3933,6 +4934,8 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
             this.continueRecording(false, true);
           } else {
             this.medicalText = '';
+            this.accumulatedText = '';
+            this.speechRecognitionService.clearAccumulatedText();
             this.continueRecording(true, true);
           }
         });
@@ -3940,43 +4943,60 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
         this.continueRecording(true, true);
       }
     }
-
   }
 
   continueRecording(restartClock, changeState) {
     this.startTimer(restartClock);
-    this.recognition.start();
-    this.recognition.onresult = (event) => {
-      console.log(event)
-      var transcript = event.results[event.resultIndex][0].transcript;
-      console.log(transcript); // Utilizar el texto aquí
-      this.medicalText += transcript + '\n';
-      /*this.ngZone.run(() => {
-        this.medicalText += transcript + '\n';
-      });*/
-      if (event.results[event.resultIndex].isFinal) {
-        console.log('ha terminado')
-      }
-    };
-
-    // this.recognition.onerror = function(event) {
-    this.recognition.onerror = (event) => {
-      if (event.error === 'no-speech') {
-        console.log('Reiniciando el reconocimiento de voz...');
-        this.restartRecognition(); // Llama a una función para reiniciar el reconocimiento
-      } else {
-        // Para otros tipos de errores, muestra un mensaje de error
-        this.toastr.error('', this.translate.instant("voice.Error in voice recognition."));
-      }
-    };
+    
+    if (restartClock) {
+      this.accumulatedText = '';
+      this.speechRecognitionService.clearAccumulatedText();
+    }
+    
+    // Usar el servicio de reconocimiento de voz
+    this.speechRecognitionService.start();
+    
     if (changeState) {
-      this.recording = !this.recording;
+      this.recording = true;
     }
   }
 
   restartRecognition() {
-    this.recognition.stop(); // Detiene el reconocimiento actual
-    setTimeout(() => this.continueRecording(false, false), 100); // Un breve retraso antes de reiniciar
+    // El servicio maneja automáticamente los reinicios
+    // Solo necesitamos detener y volver a iniciar si es necesario
+    if (this.recording) {
+      this.speechRecognitionService.stop();
+      setTimeout(() => {
+        if (this.recording) {
+          this.speechRecognitionService.start();
+        }
+      }, 100);
+    }
+  }
+
+  toggleChatRecording() {
+    if (this.chatRecording) {
+      // Detener el reconocimiento de voz
+      this.speechRecognitionService.stop();
+      this.chatRecording = false;
+      
+      // El texto ya debería estar en el mensaje gracias a la suscripción
+      // Limpiar el texto acumulado del servicio
+      this.speechRecognitionService.clearAccumulatedText();
+      
+      // Si hay mensaje, enviarlo automáticamente
+      if (this.message && this.message.trim()) {
+        // Pequeño delay para asegurar que el texto final se haya añadido
+        setTimeout(() => {
+          this.sendMessage();
+        }, 100);
+      }
+    } else {
+      // Iniciar el reconocimiento de voz
+      this.speechRecognitionService.clearAccumulatedText();
+      this.speechRecognitionService.start();
+      this.chatRecording = true;
+    }
   }
 
 
@@ -4088,67 +5108,264 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
       if (goprev) {
         this.prevCamera();
       } else {
-        if (this.modalReference != undefined) {
-          this.modalReference.close();
-          this.modalReference = undefined;
+        // Si hay más de 1 foto, preguntar si quiere agrupar
+        if (this.tempDocs.length > 1) {
+          this.askGroupPhotos();
+        } else {
+          // Si solo hay 1 foto, procesar directamente
+          if (this.modalReference != undefined) {
+            this.modalReference.close();
+            this.modalReference = undefined;
+          }
+          this.processFilesSequentially();
         }
-        this.processFilesSequentially();
       }
     }
+  }
+
+  askGroupPhotos() {
+    const pageCount = this.tempDocs.length;
+    const pageList = this.tempDocs.map((doc, index) => `${index + 1}. ${doc.dataFile.name}`).join('<br>');
+    
+    // Generar nombre por defecto inteligente
+    const defaultName = this.generateDefaultDocumentName();
+    
+    // Crear HTML con selector y campo de nombre condicional
+    let htmlContent = `
+      <p style="margin-bottom: 15px; font-size: 1.1em;">
+        ${this.translate.instant('demo.You have captured')} <strong>${pageCount}</strong> ${pageCount === 1 ? this.translate.instant('demo.page') : this.translate.instant('demo.pages')}.
+      </p>
+      <p style="margin-bottom: 10px;"><strong>${this.translate.instant('demo.Captured pages')}:</strong></p>
+      <div style="text-align: left; max-height: 120px; overflow-y: auto; margin: 10px 0; padding: 10px; background-color: #f8f9fa; border-radius: 4px; font-size: 0.9em;">${pageList}</div>
+      <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #dee2e6;">
+        <p style="margin-bottom: 15px; font-weight: 600;">${this.translate.instant('demo.How do you want to save this document?')}</p>
+        <div style="text-align: left;">
+          <label style="display: block; margin-bottom: 15px; cursor: pointer; padding: 10px; border: 2px solid #2F8BE6; border-radius: 6px; background-color: #f0f7ff;">
+            <input type="radio" name="saveOption" value="group" checked style="margin-right: 10px; cursor: pointer; width: 18px; height: 18px; accent-color: #2F8BE6;">
+            <span style="font-weight: 600; color: #2F8BE6;">${this.translate.instant('demo.Save as one document')}</span>
+            <span style="display: block; margin-left: 28px; margin-top: 5px; font-size: 0.9em; color: #666;">${this.translate.instant('demo.Save as one document description')}</span>
+          </label>
+          <label style="display: block; margin-bottom: 10px; cursor: pointer; padding: 10px; border: 2px solid #dee2e6; border-radius: 6px; background-color: #fff;">
+            <input type="radio" name="saveOption" value="separate" style="margin-right: 10px; cursor: pointer; width: 18px; height: 18px; accent-color: #2F8BE6;">
+            <span style="font-weight: 600;">${this.translate.instant('demo.Save as separate documents')}</span>
+            <span style="display: block; margin-left: 28px; margin-top: 5px; font-size: 0.9em; color: #666;">${this.translate.instant('demo.Save as separate documents description')}</span>
+          </label>
+        </div>
+        <div id="documentNameContainer" style="margin-top: 20px; padding-top: 15px; border-top: 1px solid #dee2e6;">
+          <label style="display: block; margin-bottom: 8px; font-weight: 600;">${this.translate.instant('demo.Document name')}</label>
+          <input type="text" id="documentNameInput" value="${defaultName}" style="width: 100%; padding: 8px; border: 1px solid #ced4da; border-radius: 4px; font-size: 1em;" placeholder="${this.translate.instant('demo.Enter document name')}">
+          <p style="margin-top: 5px; font-size: 0.85em; color: #666; font-style: italic;">${this.translate.instant('demo.You can change it later')}</p>
+        </div>
+      </div>
+    `;
+    
+    Swal.fire({
+      title: this.translate.instant('demo.Finalize document'),
+      html: htmlContent,
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonText: this.translate.instant('demo.Save document'),
+      cancelButtonText: this.translate.instant('generics.Cancel'),
+      confirmButtonColor: '#2F8BE6',
+      cancelButtonColor: '#B0B6BB',
+      reverseButtons: true,
+      didOpen: () => {
+        // Manejar cambio de opción y actualizar estilos visuales
+        const container = Swal.getHtmlContainer();
+        const radioButtons = container?.querySelectorAll('input[name="saveOption"]') as NodeListOf<HTMLInputElement>;
+        const nameContainer = container?.querySelector('#documentNameContainer') as HTMLElement;
+        const labels = container?.querySelectorAll('label') as NodeListOf<HTMLLabelElement>;
+        
+        // Función para actualizar estilos visuales de los labels
+        const updateLabelStyles = () => {
+          radioButtons?.forEach((radio, index) => {
+            const label = labels?.[index];
+            if (label && radio.checked) {
+              label.style.borderColor = '#2F8BE6';
+              label.style.backgroundColor = '#f0f7ff';
+            } else if (label) {
+              label.style.borderColor = '#dee2e6';
+              label.style.backgroundColor = '#fff';
+            }
+          });
+        };
+        
+        // Actualizar estilos iniciales
+        updateLabelStyles();
+        
+        radioButtons?.forEach(radio => {
+          radio.addEventListener('change', () => {
+            updateLabelStyles();
+            if (radio.value === 'group' && nameContainer) {
+              nameContainer.style.display = 'block';
+            } else if (radio.value === 'separate' && nameContainer) {
+              nameContainer.style.display = 'none';
+            }
+          });
+        });
+      },
+      preConfirm: () => {
+        const container = Swal.getHtmlContainer();
+        const selectedOption = (container?.querySelector('input[name="saveOption"]:checked') as HTMLInputElement)?.value;
+        const nameInput = container?.querySelector('#documentNameInput') as HTMLInputElement;
+        
+        if (selectedOption === 'group') {
+          const documentName = nameInput?.value?.trim();
+          if (!documentName) {
+            Swal.showValidationMessage(this.translate.instant('demo.Document name is required'));
+            return false;
+          }
+          return { option: 'group', name: documentName };
+        } else {
+          return { option: 'separate', name: null };
+        }
+      }
+    }).then((result) => {
+      if (this.modalReference != undefined) {
+        this.modalReference.close();
+        this.modalReference = undefined;
+      }
+      
+      if (result.isConfirmed && result.value) {
+        if (result.value.option === 'group') {
+          // Agrupar en un solo PDF con el nombre proporcionado
+          this.groupPhotosIntoPDF(result.value.name);
+        } else {
+          // Subir como documentos separados
+          this.processFilesSequentially();
+        }
+      }
+    });
+  }
+
+  generateDefaultDocumentName(): string {
+    // Generar nombre inteligente basado en fecha y contexto
+    const now = new Date();
+    const dateStr = now.toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' });
+    
+    // Opciones de nombres sugeridos
+    const suggestions = [
+      this.translate.instant('demo.Medical report'),
+      this.translate.instant('demo.Test results'),
+      this.translate.instant('demo.Medical documentation')
+    ];
+    
+    // Usar el nombre de la cámara si existe y tiene sentido, sino usar sugerencia
+    if (this.nameFileCamera && this.nameFileCamera !== '' && !this.nameFileCamera.startsWith('photo-')) {
+      return this.nameFileCamera.replace('.png', '');
+    }
+    
+    // Usar primera sugerencia con fecha
+    return `${suggestions[0]} – ${dateStr}`;
+  }
+
+  async groupPhotosIntoPDF(documentName: string) {
+    try {
+      // Mostrar mensaje de carga
+      Swal.fire({
+        title: this.translate.instant('demo.Combining photos'),
+        html: `<p>${this.translate.instant('demo.Combining')} ${this.tempDocs.length} ${this.tempDocs.length === 1 ? this.translate.instant('demo.photo') : this.translate.instant('demo.photos')} ${this.translate.instant('demo.into one document')}...</p>
+               <p style="font-size: 0.9em; color: #666; margin-top: 10px;">${this.translate.instant('demo.Please wait')}</p>`,
+        allowOutsideClick: false,
+        didOpen: () => {
+          Swal.showLoading();
+        }
+      });
+
+      // Crear PDF con jsPDF
+      const doc = new jsPDF();
+      const pdfWidth = doc.internal.pageSize.getWidth();
+      const pdfHeight = doc.internal.pageSize.getHeight();
+      const margin = 10;
+      const maxWidth = pdfWidth - (margin * 2);
+      const maxHeight = pdfHeight - (margin * 2);
+
+      // Procesar cada foto y añadirla al PDF
+      for (let i = 0; i < this.tempDocs.length; i++) {
+        const photoData = this.tempDocs[i].dataFile;
+        const imageDataUrl = await this.fileToDataURL(photoData.event);
+        
+        // Crear imagen para obtener dimensiones
+        const img = new Image();
+        await new Promise((resolve) => {
+          img.onload = () => {
+            // Calcular dimensiones manteniendo proporción
+            let imgWidth = img.width;
+            let imgHeight = img.height;
+            const ratio = Math.min(maxWidth / imgWidth, maxHeight / imgHeight);
+            imgWidth = imgWidth * ratio;
+            imgHeight = imgHeight * ratio;
+
+            // Centrar imagen en la página
+            const x = (pdfWidth - imgWidth) / 2;
+            const y = (pdfHeight - imgHeight) / 2;
+
+            // Añadir nueva página si no es la primera foto
+            if (i > 0) {
+              doc.addPage();
+            }
+
+            // Añadir imagen al PDF
+            doc.addImage(imageDataUrl, 'PNG', x, y, imgWidth, imgHeight);
+            resolve(null);
+          };
+          img.src = imageDataUrl;
+        });
+      }
+
+      // Generar blob del PDF
+      const pdfBlob = doc.output('blob');
+      
+      // Crear File desde el blob usando el nombre proporcionado por el usuario
+      // Asegurarse de que el nombre no tenga extensión .pdf ya
+      let cleanName = documentName.trim();
+      if (cleanName.toLowerCase().endsWith('.pdf')) {
+        cleanName = cleanName.slice(0, -4);
+      }
+      const pdfFileName = cleanName + '.pdf';
+      const pdfFile = new File([pdfBlob], pdfFileName, { type: 'application/pdf' });
+
+      // Preparar para subir
+      var uniqueFileName = this.getUniqueFileName();
+      var filename = 'raitofile/' + uniqueFileName + '/' + pdfFileName;
+      
+      // Limpiar tempDocs y añadir el PDF
+      this.tempDocs = [];
+      let dataFile = { event: pdfFile, url: filename, name: pdfFileName };
+      this.tempDocs.push({ dataFile: dataFile, state: 'false' });
+
+      // Cerrar mensaje de carga
+      Swal.close();
+
+      // Subir el PDF
+      this.processFilesSequentially();
+    } catch (error) {
+      console.error('Error combining photos:', error);
+      this.insightsService.trackException(error);
+      Swal.fire({
+        icon: 'error',
+        title: this.translate.instant('generics.error try again'),
+        text: this.translate.instant('demo.Error combining photos')
+      });
+      // Si falla, intentar subir como documentos separados
+      this.processFilesSequentially();
+    }
+  }
+
+  fileToDataURL(file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => resolve(e.target?.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
   }
 
   deletephoto(index) {
     this.tempDocs.splice(index, 1);
   }
 
-  finishPhoto() {
-    if (this.modalReference != undefined) {
-      this.modalReference.close();
-      this.modalReference = undefined;
-    }
-    let filePromises: Promise<void>[] = [];
-    if (this.nameFileCamera == '') {
-      this.nameFileCamera = 'photo-' + this.getUniqueFileName();
-    }
-    let filePromise = new Promise<void>((resolve, reject) => {
-      this.nameFileCamera = this.nameFileCamera + '.png';
-      let file = this.dataURLtoFile(this.capturedImage, this.nameFileCamera);
-      var reader = new FileReader();
-      reader.readAsDataURL(file); // read file as data url
-      reader.onload = (event2: any) => { // called once readAsDataURL is completed
-        var filename = (file).name;
-        var extension = filename.substr(filename.lastIndexOf('.'));
-        var pos = (filename).lastIndexOf('.')
-        pos = pos - 4;
-        if (pos > 0 && extension == '.gz') {
-          extension = (filename).substr(pos);
-        }
-        filename = filename.split(extension)[0];
-        if (extension == '.jpg' || extension == '.png' || extension == '.jpeg' || file.type == 'application/pdf' || extension == '.docx' || file.type == 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' || file.type == 'text/plain' || extension == '.txt') {
-          var uniqueFileName = this.getUniqueFileName();
-          filename = 'raitofile/' + uniqueFileName + '/' + filename + extension;
-          let dataFile = { event: file, url: filename, name: file.name }
-          this.tempDocs.push({ dataFile: dataFile, state: 'false' });
-          resolve();
-          /*let index = this.tempDocs.length - 1;
-          this.prepareFile(index);*/
-        } else {
-          Swal.fire(this.translate.instant("dashboardpatient.error extension"), '', "warning");
-          this.insightsService.trackEvent('Invalid file extension', { extension: extension });
-          reject();
-        }
-      }
-    });
-    filePromises.push(filePromise);
-
-    Promise.all(filePromises).then(() => {
-      this.processFilesSequentially();
-    }).catch(() => {
-      console.log("One or more files had invalid extensions. Stopping the process.");
-    });
-
-
-  }
+ 
 
   getUniqueFileCamera() {
     var now = new Date();
@@ -4193,6 +5410,156 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
       this.tempFileName += '.txt';
     }
     let file = new File([this.medicalText], this.tempFileName, { type: 'text/plain' });
+    await this.processFile(file);
+    if (this.tempDocs.length > 0) {
+      this.processFilesSequentially();
+    } else {
+      console.log("All files were either invalid or cancelled.");
+    }
+    if (this.modalReference != undefined) {
+      this.modalReference.close();
+      this.modalReference = undefined;
+    }
+  }
+
+  setupConsultationRecognition() {
+    // Usar el servicio de reconocimiento de voz para consultas médicas
+    this.supported = this.speechRecognitionService.isSupported();
+    
+    // Limpiar suscripciones anteriores si existen
+    if (this.speechSubscription) {
+      this.speechSubscription.unsubscribe();
+    }
+    
+    // Suscribirse a los resultados del reconocimiento
+    let lastFinalText = '';
+    this.speechSubscription = this.speechRecognitionService.results$.subscribe((result) => {
+      if (result && result.text) {
+        if (result.isFinal) {
+          const newText = result.text.replace(lastFinalText, '').trim();
+          if (newText) {
+            if (this.consultationText && !this.consultationText.endsWith(' ')) {
+              this.consultationText += ' ';
+            }
+            this.consultationText += newText;
+            lastFinalText = result.text;
+            this.cdr.detectChanges();
+          }
+        } else {
+          // Para resultados intermedios, mostrar texto actual + nuevo
+          const interimText = result.text.replace(lastFinalText, '').trim();
+          if (interimText) {
+            // No actualizar consultationText con texto intermedio para evitar duplicados
+          }
+        }
+      }
+    });
+
+    this.speechSubscription.add(
+      this.speechRecognitionService.errors$.subscribe((error) => {
+        this.toastr.error('', error);
+        if (this.recording) {
+          this.stopTimer();
+          this.recording = false;
+        }
+      })
+    );
+
+    this.speechSubscription.add(
+      this.speechRecognitionService.status$.subscribe((status) => {
+        if (status === 'recording' && !this.recording) {
+          this.recording = true;
+          this.cdr.detectChanges();
+        } else if (status === 'stopped' && this.recording) {
+          this.recording = false;
+          this.stopTimer();
+          this.cdr.detectChanges();
+        }
+      })
+    );
+  }
+
+  toggleConsultationRecording() {
+    if (this.recording) {
+      // Detener grabación
+      Swal.fire({
+        title: this.translate.instant("voice.Processing audio..."),
+        allowOutsideClick: false,
+        showConfirmButton: false,
+        timer: 2000
+      });
+      
+      this.speechRecognitionService.stop();
+      this.stopTimer();
+      
+      const finalText = this.speechRecognitionService.getAccumulatedText();
+      if (finalText && !this.consultationText.includes(finalText)) {
+        this.consultationText += finalText;
+      }
+      
+      setTimeout(() => {
+        this.recording = false;
+      }, 2000);
+    } else {
+      // Iniciar grabación
+      if (this.consultationText) {
+        // Si ya hay texto, preguntar si quiere continuar o empezar de nuevo
+        Swal.fire({
+          title: this.translate.instant("voice.Do you want to continue recording?"),
+          icon: 'warning',
+          showCancelButton: true,
+          confirmButtonColor: '#0CC27E',
+          cancelButtonColor: '#FF586B',
+          confirmButtonText: this.translate.instant("voice.Yes, continue."),
+          cancelButtonText: this.translate.instant("voice.No, I want to start a new recording."),
+          showLoaderOnConfirm: true,
+          allowOutsideClick: false
+        }).then((result) => {
+          if (result.value) {
+            this.startConsultationRecording(false);
+          } else {
+            this.consultationText = '';
+            this.startConsultationRecording(true);
+          }
+        });
+      } else {
+        this.startConsultationRecording(true);
+      }
+    }
+  }
+
+  private startConsultationRecording(clearPrevious: boolean) {
+    if (clearPrevious) {
+      this.speechRecognitionService.clearAccumulatedText();
+    }
+    this.recording = true;
+    this.startTimer(clearPrevious);
+    this.speechRecognitionService.start();
+    this.cdr.detectChanges();
+  }
+
+  async createConsultationFile() {
+    if (!this.consultationFileName.trim()) {
+      // Si el usuario no ha introducido un nombre, generamos uno por defecto
+      let today = new Date();
+      let date = today.getFullYear().toString() +
+        (today.getMonth() + 1).toString().padStart(2, '0') +
+        today.getDate().toString().padStart(2, '0') +
+        today.getHours().toString().padStart(2, '0') +
+        today.getMinutes().toString().padStart(2, '0') +
+        today.getSeconds().toString().padStart(2, '0') +
+        today.getMilliseconds().toString().padStart(3, '0');
+
+      this.consultationFileName = localStorage.getItem('lang') == 'es' ? 'consulta-' : 'consultation-';
+      this.consultationFileName += date + '.txt';
+    } else if (!this.consultationFileName.endsWith('.txt')) {
+      this.consultationFileName += '.txt';
+    }
+    
+    // Añadir marcador especial para identificar como consulta médica
+    const consultationContent = '[CONSULTATION_TRANSCRIPTION]\n' + this.consultationText;
+    
+    let file = new File([consultationContent], this.consultationFileName, { type: 'text/plain' });
     await this.processFile(file);
     if (this.tempDocs.length > 0) {
       this.processFilesSequentially();
@@ -4256,24 +5623,47 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
 
   private groupEventsByMonth(events: any[]): any[] {
     const grouped = {};
+    const noDateEvents = [];
 
     events.forEach(event => {
-      const monthYear = this.getMonthYear(event.date).getTime(); // Usar getTime para agrupar
-      if (!grouped[monthYear]) {
-        grouped[monthYear] = [];
+      if (!event.date) {
+        noDateEvents.push(event);
+      } else {
+        const dateObj = new Date(event.date);
+        // Validar que la fecha sea válida y no sea 1970 (caso de error común)
+        if (isNaN(dateObj.getTime()) || dateObj.getFullYear() <= 1970) {
+          noDateEvents.push(event);
+        } else {
+          const monthYear = this.getMonthYear(event.date).getTime();
+          if (!grouped[monthYear]) {
+            grouped[monthYear] = [];
+          }
+          grouped[monthYear].push(event);
+        }
       }
-      grouped[monthYear].push(event);
     });
 
-    return Object.keys(grouped).map(key => ({
-      monthYear: new Date(Number(key)), // Convertir la clave de nuevo a fecha
+    const result = Object.keys(grouped).map(key => ({
+      monthYear: new Date(Number(key)),
       events: grouped[key]
     }));
+
+    if (noDateEvents.length > 0) {
+      result.push({
+        monthYear: null, // Identificador especial para eventos sin fecha
+        events: noDateEvents
+      });
+    }
+
+    return result;
   }
 
 
   private getMonthYear(dateStr: string): Date {
     const date = new Date(dateStr);
+    if (isNaN(date.getTime())) {
+      return new Date(0); // Fallback
+    }
     return new Date(date.getFullYear(), date.getMonth(), 1); // Primer día del mes
   }
 
@@ -4282,9 +5672,23 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     const startDate = this.startDate ? new Date(this.startDate) : null;
     const endDate = this.endDate ? new Date(this.endDate) : null;
     const filtered = this.originalEvents.filter(event => {
-      const eventDate = new Date(event.date);
-      const isAfterStartDate = !startDate || eventDate >= startDate;
-      const isBeforeEndDate = !endDate || eventDate <= endDate;
+      const eventStart = event.date ? new Date(event.date) : null;
+      const eventEnd = event.dateEnd ? new Date(event.dateEnd) : eventStart;
+      
+      // Si el evento tiene un rango (dateEnd), verificar si se solapa con el rango de filtrado
+      let isAfterStartDate = true;
+      let isBeforeEndDate = true;
+      
+      if (startDate) {
+        // El evento debe terminar después del inicio del filtro (o no tener fin)
+        isAfterStartDate = !eventEnd || eventEnd >= startDate;
+      }
+      
+      if (endDate) {
+        // El evento debe empezar antes del fin del filtro
+        isBeforeEndDate = !eventStart || eventStart <= endDate;
+      }
+
       const isEventTypeMatch = !this.selectedEventType || this.selectedEventType == 'null' || !event.key || event.key === this.selectedEventType;
       return isAfterStartDate && isBeforeEndDate && isEventTypeMatch;
     });
@@ -4309,15 +5713,22 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
 
   orderEvents() {
     this.groupedEvents.sort((a, b) => {
-      const dateA = a.monthYear.getTime(); // Convertir a timestamp
-      const dateB = b.monthYear.getTime(); // Convertir a timestamp
+      // Los eventos sin fecha (monthYear === null) siempre van primero para que el usuario los vea
+      if (a.monthYear === null) return -1;
+      if (b.monthYear === null) return 1;
+
+      const dateA = a.monthYear.getTime();
+      const dateB = b.monthYear.getTime();
       return this.isOldestFirst ? dateA - dateB : dateB - dateA;
     });
 
     this.groupedEvents.forEach(group => {
       group.events.sort((a, b) => {
-        const dateA = new Date(a.date).getTime(); // Convertir a timestamp
-        const dateB = new Date(b.date).getTime(); // Convertir a timestamp
+        if (!a.date) return -1;
+        if (!b.date) return 1;
+        
+        const dateA = new Date(a.date).getTime();
+        const dateB = new Date(b.date).getTime();
         return this.isOldestFirst ? dateA - dateB : dateB - dateA;
       });
     });
@@ -4478,13 +5889,167 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     this.selectAllDocuments = this.filteredDocs.every(doc => doc.selected);
   }
 
+  availableContextDocs: any[] = [];
+  documentContextModalRef: NgbModalRef;
+
+  openDocumentContextModal(documentContextModal?: TemplateRef<any>) {
+    // Filtrar solo los documentos que pueden ser usados como contexto
+    this.availableContextDocs = this.docs
+      .filter(doc => doc.status == 'finished' || doc.status == 'done' || doc.status == 'resumen ready')
+      .map(doc => ({ ...doc })); // Crear copia para no modificar directamente
+    
+    const modalTemplate = documentContextModal || this.documentContextModal;
+    if (!modalTemplate) {
+      console.error('Document context modal template not found');
+      return;
+    }
+    
+    let ngbModalOptions: NgbModalOptions = {
+      backdrop: 'static',
+      keyboard: false,
+      windowClass: 'ModalClass-lg'
+    };
+    this.documentContextModalRef = this.modalService.open(modalTemplate, ngbModalOptions);
+  }
+
+  closeDocumentContextModal() {
+    if (this.documentContextModalRef != undefined) {
+      this.documentContextModalRef.close();
+      this.documentContextModalRef = undefined;
+    }
+  }
+
+  selectAllContextDocuments() {
+    this.availableContextDocs.forEach(doc => doc.selected = true);
+  }
+
+  deselectAllContextDocuments() {
+    this.availableContextDocs.forEach(doc => doc.selected = false);
+  }
+
+  saveDocumentContextSelection() {
+    // Actualizar la selección en el array principal de documentos
+    this.availableContextDocs.forEach(modalDoc => {
+      const originalDoc = this.docs.find(d => d._id === modalDoc._id);
+      if (originalDoc) {
+        originalDoc.selected = modalDoc.selected;
+      }
+    });
+    
+    // Actualizar también filteredDocs
+    this.filteredDocs = this.filteredDocs.map(filteredDoc => {
+      const updatedDoc = this.availableContextDocs.find(d => d._id === filteredDoc._id);
+      if (updatedDoc) {
+        return { ...filteredDoc, selected: updatedDoc.selected };
+      }
+      return filteredDoc;
+    });
+    
+    this.updateDocumentSelection();
+    this.closeDocumentContextModal();
+  }
+
+  getAvailableDocumentsCount(): number {
+    return this.docs.filter(doc => 
+      doc.status == 'finished' || doc.status == 'done' || doc.status == 'resumen ready'
+    ).length;
+  }
+
+  getFileIconClass(fileName: string): string {
+    if (!fileName) return 'fa-file-o';
+    
+    const extension = fileName.toLowerCase().split('.').pop();
+    
+    switch (extension) {
+      case 'pdf':
+        return 'fa-file-pdf-o';
+      case 'docx':
+      case 'doc':
+        return 'fa-file-word-o';
+      case 'jpg':
+      case 'jpeg':
+      case 'png':
+      case 'gif':
+      case 'bmp':
+        return 'fa-file-image-o';
+      case 'txt':
+        return 'fa-file-text-o';
+      default:
+        return 'fa-file-o';
+    }
+  }
+
+  getFileIconColor(fileName: string): string {
+    if (!fileName) return '#5f6368';
+    
+    const extension = fileName.toLowerCase().split('.').pop();
+    
+    switch (extension) {
+      case 'pdf':
+        return '#ea4335'; // Rojo
+      case 'docx':
+      case 'doc':
+        return '#4285f4'; // Azul
+      case 'jpg':
+      case 'jpeg':
+      case 'png':
+      case 'gif':
+      case 'bmp':
+        return '#34a853'; // Verde
+      case 'txt':
+        return '#5f6368'; // Gris
+      default:
+        return '#5f6368'; // Gris por defecto
+    }
+  }
+
+  deleteDocumentFromModal(doc: any) {
+    // Usar la función existente deleteDoc que ya tiene confirmación
+    Swal.fire({
+      title: this.translate.instant("generics.Are you sure?"),
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#0CC27E',
+      cancelButtonColor: '#FF586B',
+      confirmButtonText: this.translate.instant("generics.Delete"),
+      cancelButtonText: this.translate.instant("generics.No, cancel"),
+      showLoaderOnConfirm: true,
+      allowOutsideClick: false
+    }).then((result) => {
+      if (result.value) {
+        // Remover del array del modal inmediatamente
+        this.availableContextDocs = this.availableContextDocs.filter(d => d._id !== doc._id);
+        // Llamar a la función de eliminación que actualiza la lista principal
+        this.confirmDeleteDoc(doc);
+      }
+    });
+  }
+
   @HostListener('window:resize', ['$event'])
   onResize(event) {
     if (!this.showNewCustom && this.listCustomShare.length > 0 && document.getElementById('panelCustomShare') != null) {
       this.widthPanelCustomShare = document.getElementById('panelCustomShare').offsetWidth;
     }
+    const previousScreenWidth = this.screenWidth;
     this.screenWidth = window.innerWidth;
-    if(this.screenWidth > 991 && this.currentView == 'documents'){
+    
+    // Si cambiamos de pantalla grande a pequeña
+    // Solo hacer esto si realmente hubo un cambio de tamaño (previousScreenWidth > 0)
+    // para evitar abrir el sidebar al cargar la página por primera vez
+    if (previousScreenWidth > 0 && previousScreenWidth >= 1199 && this.screenWidth < 1199) {
+      // No abrir automáticamente el sidebar móvil al cambiar de tamaño
+      // El usuario debe abrirlo manualmente desde el menú inferior
+      this.rightSidebarOpenMobile = false;
+      // Resetear el estado de colapsado en móvil (no aplica en pantallas pequeñas)
+      this.rightSidebarCollapsed = false;
+    }
+    
+    // Si cambiamos de pantalla pequeña a grande, cerrar el sidebar móvil
+    if (previousScreenWidth < 1199 && this.screenWidth >= 1199) {
+      this.rightSidebarOpenMobile = false;
+    }
+    
+    if(this.screenWidth > 1199 && this.currentView == 'documents'){
       this.setView('chat');
     }
   }
@@ -4495,11 +6060,11 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
   }
 
   isSmallScreen(): boolean {
-    return this.screenWidth < 991; // Bootstrap's breakpoint for small screen
+    return this.screenWidth < 1199; // Bootstrap's breakpoint for small screen
   }
 
   isXSScreen(): boolean {
-    return this.screenWidth < 650; // Bootstrap's breakpoint for small screen
+    return this.screenWidth < 1199; //650; // Bootstrap's breakpoint for small screen
   }
 
 
@@ -4508,6 +6073,1429 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     if (this.isSmallScreen && this.sidebarOpen) {
       this.sidebarOpen = false;
     }
+  }
+
+  toggleLeftSidebar() {
+    this.leftSidebarCollapsed = !this.leftSidebarCollapsed;
+  }
+
+  toggleRightSidebar() {
+    this.rightSidebarCollapsed = !this.rightSidebarCollapsed;
+  }
+
+  openRightSidebarMobile() {
+    // Si estamos en documentos u otra vista, cambiar a chat para mostrar el sidebar de herramientas
+    if (this.currentView !== 'chat') {
+      this.currentView = 'chat';
+    }
+    this.rightSidebarOpenMobile = true;
+  }
+
+  closeRightSidebarMobile() {
+    this.rightSidebarOpenMobile = false;
+  }
+
+  openTrialGpt() {
+    // Abrir TrialGPT en una nueva pestaña
+    window.open('https://trialgpt.app/', '_blank');
+  }
+
+  openToolModal(tool: string) {
+    let ngbModalOptions: NgbModalOptions = {
+      backdrop: 'static',
+      keyboard: false,
+      windowClass: 'ModalClass-xl' // xl para modales grandes
+    };
+    
+    if (this.modalReference != undefined) {
+      this.modalReference.close();
+    }
+    
+    if (tool === 'dxgpt') {
+      // Limpiar resultados anteriores para asegurar que se carguen los datos del paciente actual
+      this.dxGptResults = null;
+      this.isDxGptLoading = false;
+      this.modalReference = this.modalService.open(this.dxGptModal, ngbModalOptions);
+    } else if (tool === 'rarescope') {
+      // Limpiar datos anteriores para asegurar que se carguen los datos del paciente actual
+      this.rarescopeNeeds = [''];
+      this.additionalNeeds = [];
+      this.rarescopeError = null;
+      this.isLoadingRarescope = false;
+      // Cargar los datos de Rarescope (carga desde BD o hace análisis si no hay datos)
+      this.loadRarescopeData();
+      this.modalReference = this.modalService.open(this.rarescopeModal, ngbModalOptions);
+    }
+    // Aquí se pueden añadir más herramientas cuando las implementemos
+  }
+
+  openNotesModal() {
+    // Cargar las notas antes de abrir el modal
+    this.getNotes();
+    
+    let ngbModalOptions: NgbModalOptions = {
+      backdrop: 'static',
+      keyboard: false,
+      windowClass: 'ModalClass-lg' // lg para el modal de notas
+    };
+    
+    if (this.modalReference != undefined) {
+      this.modalReference.close();
+    }
+    this.modalReference = this.modalService.open(this.notesModal, ngbModalOptions);
+  }
+
+  openDiaryModal() {
+    let ngbModalOptions: NgbModalOptions = {
+      backdrop: 'static',
+      keyboard: false,
+      windowClass: 'ModalClass-xl' // xl para el modal del diario
+    };
+    
+    if (this.modalReference != undefined) {
+      this.modalReference.close();
+    }
+    this.modalReference = this.modalService.open(this.diaryModal, ngbModalOptions);
+  }
+
+  sendQuickPrepareConsult() {
+    // Enviar directamente un mensaje predeterminado al chat
+    this.message = this.translate.instant('prepareConsult.quickMessage');
+    this.sendMessage();
+  }
+
+  openPrepareConsultModal() {
+    // Resetear datos del formulario
+    this.prepareConsultData = {
+      specialist: '',
+      consultDate: '',
+      comments: ''
+    };
+    this.prepareConsultEditMode = {
+      specialist: false,
+      consultDate: false,
+      comments: false
+    };
+    
+    let ngbModalOptions: NgbModalOptions = {
+      backdrop: 'static',
+      keyboard: false,
+      windowClass: 'ModalClass-md' // md para un modal mediano
+    };
+    
+    if (this.modalReference != undefined) {
+      this.modalReference.close();
+    }
+    this.modalReference = this.modalService.open(this.prepareConsultModal, ngbModalOptions);
+  }
+
+  togglePrepareConsultEdit(field: 'specialist' | 'consultDate' | 'comments') {
+    this.prepareConsultEditMode[field] = !this.prepareConsultEditMode[field];
+  }
+
+  sendPreparedConsult() {
+    // Construir el mensaje para el chat
+    let messageToSend = this.translate.instant('prepareConsult.title');
+    
+    if (this.prepareConsultData.specialist) {
+      messageToSend += ` con ${this.prepareConsultData.specialist}`;
+    }
+    
+    if (this.prepareConsultData.consultDate) {
+      messageToSend += ` (${this.prepareConsultData.consultDate})`;
+    }
+    
+    messageToSend += '. ';
+    
+    if (this.prepareConsultData.comments) {
+      messageToSend += this.prepareConsultData.comments;
+    } else {
+      messageToSend += this.translate.instant('prepareConsult.commentsPlaceholder');
+    }
+    
+    // Cerrar el modal
+    this.closeModal();
+    
+    // Enviar el mensaje al chat
+    this.message = messageToSend;
+    this.sendMessage();
+  }
+
+  // ========== SOAP Notes Methods (Clinical) ==========
+  
+  openSoapModal() {
+    // Resetear datos del formulario
+    this.soapStep = 1;
+    this.soapLoading = false;
+    this.soapData = {
+      patientSymptoms: '',
+      suggestedQuestions: [],
+      result: null
+    };
+    
+    let ngbModalOptions: NgbModalOptions = {
+      backdrop: 'static',
+      keyboard: false,
+      windowClass: 'ModalClass-lg',
+      size: 'lg'
+    };
+    
+    if (this.modalReference != undefined) {
+      this.modalReference.close();
+    }
+    this.modalReference = this.modalService.open(this.soapModal, ngbModalOptions);
+  }
+
+  generateSoapQuestions() {
+    if (!this.soapData.patientSymptoms || this.soapLoading) return;
+    
+    this.soapLoading = true;
+    const info = {
+      userId: this.authService.getIdUser(),
+      lang: this.preferredResponseLanguage || localStorage.getItem('lang') || 'en',
+      patientSymptoms: this.soapData.patientSymptoms
+    };
+    
+    this.subscription.add(this.http.post(environment.api + '/api/ai/soap/questions/' + this.currentPatient, info)
+      .pipe(timeout(120000))
+      .subscribe((res: any) => {
+        this.soapLoading = false;
+        
+        if (res.success && res.questions) {
+          this.soapData.suggestedQuestions = res.questions.map((q: string) => ({
+            question: q,
+            answer: ''
+          }));
+          this.soapStep = 2;
+        } else {
+          this.toastr.error('', res.error || this.translate.instant('soap.errorQuestions'));
+        }
+      }, (err) => {
+        this.soapLoading = false;
+        console.log('[SOAP] Error generating questions:', err);
+        this.insightsService.trackException(err);
+        this.toastr.error('', this.translate.instant("generics.error try again"));
+      }));
+  }
+
+  generateSoapReport() {
+    if (this.soapLoading) return;
+    
+    this.soapLoading = true;
+    const info = {
+      userId: this.authService.getIdUser(),
+      lang: this.preferredResponseLanguage || localStorage.getItem('lang') || 'en',
+      patientSymptoms: this.soapData.patientSymptoms,
+      questionsAndAnswers: this.soapData.suggestedQuestions
+    };
+    
+    this.subscription.add(this.http.post(environment.api + '/api/ai/soap/report/' + this.currentPatient, info)
+      .pipe(timeout(180000))
+      .subscribe((res: any) => {
+        this.soapLoading = false;
+        
+        if (res.success && res.soap) {
+          this.soapData.result = res.soap;
+          this.soapStep = 3;
+        } else {
+          this.toastr.error('', res.error || this.translate.instant('soap.errorReport'));
+        }
+      }, (err) => {
+        this.soapLoading = false;
+        console.log('[SOAP] Error generating report:', err);
+        this.insightsService.trackException(err);
+        this.toastr.error('', this.translate.instant("generics.error try again"));
+      }));
+  }
+
+  copySoapReport() {
+    if (!this.soapData.result) return;
+    
+    const soapText = `SOAP NOTES
+================
+
+SUBJECTIVE:
+${this.soapData.result.subjective}
+
+OBJECTIVE:
+${this.soapData.result.objective}
+
+ASSESSMENT:
+${this.soapData.result.assessment}
+
+PLAN:
+${this.soapData.result.plan}
+`;
+    
+    navigator.clipboard.writeText(soapText).then(() => {
+      this.toastr.success('', this.translate.instant('soap.copied'));
+    }).catch(err => {
+      console.error('Error copying to clipboard:', err);
+      this.toastr.error('', this.translate.instant('generics.error try again'));
+    });
+  }
+
+  // ========== Patient Tracking Methods (Clinical) ==========
+  
+  openTrackingModal() {
+    // Resetear datos del formulario
+    this.trackingLoading = true; // Mostrar loading mientras carga
+    this.trackingImportPreview = null;
+    this.trackingManualEntry = {
+      conditionType: 'epilepsy',
+      date: '',
+      type: 'Tonic Clonic',
+      duration: 0,
+      severity: 5,
+      triggers: [],
+      notes: ''
+    };
+    
+    let ngbModalOptions: NgbModalOptions = {
+      backdrop: 'static',
+      keyboard: false,
+      windowClass: 'ModalClass-xl',
+      size: 'xl'
+    };
+    
+    if (this.modalReference != undefined) {
+      this.modalReference.close();
+    }
+    this.modalReference = this.modalService.open(this.trackingModal, ngbModalOptions);
+    
+    // Cargar datos existentes del paciente
+    this.loadTrackingData();
+  }
+
+  loadTrackingData() {
+    if (!this.currentPatient) {
+      this.trackingLoading = false;
+      this.trackingStep = 1;
+      return;
+    }
+    
+    this.trackingLoading = true;
+    
+    // Build URL with optional condition filter
+    const url = environment.api + '/api/tracking/' + this.currentPatient + '/data';
+    
+    this.subscription.add(
+      this.http.get(url)
+        .pipe(timeout(30000))
+        .subscribe({
+          next: (res: any) => {
+            this.trackingLoading = false;
+            
+            if (res.success && res.data) {
+              this.trackingData = res.data;
+              this.trackingData.entries = this.trackingData.entries.map(e => ({
+                ...e,
+                date: new Date(e.date)
+              }));
+              // Cargar insights existentes
+              if (res.data.insights && res.data.insights.length > 0) {
+                this.trackingInsights = res.data.insights;
+              }
+              this.calculateTrackingStats();
+              this.populateSeizureTypes();
+              this.populateAvailableYears();
+              // Si hay datos, ir directo al dashboard (paso 4)
+              if (this.trackingData.entries.length > 0) {
+                this.trackingStep = 4;
+                // Usar setTimeout con retry para esperar a que Angular renderice el DOM
+                this.initTrackingChartsWithRetry();
+              } else {
+                // Sin datos, mostrar menú de opciones
+                this.trackingStep = 1;
+              }
+            } else {
+              this.trackingStep = 1;
+            }
+          },
+          error: (err) => {
+            this.trackingLoading = false;
+            this.trackingStep = 1;
+            console.error('Error loading tracking data:', err);
+          }
+        })
+    );
+  }
+
+  onDragOver(event: DragEvent) {
+    event.preventDefault();
+    event.stopPropagation();
+    this.isDragOver = true;
+  }
+
+  onDragLeave(event: DragEvent) {
+    event.preventDefault();
+    event.stopPropagation();
+    this.isDragOver = false;
+  }
+
+  onTrackingFileDrop(event: DragEvent) {
+    event.preventDefault();
+    event.stopPropagation();
+    this.isDragOver = false;
+    
+    const files = event.dataTransfer?.files;
+    if (files && files.length > 0) {
+      this.processTrackingFile(files[0]);
+    }
+  }
+
+  onTrackingFileSelected(event: Event) {
+    const input = event.target as HTMLInputElement;
+    if (input.files && input.files.length > 0) {
+      this.processTrackingFile(input.files[0]);
+    }
+  }
+
+  processTrackingFile(file: File) {
+    if (!file.name.endsWith('.json')) {
+      this.toastr.error('', this.translate.instant('tracking.invalidFileType'));
+      return;
+    }
+    
+    this.trackingLoading = true;
+    const reader = new FileReader();
+    
+    reader.onload = (e) => {
+      try {
+        let content = e.target?.result as string;
+        
+        // Sanitizar JSON: escapar caracteres de control dentro de strings
+        // Seizure Tracker exporta JSON con saltos de línea literales en valores
+        content = this.sanitizeJsonString(content);
+        
+        const jsonData = JSON.parse(content);
+        
+        // Detectar tipo de archivo
+        const detected = this.detectTrackingFileType(jsonData);
+        
+        this.trackingImportPreview = {
+          type: detected.type,
+          entriesCount: detected.entriesCount,
+          medicationsCount: detected.medicationsCount,
+          dateRange: detected.dateRange,
+          rawData: jsonData
+        };
+        
+        this.trackingLoading = false;
+      } catch (err) {
+        this.trackingLoading = false;
+        this.toastr.error('', this.translate.instant('tracking.parseError'));
+        console.error('Error parsing JSON:', err);
+      }
+    };
+    
+    reader.onerror = () => {
+      this.trackingLoading = false;
+      this.toastr.error('', this.translate.instant('tracking.readError'));
+    };
+    
+    reader.readAsText(file);
+  }
+
+  /**
+   * Sanitiza un string JSON escapando caracteres de control dentro de valores string.
+   * Seizure Tracker y otras apps exportan JSON con saltos de línea literales en valores.
+   */
+  sanitizeJsonString(jsonStr: string): string {
+    // Reemplazar caracteres de control dentro de strings JSON
+    // Usa una regex que encuentra strings JSON y escapa caracteres de control dentro
+    return jsonStr.replace(/"([^"\\]|\\.)*"/g, (match) => {
+      // Escapar caracteres de control no escapados dentro del string
+      return match
+        .replace(/[\x00-\x1F\x7F]/g, (char) => {
+          // Mapeo de caracteres de control a secuencias de escape JSON
+          const escapes: { [key: string]: string } = {
+            '\n': '\\n',
+            '\r': '\\r',
+            '\t': '\\t',
+            '\b': '\\b',
+            '\f': '\\f'
+          };
+          return escapes[char] || `\\u${char.charCodeAt(0).toString(16).padStart(4, '0')}`;
+        });
+    });
+  }
+
+  detectTrackingFileType(data: any): { type: string; entriesCount: number; medicationsCount: number; dateRange: string } {
+    // Detectar SeizureTracker
+    if (data.Seizures && Array.isArray(data.Seizures)) {
+      const seizures = data.Seizures;
+      const medications = data.Medications || [];
+      
+      let dateRange = '-';
+      if (seizures.length > 0) {
+        const dates = seizures
+          .map((s: any) => new Date(s.Date_Time))
+          .filter((d: Date) => !isNaN(d.getTime()))
+          .sort((a: Date, b: Date) => a.getTime() - b.getTime());
+        
+        if (dates.length > 0) {
+          const firstDate = dates[0].toLocaleDateString();
+          const lastDate = dates[dates.length - 1].toLocaleDateString();
+          dateRange = `${firstDate} - ${lastDate}`;
+        }
+      }
+      
+      return {
+        type: 'SeizureTracker (Epilepsy)',
+        entriesCount: seizures.length,
+        medicationsCount: medications.length,
+        dateRange
+      };
+    }
+    
+    // Detectar formato genérico con entries
+    if (data.entries && Array.isArray(data.entries)) {
+      return {
+        type: 'Generic JSON',
+        entriesCount: data.entries.length,
+        medicationsCount: data.medications?.length || 0,
+        dateRange: '-'
+      };
+    }
+    
+    // Formato desconocido
+    return {
+      type: 'Unknown Format',
+      entriesCount: 0,
+      medicationsCount: 0,
+      dateRange: '-'
+    };
+  }
+
+  confirmTrackingImport() {
+    if (!this.trackingImportPreview || !this.currentPatient) return;
+    
+    this.trackingLoading = true;
+    
+    const payload = {
+      userId: this.authService.getIdUser(),
+      rawData: this.trackingImportPreview.rawData,
+      detectedType: this.trackingImportPreview.type
+    };
+    
+    this.subscription.add(
+      this.http.post(environment.api + '/api/tracking/' + this.currentPatient + '/import', payload)
+        .pipe(timeout(60000))
+        .subscribe({
+          next: (res: any) => {
+            this.trackingLoading = false;
+            if (res.success) {
+              this.toastr.success('', this.translate.instant('tracking.importSuccess'));
+              this.trackingData = res.data;
+              this.trackingData.entries = this.trackingData.entries.map(e => ({
+                ...e,
+                date: new Date(e.date)
+              }));
+              this.calculateTrackingStats();
+              this.populateSeizureTypes();
+              this.populateAvailableYears();
+              this.trackingStep = 4;
+              this.initTrackingChartsWithRetry();
+            } else {
+              this.toastr.error('', res.message || this.translate.instant('tracking.importError'));
+            }
+          },
+          error: (err) => {
+            this.trackingLoading = false;
+            this.toastr.error('', this.translate.instant('tracking.importError'));
+            console.error('Error importing tracking data:', err);
+          }
+        })
+    );
+  }
+
+  toggleTrigger(trigger: string) {
+    const index = this.trackingManualEntry.triggers.indexOf(trigger);
+    if (index === -1) {
+      this.trackingManualEntry.triggers.push(trigger);
+    } else {
+      this.trackingManualEntry.triggers.splice(index, 1);
+    }
+  }
+
+  saveManualEntry() {
+    if (!this.trackingManualEntry.date || !this.currentPatient) return;
+    
+    this.trackingLoading = true;
+    
+    const payload = {
+      userId: this.authService.getIdUser(),
+      entry: {
+        ...this.trackingManualEntry,
+        date: new Date(this.trackingManualEntry.date)
+      }
+    };
+    
+    this.subscription.add(
+      this.http.post(environment.api + '/api/tracking/' + this.currentPatient + '/entry', payload)
+        .pipe(timeout(30000))
+        .subscribe({
+          next: (res: any) => {
+            this.trackingLoading = false;
+            if (res.success) {
+              this.toastr.success('', this.translate.instant('tracking.entrySaved'));
+              // Añadir la entrada a los datos locales
+              this.trackingData.entries.unshift({
+                ...payload.entry,
+                date: new Date(payload.entry.date)
+              });
+              this.trackingData.conditionType = this.trackingManualEntry.conditionType;
+              this.calculateTrackingStats();
+              // Resetear formulario
+              this.trackingManualEntry = {
+                conditionType: this.trackingManualEntry.conditionType,
+                date: '',
+                type: '',
+                duration: 0,
+                severity: 5,
+                triggers: [],
+                notes: ''
+              };
+              this.trackingStep = 4;
+              this.initTrackingChartsWithRetry();
+            } else {
+              this.toastr.error('', res.message || this.translate.instant('tracking.saveError'));
+            }
+          },
+          error: (err) => {
+            this.trackingLoading = false;
+            this.toastr.error('', this.translate.instant('tracking.saveError'));
+            console.error('Error saving entry:', err);
+          }
+        })
+    );
+  }
+
+  calculateTrackingStats() {
+    const entries = this.trackingData.entries;
+    if (entries.length === 0) {
+      this.trackingStats = {
+        totalEvents: 0,
+        daysSinceLast: 0,
+        monthlyAvg: 0,
+        trend: '',
+        trendPercent: 0
+      };
+      return;
+    }
+    
+    // Total eventos
+    this.trackingStats.totalEvents = entries.length;
+    
+    // Días desde el último evento
+    const sortedEntries = [...entries].sort((a, b) => 
+      new Date(b.date).getTime() - new Date(a.date).getTime()
+    );
+    const lastEventDate = new Date(sortedEntries[0].date);
+    const today = new Date();
+    this.trackingStats.daysSinceLast = Math.floor(
+      (today.getTime() - lastEventDate.getTime()) / (1000 * 60 * 60 * 24)
+    );
+    
+    // Promedio mensual
+    if (entries.length > 1) {
+      const firstDate = new Date(sortedEntries[sortedEntries.length - 1].date);
+      const months = Math.max(1, 
+        (today.getTime() - firstDate.getTime()) / (1000 * 60 * 60 * 24 * 30)
+      );
+      this.trackingStats.monthlyAvg = entries.length / months;
+    } else {
+      this.trackingStats.monthlyAvg = entries.length;
+    }
+    
+    // Calcular tendencia (comparar últimos 3 meses vs 3 meses anteriores)
+    const threeMonthsAgo = new Date();
+    threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+    const sixMonthsAgo = new Date();
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+    
+    const recentCount = entries.filter(e => new Date(e.date) >= threeMonthsAgo).length;
+    const previousCount = entries.filter(e => {
+      const date = new Date(e.date);
+      return date >= sixMonthsAgo && date < threeMonthsAgo;
+    }).length;
+    
+    if (previousCount > 0) {
+      const diff = recentCount - previousCount;
+      this.trackingStats.trendPercent = Math.abs(Math.round((diff / previousCount) * 100));
+      this.trackingStats.trend = diff < 0 ? 'improving' : (diff > 0 ? 'worsening' : '');
+    } else {
+      this.trackingStats.trend = '';
+      this.trackingStats.trendPercent = 0;
+    }
+  }
+
+  initTrackingChartsWithRetry(attempt = 0, maxAttempts = 10) {
+    // Pequeño delay para que el modal renderice el DOM
+    setTimeout(() => {
+      // Buscar canvas por ID (ViewChild no funciona dentro de ng-template/modal)
+      const canvas = document.getElementById('trackingEvolutionChart') as HTMLCanvasElement;
+      if (canvas) {
+        console.log('initTrackingChartsWithRetry: canvas encontrado');
+        this.initTrackingCharts();
+        
+        // Forzar resize después de crear las gráficas
+        setTimeout(() => {
+          if (this.trackingEvolutionChart) {
+            this.trackingEvolutionChart.resize();
+          }
+          if (this.trackingTimeChart) {
+            this.trackingTimeChart.resize();
+          }
+        }, 100);
+      } else if (attempt < maxAttempts) {
+        console.log('initTrackingChartsWithRetry: intento', attempt, '- canvas no disponible');
+        this.initTrackingChartsWithRetry(attempt + 1, maxAttempts);
+      } else {
+        console.warn('No se pudo inicializar gráficos de tracking: canvas no disponible');
+      }
+    }, 200);
+  }
+
+  initTrackingCharts() {
+    // Destruir gráficos existentes
+    if (this.trackingEvolutionChart) {
+      this.trackingEvolutionChart.destroy();
+      this.trackingEvolutionChart = null;
+    }
+    if (this.trackingTimeChart) {
+      this.trackingTimeChart.destroy();
+      this.trackingTimeChart = null;
+    }
+    
+    // Buscar canvas por ID (ViewChild no funciona dentro de ng-template/modal)
+    const canvas = document.getElementById('trackingEvolutionChart') as HTMLCanvasElement;
+    if (!canvas) {
+      console.warn('initTrackingCharts: canvas no disponible');
+      return;
+    }
+    
+    // Verificar y destruir charts existentes en canvas
+    const existingEvolutionChart = Chart.getChart(canvas);
+    if (existingEvolutionChart) {
+      existingEvolutionChart.destroy();
+    }
+    
+    const timeCanvas = document.getElementById('trackingTimeChart') as HTMLCanvasElement;
+    if (timeCanvas) {
+      const existingTimeChart = Chart.getChart(timeCanvas);
+      if (existingTimeChart) {
+        existingTimeChart.destroy();
+      }
+    }
+    
+    const entries = this.trackingData.entries;
+    if (!entries || entries.length === 0) {
+      console.warn('initTrackingCharts: no hay entries');
+      return;
+    }
+    
+    // Agrupar por mes
+    const monthlyData: { [key: string]: number } = {};
+    entries.forEach(entry => {
+      const date = new Date(entry.date);
+      const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      monthlyData[key] = (monthlyData[key] || 0) + 1;
+    });
+    
+    const sortedMonths = Object.keys(monthlyData).sort();
+    const labels = sortedMonths.map(m => {
+      const [year, month] = m.split('-');
+      return new Date(parseInt(year), parseInt(month) - 1).toLocaleDateString('default', { month: 'short', year: '2-digit' });
+    });
+    const data = sortedMonths.map(m => monthlyData[m]);
+    
+    console.log('initTrackingCharts: creando chart con', { labels, data, entries: entries.length });
+    
+    // Gráfico de evolución - Chart.js v4
+    try {
+      this.trackingEvolutionChart = new Chart(canvas, {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: this.translate.instant('tracking.events'),
+            data: data,
+            borderColor: '#00897b',
+            backgroundColor: 'rgba(0, 137, 123, 0.1)',
+            fill: true,
+            tension: 0.3,
+            pointRadius: 4,
+            pointBackgroundColor: '#00897b'
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false }
+          },
+          scales: {
+            y: { 
+              beginAtZero: true,
+              ticks: {
+                stepSize: 1
+              }
+            },
+            x: {
+              ticks: {
+                autoSkip: true,
+                maxTicksLimit: 12
+              }
+            }
+          }
+        }
+      });
+      console.log('initTrackingCharts: chart de evolución creado', this.trackingEvolutionChart);
+    } catch (err) {
+      console.error('initTrackingCharts: error creando chart de evolución', err);
+    }
+    
+    // Gráfico de distribución horaria (solo para epilepsia)
+    if (this.trackingData.conditionType === 'epilepsy' && timeCanvas) {
+      const hourlyData = new Array(24).fill(0);
+      entries.forEach(entry => {
+        const hour = new Date(entry.date).getHours();
+        hourlyData[hour]++;
+      });
+      
+      try {
+        this.trackingTimeChart = new Chart(timeCanvas, {
+          type: 'bar',
+          data: {
+            labels: Array.from({ length: 24 }, (_, i) => `${i}:00`),
+            datasets: [{
+              label: this.translate.instant('tracking.events'),
+              data: hourlyData,
+              backgroundColor: 'rgba(156, 39, 176, 0.6)',
+              borderColor: '#9c27b0',
+              borderWidth: 1
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: { display: false }
+            },
+            scales: {
+              y: { 
+                beginAtZero: true,
+                ticks: {
+                  stepSize: 1
+                }
+              }
+            }
+          }
+        });
+        console.log('initTrackingCharts: chart horario creado');
+      } catch (err) {
+        console.error('initTrackingCharts: error creando chart horario', err);
+      }
+    }
+    
+    // Crear gráfico combinado de crisis vs medicación
+    this.initCombinedChart();
+  }
+
+  // Poblar tipos de crisis disponibles para el filtro
+  populateSeizureTypes() {
+    const types = new Set<string>();
+    this.trackingData.entries.forEach(entry => {
+      if (entry.type) types.add(entry.type);
+    });
+    this.availableSeizureTypes = Array.from(types);
+  }
+
+  // Poblar años disponibles para el slicer
+  populateAvailableYears() {
+    const years = new Set<number>();
+    this.trackingData.entries.forEach(entry => {
+      const year = new Date(entry.date).getFullYear();
+      if (!isNaN(year)) years.add(year);
+    });
+    this.availableYears = Array.from(years).sort((a, b) => a - b);
+    // Por defecto seleccionar todos los años
+    if (this.trackingFilters.selectedYears.length === 0) {
+      this.trackingFilters.selectedYears = [...this.availableYears];
+    }
+  }
+
+  // Toggle selección de año individual
+  toggleYearSelection(year: number) {
+    const idx = this.trackingFilters.selectedYears.indexOf(year);
+    if (idx > -1) {
+      this.trackingFilters.selectedYears.splice(idx, 1);
+    } else {
+      this.trackingFilters.selectedYears.push(year);
+    }
+    this.onTrackingFilterChange();
+  }
+
+  // Seleccionar/deseleccionar todos los años
+  toggleAllYears() {
+    if (this.trackingFilters.selectedYears.length === this.availableYears.length) {
+      this.trackingFilters.selectedYears = [];
+    } else {
+      this.trackingFilters.selectedYears = [...this.availableYears];
+    }
+    this.onTrackingFilterChange();
+  }
+
+  // Verificar si un año está seleccionado
+  isYearSelected(year: number): boolean {
+    return this.trackingFilters.selectedYears.includes(year);
+  }
+
+  // Obtener rango de fechas según filtro
+  getFilteredDateRange(): { startDate: Date; endDate: Date } {
+    const now = new Date();
+    let startDate = new Date(0); // Fecha mínima
+    let endDate = new Date();
+    
+    switch (this.trackingFilters.dateRange) {
+      case '1year':
+        startDate = new Date(now.getFullYear() - 1, now.getMonth(), now.getDate());
+        break;
+      case '6months':
+        startDate = new Date(now.getFullYear(), now.getMonth() - 6, now.getDate());
+        break;
+      case '3months':
+        startDate = new Date(now.getFullYear(), now.getMonth() - 3, now.getDate());
+        break;
+      case '1month':
+        startDate = new Date(now.getFullYear(), now.getMonth() - 1, now.getDate());
+        break;
+      case 'custom':
+        if (this.trackingFilters.customStartDate) {
+          startDate = new Date(this.trackingFilters.customStartDate);
+        }
+        if (this.trackingFilters.customEndDate) {
+          endDate = new Date(this.trackingFilters.customEndDate);
+        }
+        break;
+      case 'all':
+      default:
+        // Usar el rango completo de los datos
+        if (this.trackingData.entries.length > 0) {
+          const dates = this.trackingData.entries.map(e => new Date(e.date).getTime());
+          startDate = new Date(Math.min(...dates));
+          endDate = new Date(Math.max(...dates));
+        }
+        break;
+    }
+    
+    return { startDate, endDate };
+  }
+
+  // Calcular fecha mínima para el gráfico considerando años seleccionados
+  getChartMinDate(fallbackDate: Date): Date {
+    // Si hay años seleccionados y no son todos, usar el primer año seleccionado
+    if (this.trackingFilters.selectedYears.length > 0 && 
+        this.trackingFilters.selectedYears.length < this.availableYears.length) {
+      const minYear = Math.min(...this.trackingFilters.selectedYears);
+      return new Date(minYear, 0, 1);
+    }
+    return fallbackDate;
+  }
+
+  // Calcular fecha máxima para el gráfico considerando años seleccionados
+  getChartMaxDate(fallbackDate: Date): Date {
+    // Si hay años seleccionados y no son todos, usar el último año seleccionado
+    if (this.trackingFilters.selectedYears.length > 0 && 
+        this.trackingFilters.selectedYears.length < this.availableYears.length) {
+      const maxYear = Math.max(...this.trackingFilters.selectedYears);
+      return new Date(maxYear, 11, 31);
+    }
+    // Si es todo el historial, usar fecha actual como máximo
+    if (this.trackingFilters.dateRange === 'all') {
+      return new Date();
+    }
+    return fallbackDate;
+  }
+
+  // Filtrar entries según filtros activos
+  getFilteredEntries(): Array<any> {
+    const { startDate, endDate } = this.getFilteredDateRange();
+    
+    return this.trackingData.entries.filter(entry => {
+      const entryDate = new Date(entry.date);
+      
+      // Filtro por fecha
+      if (entryDate < startDate || entryDate > endDate) return false;
+      
+      // Filtro por años seleccionados
+      if (this.trackingFilters.selectedYears.length > 0 && 
+          this.trackingFilters.selectedYears.length < this.availableYears.length) {
+        const year = entryDate.getFullYear();
+        if (!this.trackingFilters.selectedYears.includes(year)) return false;
+      }
+      
+      // Filtro por tipo de crisis
+      if (this.trackingFilters.seizureType !== 'all' && entry.type !== this.trackingFilters.seizureType) {
+        return false;
+      }
+      
+      return true;
+    });
+  }
+
+  // Actualizar gráficos cuando cambian filtros
+  onTrackingFilterChange() {
+    this.initTrackingCharts();
+  }
+
+  // Manejar cambio de rango de fechas
+  onDateRangeChange() {
+    // Habilitar/deshabilitar campos de fecha personalizada
+    if (this.trackingFilters.dateRange === 'custom') {
+      // Establecer fechas por defecto si no están definidas
+      if (!this.trackingFilters.customStartDate && this.trackingData.entries.length > 0) {
+        const dates = this.trackingData.entries.map(e => new Date(e.date).getTime());
+        const minDate = new Date(Math.min(...dates));
+        this.trackingFilters.customStartDate = minDate.toISOString().split('T')[0];
+        this.trackingFilters.customEndDate = new Date().toISOString().split('T')[0];
+      }
+    }
+    this.onTrackingFilterChange();
+  }
+
+  // Inicializar gráfico combinado de Crisis vs Medicación
+  initCombinedChart() {
+    // Destruir chart existente si lo hay
+    if (this.trackingCombinedChart) {
+      this.trackingCombinedChart.destroy();
+      this.trackingCombinedChart = null;
+    }
+    
+    const canvas = document.getElementById('trackingCombinedChart') as HTMLCanvasElement;
+    if (!canvas) {
+      console.warn('initCombinedChart: canvas no disponible');
+      return;
+    }
+    
+    // También verificar si hay un chart existente en el canvas usando Chart.getChart
+    const existingChart = Chart.getChart(canvas);
+    if (existingChart) {
+      existingChart.destroy();
+    }
+    
+    const entries = this.getFilteredEntries();
+    const medications = this.trackingData.medications || [];
+    const { startDate, endDate } = this.getFilteredDateRange();
+    
+    if (entries.length === 0) {
+      console.warn('initCombinedChart: no hay entries filtradas');
+      return;
+    }
+    
+    // Agrupar crisis según el filtro
+    const groupedData: { [key: string]: number } = {};
+    entries.forEach(entry => {
+      const date = new Date(entry.date);
+      let key: string;
+      
+      switch (this.trackingFilters.groupBy) {
+        case 'day':
+          key = date.toISOString().split('T')[0];
+          break;
+        case 'year':
+          key = `${date.getFullYear()}`;
+          break;
+        case 'month':
+        default:
+          key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+          break;
+      }
+      
+      groupedData[key] = (groupedData[key] || 0) + 1;
+    });
+    
+    const sortedKeys = Object.keys(groupedData).sort();
+    const seizureLabels = sortedKeys;
+    const seizureValues = sortedKeys.map(k => groupedData[k]);
+    
+    // Convertir labels a fechas para el eje X
+    const seizureDataPoints = sortedKeys.map((k, idx) => {
+      let date: Date;
+      if (this.trackingFilters.groupBy === 'day') {
+        date = new Date(k);
+      } else if (this.trackingFilters.groupBy === 'year') {
+        date = new Date(parseInt(k), 0, 1);
+      } else {
+        const [year, month] = k.split('-');
+        date = new Date(parseInt(year), parseInt(month) - 1, 1);
+      }
+      return { x: date, y: seizureValues[idx] };
+    });
+    
+    // Preparar datasets de medicación
+    const medDatasets: any[] = [];
+    const medChanges: Array<{ date: Date; medication: string; dose: number; type: string }> = [];
+    const colors = ['#4caf50', '#ffc107', '#2196f3', '#9c27b0', '#00bcd4', '#ff5722', '#795548'];
+    
+    // Agrupar medicamentos por nombre
+    const medGroups: { [key: string]: any[] } = {};
+    medications.forEach(med => {
+      const medStartDate = new Date(med.startDate);
+      const medEndDate = med.endDate ? new Date(med.endDate) : new Date();
+      
+      // Filtrar por rango de fechas
+      if (this.trackingFilters.dateRange !== 'all') {
+        if (medEndDate < startDate || medStartDate > endDate) return;
+      }
+      
+      // Filtrar por años seleccionados
+      if (this.trackingFilters.selectedYears.length > 0 && 
+          this.trackingFilters.selectedYears.length < this.availableYears.length) {
+        const medStartYear = medStartDate.getFullYear();
+        const medEndYear = medEndDate.getFullYear();
+        // Incluir si el medicamento cubre alguno de los años seleccionados
+        const overlapsSelectedYears = this.trackingFilters.selectedYears.some(
+          year => year >= medStartYear && year <= medEndYear
+        );
+        if (!overlapsSelectedYears) return;
+      }
+      
+      if (!medGroups[med.name]) medGroups[med.name] = [];
+      medGroups[med.name].push({
+        ...med,
+        startDate: medStartDate,
+        endDate: medEndDate,
+        dailyDose: this.parseDose(med.dose)
+      });
+    });
+    
+    let colorIdx = 0;
+    Object.keys(medGroups).forEach(medName => {
+      const meds = medGroups[medName].sort((a: any, b: any) => a.startDate - b.startDate);
+      const dataPoints: any[] = [];
+      
+      meds.forEach((med: any, idx: number) => {
+        let visibleStartDate = med.startDate;
+        let visibleEndDate = med.endDate;
+        
+        if (this.trackingFilters.dateRange !== 'all') {
+          if (visibleStartDate < startDate) visibleStartDate = startDate;
+          if (visibleEndDate > endDate) visibleEndDate = endDate;
+        }
+        
+        // Marcar cambios de medicación
+        if (idx === 0 || meds[idx - 1].dailyDose !== med.dailyDose) {
+          medChanges.push({ date: visibleStartDate, medication: medName, dose: med.dailyDose, type: 'change' });
+        }
+        
+        dataPoints.push({ x: visibleStartDate, y: med.dailyDose });
+        dataPoints.push({ x: visibleEndDate, y: med.dailyDose });
+        dataPoints.push({ x: visibleEndDate, y: null }); // Romper línea
+      });
+      
+      medDatasets.push({
+        label: medName,
+        data: dataPoints,
+        borderColor: colors[colorIdx % colors.length],
+        backgroundColor: 'transparent',
+        borderWidth: 3,
+        stepped: true,
+        yAxisID: 'y1',
+        pointRadius: 0,
+        pointHoverRadius: 4
+      });
+      colorIdx++;
+    });
+    
+    // Calcular escalas
+    const maxSeizure = Math.max(...seizureValues);
+    const userMaxSeizure = this.trackingFilters.maxSeizureScale;
+    const maxSeizureScale = userMaxSeizure || Math.ceil(maxSeizure * 1.1);
+    
+    let autoMaxMedScale = 100;
+    medDatasets.forEach(ds => {
+      ds.data.forEach((point: any) => {
+        if (point.y && point.y > autoMaxMedScale) autoMaxMedScale = point.y;
+      });
+    });
+    const maxMedScale = this.trackingFilters.maxMedicationScale || Math.ceil(autoMaxMedScale * 1.1);
+    
+    // Preparar anotaciones para cambios de medicación
+    const annotations: any = {};
+    if (this.trackingFilters.showMedicationChanges) {
+      medChanges.forEach((change, idx) => {
+        annotations[`line${idx}`] = {
+          type: 'line',
+          xMin: change.date,
+          xMax: change.date,
+          borderColor: 'rgba(255, 99, 132, 0.5)',
+          borderWidth: 2,
+          borderDash: [6, 6],
+          label: {
+            display: true,
+            content: `${change.medication}: ${change.dose}mg`,
+            position: 'start',
+            backgroundColor: 'rgba(255, 99, 132, 0.8)',
+            color: 'white',
+            font: { size: 10 }
+          }
+        };
+      });
+    }
+    
+    try {
+      this.trackingCombinedChart = new Chart(canvas, {
+        type: 'line',
+        data: {
+          datasets: [
+            {
+              label: this.translate.instant('tracking.crisisFrequency'),
+              data: seizureDataPoints,
+              borderColor: '#dc3545',
+              backgroundColor: 'rgba(220, 53, 69, 0.1)',
+              borderWidth: 2,
+              fill: true,
+              tension: 0.4,
+              yAxisID: 'y',
+              order: 2
+            },
+            ...medDatasets
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: {
+            mode: 'index',
+            intersect: false,
+          },
+          plugins: {
+            legend: {
+              position: 'top',
+              labels: { usePointStyle: true }
+            },
+            tooltip: {
+              callbacks: {
+                label: (context: any) => {
+                  let label = context.dataset.label || '';
+                  if (label) label += ': ';
+                  if (context.dataset.yAxisID === 'y1') {
+                    label += context.parsed.y + ' mg';
+                  } else {
+                    label += context.parsed.y + ' ' + this.translate.instant('tracking.crisis');
+                  }
+                  return label;
+                }
+              }
+            },
+            annotation: {
+              annotations: annotations
+            }
+          },
+          scales: {
+            x: {
+              type: 'time',
+              time: {
+                unit: this.trackingFilters.groupBy === 'day' ? 'day' : (this.trackingFilters.groupBy === 'year' ? 'year' : 'month'),
+                displayFormats: {
+                  day: 'dd/MM',
+                  month: 'MMM yyyy',
+                  year: 'yyyy'
+                }
+              },
+              title: { display: true, text: this.translate.instant('tracking.date') },
+              min: this.getChartMinDate(startDate).getTime(),
+              max: this.getChartMaxDate(endDate).getTime()
+            },
+            y: {
+              type: 'linear',
+              display: true,
+              position: 'left',
+              title: { display: true, text: this.translate.instant('tracking.crisisFrequency') },
+              beginAtZero: true,
+              max: maxSeizureScale
+            },
+            y1: {
+              type: 'linear',
+              display: true,
+              position: 'right',
+              title: { display: true, text: this.translate.instant('tracking.medicationDose') },
+              grid: { drawOnChartArea: false },
+              beginAtZero: true,
+              max: maxMedScale
+            }
+          }
+        }
+      });
+      console.log('initCombinedChart: gráfico combinado creado');
+    } catch (err) {
+      console.error('initCombinedChart: error creando gráfico combinado', err);
+    }
+  }
+
+  // Parsear dosis de medicamento (ej: "1200mg" -> 1200)
+  parseDose(doseStr: string): number {
+    if (!doseStr) return 0;
+    const match = doseStr.toString().match(/(\d+)/);
+    return match ? parseInt(match[1]) : 0;
+  }
+
+  generateTrackingInsights() {
+    if (!this.currentPatient || this.trackingData.entries.length === 0) return;
+    
+    this.trackingLoading = true;
+    
+    const payload = {
+      userId: this.authService.getIdUser(),
+      lang: localStorage.getItem('lang') || 'en'
+    };
+    
+    this.subscription.add(
+      this.http.post(environment.api + '/api/tracking/' + this.currentPatient + '/insights', payload)
+        .pipe(timeout(60000))
+        .subscribe({
+          next: (res: any) => {
+            this.trackingLoading = false;
+            if (res.success && res.insights) {
+              this.trackingInsights = res.insights;
+              this.toastr.success('', this.translate.instant('tracking.insightsGenerated'));
+            }
+          },
+          error: (err) => {
+            this.trackingLoading = false;
+            this.toastr.error('', this.translate.instant('tracking.insightsError'));
+            console.error('Error generating insights:', err);
+          }
+        })
+    );
+  }
+
+  exportTrackingData() {
+    const dataStr = JSON.stringify(this.trackingData, null, 2);
+    const blob = new Blob([dataStr], { type: 'application/json' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `tracking_${this.trackingData.conditionType}_${new Date().toISOString().split('T')[0]}.json`;
+    a.click();
+    window.URL.revokeObjectURL(url);
+    this.toastr.success('', this.translate.instant('tracking.exported'));
+  }
+
+  // Eliminar todos los datos de epilepsia
+  deleteCurrentCondition() {
+    Swal.fire({
+      title: this.translate.instant('epilepsy.confirmDeleteCondition'),
+      text: this.translate.instant('epilepsy.confirmDeleteCondition'),
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#d33',
+      cancelButtonColor: '#3085d6',
+      confirmButtonText: this.translate.instant('generics.Delete'),
+      cancelButtonText: this.translate.instant('generics.Cancel')
+    }).then((result) => {
+      if (result.isConfirmed) {
+        this.trackingLoading = true;
+        const url = environment.api + '/api/tracking/' + this.currentPatient;
+        
+        this.subscription.add(
+          this.http.delete(url)
+            .pipe(timeout(30000))
+            .subscribe({
+              next: (res: any) => {
+                this.trackingLoading = false;
+                if (res.success) {
+                  this.toastr.success('', this.translate.instant('tracking.dataDeleted'));
+                  // Resetear datos locales
+                  this.trackingData.entries = [];
+                  this.trackingData.medications = [];
+                  this.trackingInsights = [];
+                  this.trackingStep = 1;
+                }
+              },
+              error: (err) => {
+                this.trackingLoading = false;
+                this.toastr.error('', this.translate.instant('generics.error try again'));
+                console.error('Error deleting tracking data:', err);
+              }
+            })
+        );
+      }
+    });
+  }
+
+  // Eliminar entradas en un rango de fechas
+  deleteEntriesInRange() {
+    if (!this.deleteRangeStart || !this.deleteRangeEnd) {
+      this.toastr.warning('', this.translate.instant('tracking.selectDateRange'));
+      return;
+    }
+
+    Swal.fire({
+      title: this.translate.instant('tracking.confirmDeleteTitle'),
+      text: this.translate.instant('tracking.confirmDeleteRange'),
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#d33',
+      cancelButtonColor: '#3085d6',
+      confirmButtonText: this.translate.instant('generics.Delete'),
+      cancelButtonText: this.translate.instant('generics.Cancel')
+    }).then((result) => {
+      if (result.isConfirmed) {
+        this.trackingLoading = true;
+        const payload = {
+          conditionType: this.trackingData.conditionType,
+          startDate: this.deleteRangeStart,
+          endDate: this.deleteRangeEnd
+        };
+        
+        this.subscription.add(
+          this.http.post(environment.api + '/api/tracking/' + this.currentPatient + '/delete-range', payload)
+            .pipe(timeout(30000))
+            .subscribe({
+              next: (res: any) => {
+                this.trackingLoading = false;
+                if (res.success) {
+                  this.toastr.success('', this.translate.instant('tracking.entriesDeleted'));
+                  this.trackingData = res.data;
+                  this.trackingData.entries = this.trackingData.entries.map(e => ({
+                    ...e,
+                    date: new Date(e.date)
+                  }));
+                  this.calculateTrackingStats();
+                  this.populateSeizureTypes();
+                  this.populateAvailableYears();
+                  this.initTrackingChartsWithRetry();
+                  this.deleteRangeStart = '';
+                  this.deleteRangeEnd = '';
+                }
+              },
+              error: (err) => {
+                this.trackingLoading = false;
+                this.toastr.error('', this.translate.instant('generics.error try again'));
+                console.error('Error deleting entries:', err);
+              }
+            })
+        );
+      }
+    });
+  }
+
+  getConditionIcon(condition: string): string {
+    const icons: { [key: string]: string } = {
+      epilepsy: 'fa fa-brain',
+      diabetes: 'fa fa-tint',
+      migraine: 'fa fa-head-side-virus',
+      custom: 'fa fa-heartbeat'
+    };
+    return icons[condition] || 'fa fa-heartbeat';
+  }
+
+  getConditionLabel(condition: string): string {
+    return this.translate.instant('tracking.conditions.' + condition);
   }
 
   getNotes() {
@@ -4528,17 +7516,47 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
       this.modalReference.close();
       this.modalReference = undefined;
     }
+    // Inicializar el contenido vacío
+    this.newNoteContent = '';
     let ngbModalOptions: NgbModalOptions = {
       backdrop: 'static',
       keyboard: false,
-      windowClass: 'ModalClass-xs'// xl, lg, sm
+      windowClass: 'ModalClass-lg'// xl, lg, sm
     };
     this.modalReference = this.modalService.open(addNoteModal, ngbModalOptions);
   }
 
+  onNewNoteContentChange(event: any) {
+    // Actualizar el contenido cuando cambia en el editor de nueva nota
+    if (event) {
+      const content = typeof event === 'string' ? event : (event.html || event);
+      this.newNoteContent = content;
+    }
+  }
+
+  onNewNoteEditorCreated(editor: any) {
+    // El editor se inicializa vacío, no necesitamos establecer contenido
+    // Pero podemos usarlo para limpiar si es necesario
+  }
+
   saveNote() {
-    if (this.newNoteContent.trim()) {
-      this.addNoteWithMessage(this.newNoteContent);
+    // Obtener el texto plano para validar que no esté vacío
+    const plainText = this.getPlainText(this.newNoteContent || '');
+    if (plainText.trim()) {
+      this.savingNote = true;
+      this.patientService.savePatientNote(this.currentPatient, { content: this.newNoteContent, date: new Date() }).subscribe((res: any) => {
+        if (res.message == 'Notes saved') {
+          Swal.fire('', this.translate.instant("notes.Note saved"), "success");
+          this.notes.unshift({ content: this.newNoteContent, date: new Date(), _id: res.noteId });
+          this.notesSidebarOpen = true;
+          if (this.isSmallScreen && this.sidebarOpen) {
+            this.sidebarOpen = false;
+          }
+          // Cerrar el modal de agregar nota
+          this.cancelEdit();
+        }
+        this.savingNote = false;
+      });
     }
   }
 
@@ -4552,7 +7570,8 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
         if (this.isSmallScreen && this.sidebarOpen) {
           this.sidebarOpen = false;
         }
-        this.modalService.dismissAll();
+        // No cerramos modales aquí para no afectar otros modales abiertos (como el resumen del paciente)
+       //this.modalService.dismissAll();
       }
       this.savingNote = false;
     });
@@ -4598,28 +7617,33 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     });
   }
 
-  editNote(index: number) {
-    this.notes[index].isEditing = true;
-
-    // Dar tiempo al DOM para actualizarse
-    setTimeout(() => {
-      const editableElement = document.getElementById('editableNote' + index);
-      if (editableElement) {
-        this.editableDiv = new ElementRef(editableElement);
-        editableElement.focus();
-      }
-    });
+  editNote(index: number, editNoteModal: TemplateRef<any>) {
+    const note = this.notes[index];
+    // Inicializar el contenido de edición con el contenido actual
+    note.editContent = note.content || '';
+    this.editingNoteIndex = index;
+    
+    // Abrir modal de edición
+    const ngbModalOptions: NgbModalOptions = {
+      backdrop: 'static',
+      keyboard: false,
+      windowClass: 'ModalClass-lg'
+    };
+    this.modalReference = this.modalService.open(editNoteModal, ngbModalOptions);
   }
 
-  saveNoteEdit(index: number) {
-    if (!this.editableDiv) return;
-
+  saveNoteEdit() {
+    if (this.editingNoteIndex === null || this.editingNoteIndex === undefined) return;
+    
     this.savingNote = true;
-    const note = this.notes[index];
+    const note = this.notes[this.editingNoteIndex];
+
+    // Usar editContent que contiene el HTML del editor Quill
+    const content = note.editContent || '';
 
     const updatedNote = {
       _id: note._id,
-      content: this.editableDiv.nativeElement.innerHTML,
+      content: content,
       date: new Date()
     };
 
@@ -4631,11 +7655,11 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
         .subscribe({
           next: (res: any) => {
             if(res.message == 'Note updated'){
-              this.notes[index] = {
+              this.notes[this.editingNoteIndex] = {
                 ...updatedNote,
-                isEditing: false
+                editContent: undefined
               };
-              this.editableDiv = null;
+              this.closeEditNoteModal();
               this.toastr.success('', this.translate.instant("generics.Updated successfully"));
             }else{
               this.toastr.error('', this.translate.instant("generics.error try again"));
@@ -4651,12 +7675,107 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     );
   }
 
-  cancelNoteEdit(index: number) {
-    this.notes[index].isEditing = false;
-    this.editableDiv = null;
+  cancelNoteEdit() {
+    if (this.editingNoteIndex !== null && this.editingNoteIndex !== undefined) {
+      const note = this.notes[this.editingNoteIndex];
+      note.editContent = undefined;
+    }
+    this.closeEditNoteModal();
   }
 
-  truncateTitle(title: string, limit: number = 24): string {
+  closeEditNoteModal() {
+    if (this.modalReference) {
+      this.modalReference.close();
+    }
+    this.editingNoteIndex = null;
+  }
+
+  onNoteContentChange(event: any) {
+    // Actualizar el contenido cuando cambia en el modal
+    if (event && this.editingNoteIndex !== null && this.editingNoteIndex !== undefined) {
+      const content = typeof event === 'string' ? event : (event.html || event);
+      this.notes[this.editingNoteIndex].editContent = content;
+    }
+  }
+
+  onEditorCreated(editor: any) {
+    // Establecer el contenido cuando el editor esté listo en el modal
+    if (editor && this.editingNoteIndex !== null && this.editingNoteIndex !== undefined) {
+      const note = this.notes[this.editingNoteIndex];
+      const content = note.editContent || note.content || '';
+      if (content && editor.root) {
+        // Usar setTimeout para asegurar que el editor esté completamente inicializado
+        setTimeout(() => {
+          try {
+            // Convertir HTML a Delta de Quill y establecerlo
+            if (editor.clipboard && typeof editor.clipboard.convert === 'function') {
+              const delta = editor.clipboard.convert(content);
+              editor.setContents(delta, 'silent');
+              this.notes[this.editingNoteIndex].editContent = editor.root.innerHTML;
+            } else {
+              editor.root.innerHTML = content;
+              this.notes[this.editingNoteIndex].editContent = content;
+            }
+            this.cdr.detectChanges();
+          } catch (e) {
+            console.error('Error setting content in editor:', e);
+            if (editor.root) {
+              editor.root.innerHTML = content;
+              this.notes[this.editingNoteIndex].editContent = content;
+              this.cdr.detectChanges();
+            }
+          }
+        }, 100);
+      }
+    }
+  }
+
+
+
+  // Función para obtener el texto plano de HTML (sin etiquetas)
+  getPlainText(html: string): string {
+    if (!html) return '';
+    const tmp = document.createElement('DIV');
+    tmp.innerHTML = html;
+    return tmp.textContent || tmp.innerText || '';
+  }
+
+  // Función para truncar contenido HTML manteniendo el formato
+  truncateNoteContent(content: string, maxLength: number = 500): { truncated: string, isTruncated: boolean } {
+    if (!content) return { truncated: '', isTruncated: false };
+    
+    const plainText = this.getPlainText(content);
+    if (plainText.length <= maxLength) {
+      return { truncated: content, isTruncated: false };
+    }
+
+    // Truncar el texto plano
+    const truncatedText = plainText.substring(0, maxLength);
+    // Intentar mantener el formato HTML truncando de manera simple
+    // Por simplicidad, truncamos el HTML directamente en una posición segura
+    const truncatedHtml = content.substring(0, Math.min(content.length, maxLength * 2));
+    
+    return { truncated: truncatedHtml + '...', isTruncated: true };
+  }
+
+  // Abrir modal con contenido completo de la nota
+  viewFullNote(note: any, noteModal: TemplateRef<any>) {
+    const ngbModalOptions: NgbModalOptions = {
+      backdrop: 'static',
+      keyboard: false,
+      windowClass: 'ModalClass-lg'
+    };
+    this.selectedNoteForModal = note;
+    this.modalReference = this.modalService.open(noteModal, ngbModalOptions);
+  }
+
+  closeNoteModal() {
+    if (this.modalReference) {
+      this.modalReference.close();
+    }
+  }
+
+  truncateTitle(title: string, limit: number = 32): string {
     if (title.length <= limit) return title;
     return title.slice(0, limit) + '...';
   }
@@ -4676,15 +7795,49 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     this.selectAllDocuments = this.filteredDocs.length > 0 && this.filteredDocs.every(doc => doc.selected);
   }
 
-  fetchDxGptResults() {
+  /**
+   * Verifica si el paciente tiene un resumen generado
+   */
+  async checkPatientSummary(): Promise<boolean> {
+    return new Promise((resolve) => {
+      if (!this.currentPatient) {
+        resolve(false);
+        return;
+      }
+      
+      const info = { 
+        "userId": this.authService.getIdUser(), 
+        "idWebpubsub": this.authService.getIdUser(), 
+        "regenerate": false 
+      };
+      
+      this.subscription.add(
+        this.http.post(environment.api + '/api/patient/summary/' + this.currentPatient, info)
+          .subscribe(
+            (res: any) => {
+              // Si summary es 'true', el resumen existe y está listo
+              resolve(res.summary === 'true');
+            },
+            (err) => {
+              console.warn('Error checking patient summary:', err);
+              // En caso de error, asumir que no existe
+              resolve(false);
+            }
+          )
+      );
+    });
+  }
+
+  /**
+   * Ejecuta fetchDxGptResults después de verificar/crear el resumen
+   * @param useEventsAndDocuments - Si true, usa eventos/documentos en lugar del resumen
+   */
+  private executeFetchDxGptResults(useEventsAndDocuments: boolean = false) {
     console.log('=== FRONTEND DXGPT DEBUG START ===');
     console.log('1. Current patient ID:', this.currentPatientId);
     
     if (!this.currentPatientId) {
-      // Mostrar algún error o deshabilitar el botón si no hay paciente
-      // Esto es improbable si la UI se muestra correctamente, pero por si acaso.
       console.error("No patient selected to fetch DxGPT results.");
-      // Podrías usar Swal para notificar al usuario.
       this.dxGptResults = { success: false, analysis: this.translate.instant('patients.No patient selected') };
       return;
     }
@@ -4697,11 +7850,55 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     // Get current language from localStorage
     const currentLang = localStorage.getItem('lang') || 'en';
     // Call the DxGPT API to get initial diagnosis
-    this.apiDx29ServerService.getDifferentialDiagnosis(this.currentPatientId, currentLang, null).subscribe({
+    this.apiDx29ServerService.getDifferentialDiagnosis(this.currentPatientId, currentLang, null, undefined, useEventsAndDocuments).subscribe({
       next: (res: any) => {
         console.log('4. API Response received:', res);
         console.log('4.1. res.success:', res.success);
         console.log('4.2. res.analysis exists:', !!res.analysis);
+        console.log('4.3. res.async exists:', res.async);
+        
+        // Si el procesamiento es asíncrono, esperar notificaciones de WebPubSub
+        if (res.async === true) {
+          console.log('5. Procesamiento asíncrono iniciado, esperando notificaciones...');
+          // El estado de carga se mantendrá hasta recibir el resultado por WebPubSub
+          // Mostrar mensaje informativo con botón de cancelar
+          const message = res.message || this.translate.instant('dxgpt.async.message') || 'El análisis está en proceso. Recibirás una notificación cuando esté listo.';
+          const timeMessage = this.translate.instant('dxgpt.async.timeMessage') || 'Este proceso puede tardar varios minutos dependiendo del número de documentos.';
+          
+          Swal.fire({
+            title: this.translate.instant('dxgpt.async.processing') || 'Procesando...',
+            html: `<div style="text-align: left;">
+              <p><strong>${message}</strong></p>
+              <p style="font-size: 0.9em; color: #666; margin-top: 10px;"><em>${timeMessage}</em></p>
+            </div>`,
+            icon: 'info',
+            allowOutsideClick: false,
+            allowEscapeKey: true,
+            showConfirmButton: false,
+            showCancelButton: true,
+            cancelButtonText: this.translate.instant('dxgpt.async.cancel') || 'Cancelar',
+            cancelButtonColor: '#6c757d',
+            didOpen: () => {
+              Swal.showLoading();
+            }
+          }).then((result) => {
+            if (result.dismiss === Swal.DismissReason.cancel || result.dismiss === Swal.DismissReason.esc || result.dismiss === Swal.DismissReason.backdrop) {
+              // Usuario canceló
+              console.log('Usuario canceló el procesamiento de DxGPT');
+              this.isDxGptLoading = false;
+              this.dxGptResults = null;
+              this.cdr.detectChanges();
+              
+              Swal.fire({
+                title: this.translate.instant('dxgpt.async.cancelled') || 'Procesamiento cancelado',
+                text: this.translate.instant('dxgpt.async.cancelledMessage') || 'El análisis ha sido cancelado. Puedes iniciarlo nuevamente cuando lo desees.',
+                icon: 'info',
+                confirmButtonText: 'OK'
+              });
+            }
+          });
+          return; // No cambiar el estado de carga todavía
+        }
         
         if (res && res.analysis) {
            // El backend siempre manda success: true si llega al controller
@@ -4740,6 +7937,80 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
     });
   }
 
+  /**
+   * Función principal que verifica el resumen antes de ejecutar DxGPT
+   */
+  async fetchDxGptResults() {
+    if (!this.currentPatientId) {
+      this.dxGptResults = { success: false, analysis: this.translate.instant('patients.No patient selected') };
+      return;
+    }
+
+    // Verificar si el paciente tiene un resumen generado
+    const hasSummary = await this.checkPatientSummary();
+    
+    if (hasSummary) {
+      // Si tiene resumen, preguntar al usuario qué método quiere usar
+      const result = await Swal.fire({
+        title: this.translate.instant('dxgpt.chooseMethod.title') || 'Elegir método de análisis',
+        html: this.translate.instant('dxgpt.chooseMethod.message') || 
+              'El paciente tiene un resumen generado. ¿Cómo deseas realizar el análisis?<br><br>' +
+              '<small><strong>Resumen del paciente:</strong> Más rápido, incluye información estructurada y contextualizada.<br>' +
+              '<strong>Eventos y documentos:</strong> Incluye información más reciente que pueda no estar en el resumen.</small>',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: this.translate.instant('dxgpt.chooseMethod.withSummary') || 'Analizar con resumen del paciente',
+        cancelButtonText: this.translate.instant('dxgpt.chooseMethod.withEvents') || 'Analizar con eventos y documentos',
+        confirmButtonColor: '#3085d6',
+        cancelButtonColor: '#6c757d',
+        reverseButtons: true,
+        showCloseButton: true
+      });
+
+      if (result.isConfirmed) {
+        // Usuario quiere usar el resumen
+        this.executeFetchDxGptResults(false);
+      } else if (result.dismiss === Swal.DismissReason.cancel) {
+        // Usuario quiere usar eventos y documentos
+        this.executeFetchDxGptResults(true);
+      } else {
+        // Usuario cerró el modal (Escape, clic fuera, etc.) - no hacer nada
+        return;
+      }
+    } else {
+      // Si no tiene resumen, preguntar al usuario
+      const result = await Swal.fire({
+        title: this.translate.instant('dxgpt.summary.title') || 'Resumen del paciente no disponible',
+        html: this.translate.instant('dxgpt.summary.message') || 
+              'El paciente no tiene un resumen generado. ¿Deseas crear el resumen ahora?<br><br>' +
+              '<small>Si creas el resumen, recibirás una notificación cuando esté listo y podrás volver aquí para ejecutar el análisis.</small>',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: this.translate.instant('dxgpt.summary.create') || 'Crear resumen',
+        cancelButtonText: this.translate.instant('dxgpt.summary.continue') || 'Continuar sin resumen',
+        confirmButtonColor: '#3085d6',
+        cancelButtonColor: '#6c757d'
+      });
+
+      if (result.isConfirmed) {
+        // Usuario quiere crear el resumen
+        this.getPatientSummary(false);
+        Swal.fire({
+          title: this.translate.instant('dxgpt.summary.creating') || 'Creando resumen...',
+          html: this.translate.instant('dxgpt.summary.notification') || 
+                'El resumen se está generando. Recibirás una notificación cuando esté listo.<br><br>' +
+                'Puedes volver aquí después para ejecutar el análisis de diagnóstico diferencial.',
+          icon: 'info',
+          confirmButtonText: 'OK'
+        });
+      } else if (result.dismiss === Swal.DismissReason.cancel) {
+        // Usuario quiere continuar sin resumen (clic en botón "Continuar sin resumen")
+        this.executeFetchDxGptResults();
+      }
+      // Si cerró con Escape o clic fuera, no hacer nada
+    }
+  }
+
   openTimelineModal(timelineModal) {
     console.log(this.timeline);
     this.modalService.open(timelineModal, {
@@ -4747,6 +8018,209 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
       scrollable: true,
       backdrop: 'static'
     });
+    
+    // Cargar timeline consolidado si no está cargado
+    if (!this.consolidatedTimeline && this.showConsolidatedView) {
+      this.loadConsolidatedTimeline();
+    }
+  }
+
+  async loadConsolidatedTimeline(forceRegenerate: boolean = false) {
+    this.loadingConsolidatedTimeline = true;
+    this.consolidatedTimelineError = null;
+    
+    try {
+      const lang = this.preferredResponseLanguage || localStorage.getItem('lang') || 'en';
+      const url = `${environment.api}/api/timeline/consolidated/${this.currentPatient}?lang=${lang}${forceRegenerate ? '&regenerate=true' : ''}`;
+      
+      const response: any = await this.http.get(url).toPromise();
+      
+      if (response && response.success) {
+        this.consolidatedTimeline = response;
+        console.log('[Timeline] Consolidado cargado:', response.stats);
+      } else {
+        throw new Error(response?.message || 'Error loading timeline');
+      }
+    } catch (error) {
+      console.error('[Timeline] Error:', error);
+      this.consolidatedTimelineError = error.message || 'Error loading consolidated timeline';
+      // Fallback: mostrar vista de eventos crudos
+      this.showConsolidatedView = false;
+    } finally {
+      this.loadingConsolidatedTimeline = false;
+    }
+  }
+
+  toggleTimelineView() {
+    this.showConsolidatedView = !this.showConsolidatedView;
+    
+    if (this.showConsolidatedView && !this.consolidatedTimeline) {
+      this.loadConsolidatedTimeline();
+    }
+  }
+
+  regenerateConsolidatedTimeline() {
+    this.loadConsolidatedTimeline(true);
+  }
+
+  getMonthName(monthNum: number): string {
+    if (!monthNum || monthNum < 1 || monthNum > 12) return '';
+    const date = new Date(2000, monthNum - 1, 1);
+    return date.toLocaleString(this.translate.currentLang || 'en', { month: 'long' });
+  }
+
+  copyConsolidatedTimelineToClipboard() {
+    if (!this.consolidatedTimeline) return;
+    
+    let text = '';
+    
+    // Chronic conditions
+    if (this.consolidatedTimeline.chronicConditions?.length > 0) {
+      text += '📋 ' + this.translate.instant('timeline.Chronic conditions') + ':\n';
+      this.consolidatedTimeline.chronicConditions.forEach(c => {
+        text += `  • ${c.name}${c.since ? ' (' + c.since + ')' : ''}\n`;
+      });
+      text += '\n';
+    }
+    
+    // Current medications
+    if (this.consolidatedTimeline.currentMedications?.length > 0) {
+      text += '💊 ' + this.translate.instant('timeline.Current medications') + ':\n';
+      this.consolidatedTimeline.currentMedications.forEach(m => {
+        text += `  • ${m.name}${m.since ? ' (' + m.since + ')' : ''}\n`;
+      });
+      text += '\n';
+    }
+    
+    // Milestones
+    if (this.consolidatedTimeline.milestones?.length > 0) {
+      text += '📅 ' + this.translate.instant('timeline.Timeline') + ':\n';
+      this.consolidatedTimeline.milestones.forEach(milestone => {
+        const dateStr = milestone.month 
+          ? `${this.getMonthName(milestone.month)} ${milestone.year}` 
+          : (milestone.year || this.translate.instant('timeline.Undated'));
+        text += `\n${dateStr}:\n`;
+        milestone.events?.forEach(e => {
+          text += `  ${e.icon || '•'} ${e.title}${e.details ? ' - ' + e.details : ''}\n`;
+        });
+      });
+    }
+    
+    this.clipboard.copy(text);
+    this.toastr.success(this.translate.instant('timeline.Timeline copied to clipboard'));
+  }
+
+  exportConsolidatedTimelineToPDF() {
+    if (!this.consolidatedTimeline) return;
+    
+    const doc = new jsPDF();
+    let y = 20;
+    const lineHeight = 7;
+    const pageHeight = doc.internal.pageSize.height;
+    const maxWidth = 170; // Max text width before wrapping
+    
+    // Helper to remove emojis (jsPDF doesn't support them)
+    const removeEmojis = (text: string): string => {
+      if (!text) return '';
+      return text.replace(/[\u{1F300}-\u{1F9FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]|[\u{1F600}-\u{1F64F}]|[\u{1F680}-\u{1F6FF}]|[\u{1F1E0}-\u{1F1FF}]/gu, '').trim();
+    };
+    
+    const checkPageBreak = (neededSpace: number) => {
+      if (y + neededSpace > pageHeight - 20) {
+        doc.addPage();
+        y = 20;
+      }
+    };
+
+    // Helper to wrap and print text
+    const printWrappedText = (text: string, x: number, maxW: number) => {
+      const lines = doc.splitTextToSize(text, maxW);
+      lines.forEach((line: string) => {
+        checkPageBreak(lineHeight);
+        doc.text(line, x, y);
+        y += lineHeight;
+      });
+    };
+    
+    // Title
+    doc.setFontSize(18);
+    doc.text(this.translate.instant('timeline.Timeline') + ' - ' + this.translate.instant('timeline.Consolidated'), 14, y);
+    y += 15;
+    
+    // Chronic conditions
+    if (this.consolidatedTimeline.chronicConditions?.length > 0) {
+      checkPageBreak(20);
+      doc.setFontSize(14);
+      doc.text(this.translate.instant('timeline.Chronic conditions'), 14, y);
+      y += 10;
+      doc.setFontSize(10);
+      this.consolidatedTimeline.chronicConditions.forEach(c => {
+        checkPageBreak(lineHeight);
+        const text = `- ${c.name}${c.since ? ' (' + c.since + ')' : ''}`;
+        printWrappedText(text, 20, maxWidth - 20);
+      });
+      y += 5;
+    }
+    
+    // Current medications
+    if (this.consolidatedTimeline.currentMedications?.length > 0) {
+      checkPageBreak(20);
+      doc.setFontSize(14);
+      doc.text(this.translate.instant('timeline.Current medications'), 14, y);
+      y += 10;
+      doc.setFontSize(10);
+      this.consolidatedTimeline.currentMedications.forEach(m => {
+        checkPageBreak(lineHeight);
+        const text = `- ${m.name}${m.since ? ' (' + m.since + ')' : ''}`;
+        printWrappedText(text, 20, maxWidth - 20);
+      });
+      y += 5;
+    }
+    
+    // Milestones
+    if (this.consolidatedTimeline.milestones?.length > 0) {
+      checkPageBreak(20);
+      doc.setFontSize(14);
+      doc.text(this.translate.instant('timeline.milestones'), 14, y);
+      y += 10;
+      
+      this.consolidatedTimeline.milestones.forEach(milestone => {
+        checkPageBreak(15);
+        const dateStr = milestone.month 
+          ? `${this.getMonthName(milestone.month)} ${milestone.year}` 
+          : (milestone.year?.toString() || this.translate.instant('timeline.Undated'));
+        doc.setFontSize(11);
+        doc.setFont(undefined, 'bold');
+        doc.text(dateStr, 14, y);
+        y += lineHeight;
+        doc.setFont(undefined, 'normal');
+        doc.setFontSize(10);
+        
+        milestone.events?.forEach(e => {
+          checkPageBreak(lineHeight * 2);
+          const title = `- ${removeEmojis(e.title)}`;
+          printWrappedText(title, 20, maxWidth - 20);
+          if (e.details) {
+            doc.setTextColor(100);
+            printWrappedText(removeEmojis(e.details), 25, maxWidth - 25);
+            doc.setTextColor(0);
+          }
+        });
+        y += 3;
+      });
+    }
+    
+    // Footer on all pages
+    const pageCount = doc.internal.pages.length - 1;
+    for (let i = 1; i <= pageCount; i++) {
+      doc.setPage(i);
+      doc.setFontSize(8);
+      doc.setTextColor(150);
+      doc.text(`${this.translate.instant('timeline.Exported on')}: ${new Date().toLocaleDateString()}`, 14, pageHeight - 10);
+      doc.text(`${i}/${pageCount}`, pageHeight - 20, pageHeight - 10);
+    }
+    
+    doc.save('timeline-consolidated.pdf');
   }
 
   getEventTypeIcon(type: string): string {
@@ -4757,9 +8231,14 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
       'appointment': '📅',
       'symptom': '🤒',
       'medication': '💊',
+      'activity': '🏃',
+      'reminder': '🔔',
       'other': '🔍'
     };
-    return icons[type] ? icons[type] + ' ' : '';
+    if (!type || type === 'null') {
+      return '🔍 ';
+    }
+    return icons[type] ? icons[type] + ' ' : '🔍 ';
   }
 
   newMedicalEventTimeline() {
@@ -4794,6 +8273,260 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
       // Modal dismissed
       console.log('Modal dismissed');
     });
+  }
+
+  copyTimelineToClipboard() {
+    if (this.groupedEvents.length === 0) {
+      Swal.fire({
+        icon: 'info',
+        title: this.translate.instant('generics.Info'),
+        html: this.translate.instant('timeline.There are no events')
+      });
+      return;
+    }
+
+    const lang = localStorage.getItem('lang') || this.translate.currentLang || 'es';
+    let text = this.translate.instant('timeline.Timeline') + '\n';
+    text += '='.repeat(50) + '\n\n';
+
+    this.groupedEvents.forEach(group => {
+      const monthYear = new Date(group.monthYear).toLocaleDateString(lang, { 
+        year: 'numeric', 
+        month: 'long' 
+      });
+      text += monthYear.toUpperCase() + '\n';
+      text += '-'.repeat(50) + '\n';
+
+      group.events.forEach(event => {
+        const eventType = this.getEventTypeDisplay(event.key) || event.key || '';
+        const eventDate = event.date ? new Date(event.date).toLocaleDateString(lang) : '';
+        const eventDateEnd = event.dateEnd ? new Date(event.dateEnd).toLocaleDateString(lang) : '';
+        
+        text += `${this.getEventTypeIcon(event.key)} ${event.name || ''}\n`;
+        text += `   ${eventType}\n`;
+        if (eventDateEnd) {
+          text += `   ${this.translate.instant('timeline.Start date')}: ${eventDate} - ${this.translate.instant('timeline.End date')}: ${eventDateEnd}\n`;
+        } else {
+          text += `   ${eventDate}\n`;
+        }
+        if (event.notes) {
+          text += `   ${this.translate.instant('generics.Notes')}: ${event.notes}\n`;
+        }
+        text += '\n';
+      });
+      text += '\n';
+    });
+
+    this.clipboard.copy(text);
+    Swal.fire({
+      icon: 'success',
+      title: this.translate.instant('generics.Success'),
+      html: this.translate.instant('timeline.Timeline copied to clipboard')
+    });
+  }
+
+  exportTimelineToCSV() {
+    if (this.groupedEvents.length === 0) {
+      Swal.fire({
+        icon: 'info',
+        title: this.translate.instant('generics.Info'),
+        html: this.translate.instant('timeline.There are no events')
+      });
+      return;
+    }
+
+    const lang = localStorage.getItem('lang') || this.translate.currentLang || 'es';
+    // Encabezados CSV
+    const headers = [
+      this.translate.instant('timeline.Date'),
+      this.translate.instant('timeline.End date'),
+      this.translate.instant('timeline.Event type'),
+      this.translate.instant('generics.Name'),
+      this.translate.instant('generics.Notes')
+    ];
+
+    let csvContent = headers.join(',') + '\n';
+
+    // Datos
+    this.groupedEvents.forEach(group => {
+      group.events.forEach(event => {
+        const eventDate = event.date ? new Date(event.date).toLocaleDateString(lang) : '';
+        const eventDateEnd = event.dateEnd ? new Date(event.dateEnd).toLocaleDateString(lang) : '';
+        const eventType = this.getEventTypeDisplay(event.key) || event.key || '';
+        const eventName = (event.name || '').replace(/"/g, '""'); // Escapar comillas
+        const eventNotes = (event.notes || '').replace(/"/g, '""'); // Escapar comillas
+
+        const row = [
+          `"${eventDate}"`,
+          `"${eventDateEnd}"`,
+          `"${eventType}"`,
+          `"${eventName}"`,
+          `"${eventNotes}"`
+        ];
+        csvContent += row.join(',') + '\n';
+      });
+    });
+
+    // Crear blob y descargar
+    const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `timeline_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+
+  getEventTypeDisplayWithoutEmoji(type: string): string {
+    const types = {
+      'diagnosis': this.translate.instant('timeline.Diagnoses'),
+      'treatment': this.translate.instant('timeline.Treatment'),
+      'test': this.translate.instant('timeline.Tests'),
+      'appointment': this.translate.instant('events.appointment'),
+      'symptom': this.translate.instant('timeline.Symptoms'),
+      'medication': this.translate.instant('timeline.Medications'),
+      'activity': this.translate.instant('timeline.Activity'),
+      'reminder': this.translate.instant('timeline.Reminder'),
+      'other': this.translate.instant('timeline.Other')
+    };
+    if (!type || type === 'null') {
+      return this.translate.instant('timeline.Other');
+    }
+    return types[type] || this.translate.instant('timeline.Other');
+  }
+
+  exportTimelineToPDF() {
+    if (this.groupedEvents.length === 0) {
+      Swal.fire({
+        icon: 'info',
+        title: this.translate.instant('generics.Info'),
+        html: this.translate.instant('timeline.There are no events')
+      });
+      return;
+    }
+
+    const lang = localStorage.getItem('lang') || this.translate.currentLang || 'es';
+    const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const margin = 20;
+    let yPosition = margin;
+    const lineHeight = 6;
+    const maxWidth = pageWidth - (margin * 2);
+
+    // Título principal
+    doc.setFontSize(20);
+    doc.setTextColor(0, 0, 0);
+    doc.setFont(undefined, 'bold');
+    const title = this.translate.instant('timeline.Timeline');
+    doc.text(title, margin, yPosition);
+    yPosition += lineHeight * 2.5;
+
+    // Fecha de exportación
+    doc.setFontSize(10);
+    doc.setTextColor(100, 100, 100);
+    doc.setFont(undefined, 'normal');
+    const exportDate = new Date().toLocaleDateString(lang, {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+    doc.text(`${this.translate.instant('timeline.Exported on')}: ${exportDate}`, margin, yPosition);
+    yPosition += lineHeight * 2;
+
+    // Eventos agrupados por mes
+    this.groupedEvents.forEach((group, groupIndex) => {
+      // Verificar si necesitamos una nueva página (dejar espacio para el título del mes y al menos un evento)
+      if (yPosition > pageHeight - 60) {
+        doc.addPage();
+        yPosition = margin;
+      }
+
+      // Título del mes y año
+      doc.setFontSize(16);
+      doc.setTextColor(0, 0, 0);
+      doc.setFont(undefined, 'bold');
+      const monthYear = new Date(group.monthYear).toLocaleDateString(lang, {
+        year: 'numeric',
+        month: 'long'
+      });
+      doc.text(monthYear.toUpperCase(), margin, yPosition);
+      yPosition += lineHeight * 1.8;
+
+      // Línea separadora debajo del mes
+      doc.setDrawColor(180, 180, 180);
+      doc.setLineWidth(0.5);
+      doc.line(margin, yPosition, pageWidth - margin, yPosition);
+      yPosition += lineHeight * 1.5;
+
+      // Eventos del mes
+      group.events.forEach((event, eventIndex) => {
+        // Verificar si necesitamos una nueva página
+        if (yPosition > pageHeight - 40) {
+          doc.addPage();
+          yPosition = margin;
+        }
+
+        // Nombre del evento (sin emoji)
+        doc.setFontSize(11);
+        doc.setTextColor(0, 0, 0);
+        doc.setFont(undefined, 'normal');
+        const eventName = (event.name || '').trim();
+        
+        if (eventName) {
+          // Dividir texto si es muy largo
+          const splitText = doc.splitTextToSize(eventName, maxWidth);
+          doc.text(splitText, margin + 3, yPosition);
+          yPosition += lineHeight * splitText.length;
+        }
+
+        // Tipo de evento (sin emoji)
+        doc.setFontSize(9);
+        doc.setTextColor(120, 120, 120);
+        const eventType = this.getEventTypeDisplayWithoutEmoji(event.key);
+        if (eventType) {
+          doc.text(eventType, margin + 3, yPosition);
+          yPosition += lineHeight * 1.2;
+        }
+
+        // Fechas
+        doc.setFontSize(9);
+        doc.setTextColor(100, 100, 100);
+        const eventDate = event.date ? new Date(event.date).toLocaleDateString(lang) : '';
+        const eventDateEnd = event.dateEnd ? new Date(event.dateEnd).toLocaleDateString(lang) : '';
+        
+        if (eventDateEnd && eventDateEnd !== eventDate) {
+          const dateText = `${this.translate.instant('timeline.Start date')}: ${eventDate} - ${this.translate.instant('timeline.End date')}: ${eventDateEnd}`;
+          const splitDate = doc.splitTextToSize(dateText, maxWidth - 6);
+          doc.text(splitDate, margin + 3, yPosition);
+          yPosition += lineHeight * splitDate.length;
+        } else if (eventDate) {
+          doc.text(eventDate, margin + 3, yPosition);
+          yPosition += lineHeight * 1.2;
+        }
+
+        // Notas si existen
+        if (event.notes && event.notes.trim()) {
+          doc.setFontSize(9);
+          doc.setTextColor(80, 80, 80);
+          const notesLabel = this.translate.instant('generics.Notes');
+          const notesText = `${notesLabel}: ${event.notes.trim()}`;
+          const splitNotes = doc.splitTextToSize(notesText, maxWidth - 6);
+          doc.text(splitNotes, margin + 3, yPosition);
+          yPosition += lineHeight * splitNotes.length;
+        }
+
+        yPosition += lineHeight * 1.2; // Espacio entre eventos
+      });
+
+      yPosition += lineHeight * 0.8; // Espacio adicional entre grupos de meses
+    });
+
+    // Guardar PDF
+    const fileName = `timeline_${new Date().toISOString().split('T')[0]}.pdf`;
+    doc.save(fileName);
   }
 
   toggleDiagnosisCard(index: number): void {
@@ -5058,6 +8791,23 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewChecked {
   cancelEditingPatientInfo(): void {
     this.isEditingPatientInfo = false;
     this.editedPatientInfo = '';
+  }
+
+  togglePatientInfo(): void {
+    this.isPatientInfoExpanded = !this.isPatientInfoExpanded;
+  }
+
+  shouldShowPatientInfoToggle(): boolean {
+    if (!this.dxGptResults || !this.dxGptResults.analysis || !this.dxGptResults.analysis.anonymization) {
+      return false;
+    }
+    
+    const text = this.dxGptResults.analysis.anonymization.anonymizedText || '';
+    const textHtml = this.dxGptResults.analysis.anonymization.anonymizedTextHtml || '';
+    
+    // Mostrar el botón si el texto es más largo que aproximadamente 500 caracteres
+    // o si hay HTML y parece ser largo
+    return text.length > 500 || (textHtml.length > 500 && textHtml.includes('<p>'));
   }
 
   saveEditedPatientInfo(): void {

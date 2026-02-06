@@ -8,34 +8,70 @@
     </div>
   </div>
 </div>
-<div class="col-md-12 pt-2" *ngIf="loaded">
-  <div class="card-header d-flex justify-content-between align-items-center" *ngIf="role != 'Clinical' && authService.getCurrentPatient()?.sub">
-		<button class="btn btn-dark btn-sm" (click)="backToHome()">
+<div class="patients-container" *ngIf="loaded">
+  <div class="patients-header" *ngIf="role != 'Clinical' && authService.getCurrentPatient()?.sub">
+		<button class="btn-back" (click)="backToHome()">
 			<i class="fa fa-arrow-left"></i> {{'generics.Back' | translate }}
 		</button>
 	</div>
-  <h2 class="mb-3" [ngClass]="(role == 'Clinical')?'mt-3':'mt-2'">{{'patients.My patients' | translate}} <button (click)="addPatient()" class="btn btn-white btn-sm ml-2 " title="{{'patients.Create new patient' | translate}}">{{'patients.Create new patient' | translate}}</button></h2>
-  <div *ngIf="patients.length>0">
+  <div class="patients-title-section">
+    <h2 class="patients-main-title">{{'patients.My patients' | translate}}</h2>
+    <button (click)="addPatient()" class="btn-create-patient" title="{{'patients.Create new patient' | translate}}">
+      <i class="fa fa-plus"></i> {{'patients.Create new patient' | translate}}
+    </button>
+  </div>
+  
+  <!-- Buscador de pacientes -->
+  <div class="patients-search-container" *ngIf="patients.length > 0 || sharedPatients.length > 0">
+    <div class="search-input-wrapper">
+      <i class="fa fa-search search-icon"></i>
+      <input 
+        type="text" 
+        class="search-input" 
+        [(ngModel)]="searchTerm" 
+        (input)="onSearchChange()"
+        placeholder="{{'patients.Search by name or birth date' | translate}}..."
+        autocomplete="off">
+      <button 
+        *ngIf="searchTerm" 
+        class="search-clear-btn" 
+        (click)="clearSearch()"
+        title="{{'generics.Clear' | translate}}">
+        <i class="fa fa-times"></i>
+      </button>
+    </div>
+    <div class="search-results-info" *ngIf="searchTerm">
+      <span *ngIf="filteredPatients.length > 0 || filteredSharedPatients.length > 0">
+        {{ filteredPatients.length + filteredSharedPatients.length }} {{'patients.results found' | translate}}
+      </span>
+      <span *ngIf="filteredPatients.length === 0 && filteredSharedPatients.length === 0" class="no-results">
+        {{'patients.No results found' | translate}}
+      </span>
+    </div>
+  </div>
+  
+  <div *ngIf="patients.length>0" class="patients-list">
     <div class="table-responsive d-none d-md-block">
-      <table class="table table-striped">
+      <table class="modern-table">
         <thead>
             <tr>
                 <th>{{'personalinfo.Name' | translate}}</th>
                 <th>{{'personalinfo.Birth Date' | translate}}</th>
                 <th>{{'personalinfo.Gender' | translate}}</th>
+                <th>{{'personalinfo.Country' | translate}}</th>
                 <th>{{'events.Actions' | translate}}</th>
             </tr>
         </thead>
         <tbody>
-            <tr *ngFor="let patient of patients; let i = index">
-                <td *ngIf="!patient.editing">{{ patient.patientName }}</td>
+            <tr *ngFor="let patient of filteredPatients; let i = index" class="patient-row clickable-row" (click)="!patient.editing && selectPatient(patient)">
+                <td *ngIf="!patient.editing" class="patient-name">{{ patient.patientName }}</td>
                 <td *ngIf="patient.editing">
                     <mat-form-field class="example-full-width">
                         <input matInput placeholder="{{'personalinfo.Name' | translate}}" [(ngModel)]="patient.patientName">
                     </mat-form-field>
                 </td>
   
-                <td *ngIf="!patient.editing">{{ patient.birthDate | date }}</td>
+                <td *ngIf="!patient.editing" class="patient-date">{{ patient.birthDate | date }}</td>
                 <td *ngIf="patient.editing">
                     <mat-form-field class="example-full-width">
                         <input matInput [matDatepicker]="picker" placeholder="{{'generics.Choose a date' | translate}}" [(ngModel)]="patient.birthDate">
@@ -43,7 +79,7 @@
                         <mat-datepicker touchUi="true" #picker></mat-datepicker>
                     </mat-form-field>
                 </td>
-                <td *ngIf="!patient.editing">
+                <td *ngIf="!patient.editing" class="patient-gender">
                   {{ patient.gender ? ('steps.' + patient.gender | translate) : ('generics.Unknown' | translate) }}
                 </td>
                 <td *ngIf="patient.editing">
@@ -55,104 +91,145 @@
                         </mat-select>
                     </mat-form-field>
                 </td>
+
+                <td *ngIf="!patient.editing" class="patient-country">
+                  {{ patient.country || '-' }}
+                </td>
+                <td *ngIf="patient.editing">
+                    <mat-form-field class="example-full-width">
+                        <mat-select placeholder="{{'personalinfo.Country' | translate}}" [(ngModel)]="patient.country">
+                            <mat-option value="">{{'steps.notSpecified' | translate }}</mat-option>
+                            <mat-option *ngFor="let country of countries" [value]="country.name">
+                                {{ country.name }}
+                            </mat-option>
+                        </mat-select>
+                    </mat-form-field>
+                </td>
   
-                <td>
-                    <button *ngIf="!patient.editing" (click)="selectPatient(patient)" class="btn btn-sm btn-white mr-1 mb-2" title="{{'patients.View patient' | translate}}">
-                      <i class="fa fa-eye"></i> {{'patients.View patient' | translate}}
-                    </button>
-                    <button *ngIf="!patient.editing" (click)="enableEdit(patient)" class="btn btn-sm mr-1 btn-white mb-2 custom-white-button" title="{{'generics.Edit' | translate}}"><i class="fa fa-pencil-square-o"></i> {{'generics.Edit' | translate}}</button>
-                    <button *ngIf="patient.editing" (click)="savePatient(patient)" class="btn btn-sm mr-1 btn-success mb-2" title="{{'generics.Save' | translate}}"><i class="fa fa-save"></i> {{'generics.Save' | translate}}</button>
-                    <button *ngIf="patient.editing" (click)="cancelEdit(patient)" class="btn btn-sm mr-1 btn-secondary mb-2" title="{{'generics.Cancel' | translate}}"><i class="fa fa-times"></i> {{'generics.Cancel' | translate}}</button>
-                    <button *ngIf="!patient.editing" (click)="share(patient)" class="btn btn-sm mr-1 btn-white mb-2 custom-white-button" title="{{'generics.Share' | translate}}"><i class="fa-light fa-share-nodes"></i> {{'generics.Share' | translate}}</button>
-                    <button *ngIf="!patient.editing" (click)="deletePatient(patient.sub)" class="btn btn-sm mr-1 btn-danger mb-2" title="{{'generics.Delete' | translate}}"><i class="fa fa-trash"></i> {{'generics.Delete' | translate}}</button>
+                <td class="patient-actions" (click)="$event.stopPropagation()">
+                    <div class="action-buttons">
+                      <button *ngIf="!patient.editing" (click)="selectPatient(patient)" class="btn-action btn-view" title="{{'patients.View patient' | translate}}">
+                        <i class="fa fa-eye"></i> <span class="d-none d-lg-inline">{{'patients.View patient' | translate}}</span>
+                      </button>
+                      <button *ngIf="!patient.editing" (click)="enableEdit(patient)" class="btn-action btn-edit" title="{{'generics.Edit' | translate}}">
+                        <i class="fa fa-pencil-square-o"></i> <span class="d-none d-lg-inline">{{'generics.Edit' | translate}}</span>
+                      </button>
+                      <button *ngIf="patient.editing" (click)="savePatient(patient)" class="btn-action btn-save" title="{{'generics.Save' | translate}}">
+                        <i class="fa fa-save"></i> <span class="d-none d-lg-inline">{{'generics.Save' | translate}}</span>
+                      </button>
+                      <button *ngIf="patient.editing" (click)="cancelEdit(patient)" class="btn-action btn-cancel" title="{{'generics.Cancel' | translate}}">
+                        <i class="fa fa-times"></i> <span class="d-none d-lg-inline">{{'generics.Cancel' | translate}}</span>
+                      </button>
+                      <button *ngIf="!patient.editing" (click)="share(patient)" class="btn-action btn-share" title="{{'generics.Share' | translate}}">
+                        <i class="fa-light fa-share-nodes"></i> <span class="d-none d-lg-inline">{{'generics.Share' | translate}}</span>
+                      </button>
+                      <button *ngIf="!patient.editing" (click)="deletePatient(patient.sub)" class="btn-action btn-delete" title="{{'generics.Delete' | translate}}">
+                        <i class="fa fa-trash"></i> <span class="d-none d-lg-inline">{{'generics.Delete' | translate}}</span>
+                      </button>
+                    </div>
                 </td>
             </tr>
         </tbody>
     </table>
     </div>
-    <div class="d-md-none">
-      <!-- Diseño de tarjetas para pantallas pequeñas -->
-      <div class="card bg-grey bg-lighten-4 mb-3" *ngFor="let patient of patients">
-        <div class="card-body">
-          <h5 class="card-title" *ngIf="!patient.editing">{{ patient.patientName }}</h5>
+    <div class="d-md-none patients-cards-mobile">
+      <div class="patient-card clickable-card" *ngFor="let patient of filteredPatients" (click)="!patient.editing && selectPatient(patient)">
+        <div class="patient-card-body">
+          <h5 class="patient-card-title" *ngIf="!patient.editing">{{ patient.patientName }}</h5>
           <mat-form-field *ngIf="patient.editing" class="w-100">
-            <input matInput placeholder="Name" [(ngModel)]="patient.patientName">
+            <input matInput placeholder="{{'personalinfo.Name' | translate}}" [(ngModel)]="patient.patientName">
           </mat-form-field>
     
-          <p class="card-text" *ngIf="!patient.editing">{{'personalinfo.Birth Date' | translate}}: {{ patient.birthDate | date }}</p>
+          <div class="patient-card-info" *ngIf="!patient.editing">
+            <p class="patient-card-text">
+              <i class="fa fa-calendar"></i> {{'personalinfo.Birth Date' | translate}}: {{ patient.birthDate | date }}
+            </p>
+            <p class="patient-card-text">
+              <i class="fa fa-venus-mars"></i> {{'personalinfo.Gender' | translate}}: {{ patient.gender ? ('steps.' + patient.gender | translate) : ('generics.Unknown' | translate) }}
+            </p>
+          </div>
+          
           <mat-form-field *ngIf="patient.editing" class="w-100">
             <input matInput [matDatepicker]="picker" placeholder="{{'personalinfo.Birth Date' | translate}}" [(ngModel)]="patient.birthDate">
             <mat-datepicker-toggle matSuffix [for]="picker"></mat-datepicker-toggle>
             <mat-datepicker #picker></mat-datepicker>
           </mat-form-field>
     
-          <p class="card-text" *ngIf="!patient.editing">{{'personalinfo.Gender' | translate}}: {{ patient.gender ? ('steps.' + patient.gender | translate) : ('generics.Unknown' | translate) }}</p>
           <mat-form-field *ngIf="patient.editing" class="w-100">
-            <mat-select placeholder="Gender" [(ngModel)]="patient.gender">
+            <mat-select placeholder="{{'personalinfo.Gender' | translate}}" [(ngModel)]="patient.gender">
               <mat-option value="male">{{ 'steps.male' | translate }}</mat-option>
               <mat-option value="female">{{ 'steps.female' | translate }}</mat-option>
               <mat-option value="other">{{ 'steps.other' | translate }}</mat-option>
             </mat-select>
           </mat-form-field>
     
-          <div class="btn-group" role="group" *ngIf="!patient.editing">
-            <button (click)="selectPatient(patient)" class="btn btn-sm btn-dark"><i class="fa fa-eye"></i> {{'generics.View' | translate}}</button>
-            <button (click)="enableEdit(patient)" class="btn btn-sm btn-white custom-white-button"><i class="fa fa-pencil-square-o"></i></button>
-            <button (click)="share(patient)" class="btn btn-sm btn-white custom-white-button"><i class="fa-light fa-share-nodes"></i></button>
-            <button (click)="deletePatient(patient.sub)" class="btn btn-sm btn-danger"><i class="fa fa-trash"></i></button>
+          <div class="patient-card-actions" *ngIf="!patient.editing" (click)="$event.stopPropagation()">
+            <button (click)="selectPatient(patient)" class="btn-action btn-view"><i class="fa fa-eye"></i> {{'generics.View' | translate}}</button>
+            <button (click)="enableEdit(patient)" class="btn-action btn-edit"><i class="fa fa-pencil-square-o"></i></button>
+            <button (click)="share(patient)" class="btn-action btn-share"><i class="fa-light fa-share-nodes"></i></button>
+            <button (click)="deletePatient(patient.sub)" class="btn-action btn-delete"><i class="fa fa-trash"></i></button>
           </div>
     
-          <div class="btn-group" role="group" *ngIf="patient.editing">
-            <button (click)="savePatient(patient)" class="btn btn-sm btn-success"><i class="fa fa-save"></i> {{'generics.Save' | translate}}</button>
-            <button (click)="cancelEdit(patient)" class="btn btn-sm btn-secondary"><i class="fa fa-times"></i> {{'generics.Cancel' | translate}}</button>
+          <div class="patient-card-actions" *ngIf="patient.editing">
+            <button (click)="savePatient(patient)" class="btn-action btn-save"><i class="fa fa-save"></i> {{'generics.Save' | translate}}</button>
+            <button (click)="cancelEdit(patient)" class="btn-action btn-cancel"><i class="fa fa-times"></i> {{'generics.Cancel' | translate}}</button>
           </div>
         </div>
       </div>
     </div>
   </div>
-  <p *ngIf="patients.length==0">{{'patients.no patients' | translate}}</p>
-<div *ngIf="sharedPatients.length>0">
-<!-- Tabla de pacientes compartidos -->
-<h2 class="mt-4">{{'patients.Patients shared with me' | translate}}</h2>
-<div class="table-responsive d-none d-md-block">
-  <table class="table table-striped">
-    <thead>
-      <tr>
-        <th>{{'personalinfo.Name' | translate}}</th>
-        <th>{{'personalinfo.Birth Date' | translate}}</th>
-        <th>{{'personalinfo.Gender' | translate}}</th>
-        <th>{{'events.Actions' | translate}}</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr *ngFor="let patient of sharedPatients; let i = index">
-        <td>{{ patient.patientName }}</td>
-        <td>{{ patient.birthDate | date }}</td>
-        <td>{{ patient.gender ? ('steps.' + patient.gender | translate) : ('generics.Unknown' | translate) }}</td>
-        <td>
-          <button (click)="selectPatient(patient)" class="btn btn-sm btn-white">
-            <i class="fa fa-eye"></i> {{'patients.View patient' | translate}}
-          </button>
-        </td>
-      </tr>
-    </tbody>
-  </table>
-</div>
-<div class="d-md-none">
-  <div class="card bg-grey bg-lighten-4 mb-3" *ngFor="let patient of sharedPatients">
-    <div class="card-body">
-      <h5 class="card-title">{{ patient.patientName }}</h5>
-      <p class="card-text">{{'personalinfo.Birth Date' | translate}}: {{ patient.birthDate | date }}</p>
-      <p class="card-text">{{'personalinfo.Gender' | translate}}: {{ patient.gender ? ('steps.' + patient.gender | translate) : ('generics.Unknown' | translate) }}</p>
-      <div class="btn-group" role="group">
-        <button (click)="selectPatient(patient)" class="btn btn-sm btn-dark"><i class="fa fa-eye"></i> {{'generics.View' | translate}}</button>
+  <p class="no-patients-message" *ngIf="patients.length==0">{{'patients.no patients' | translate}}</p>
+  <p class="no-patients-message" *ngIf="patients.length>0 && filteredPatients.length==0 && searchTerm">{{'patients.No patients match your search' | translate}}</p>
+  
+  <div *ngIf="sharedPatients.length>0" class="shared-patients-section">
+    <h2 class="shared-patients-title">{{'patients.Patients shared with me' | translate}}</h2>
+    <div class="table-responsive d-none d-md-block">
+      <table class="modern-table">
+        <thead>
+          <tr>
+            <th>{{'personalinfo.Name' | translate}}</th>
+            <th>{{'personalinfo.Birth Date' | translate}}</th>
+            <th>{{'personalinfo.Gender' | translate}}</th>
+            <th>{{'personalinfo.Country' | translate}}</th>
+            <th>{{'events.Actions' | translate}}</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let patient of filteredSharedPatients; let i = index" class="patient-row clickable-row" (click)="selectPatient(patient)">
+            <td class="patient-name">{{ patient.patientName }}</td>
+            <td class="patient-date">{{ patient.birthDate | date }}</td>
+            <td class="patient-gender">{{ patient.gender ? ('steps.' + patient.gender | translate) : ('generics.Unknown' | translate) }}</td>
+            <td class="patient-country">{{ patient.country || '-' }}</td>
+            <td class="patient-actions" (click)="$event.stopPropagation()">
+              <button (click)="selectPatient(patient)" class="btn-action btn-view">
+                <i class="fa fa-eye"></i> <span class="d-none d-lg-inline">{{'patients.View patient' | translate}}</span>
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="d-md-none patients-cards-mobile">
+      <div class="patient-card clickable-card" *ngFor="let patient of filteredSharedPatients" (click)="selectPatient(patient)">
+        <div class="patient-card-body">
+          <h5 class="patient-card-title">{{ patient.patientName }}</h5>
+          <div class="patient-card-info">
+            <p class="patient-card-text">
+              <i class="fa fa-calendar"></i> {{'personalinfo.Birth Date' | translate}}: {{ patient.birthDate | date }}
+            </p>
+            <p class="patient-card-text">
+              <i class="fa fa-venus-mars"></i> {{'personalinfo.Gender' | translate}}: {{ patient.gender ? ('steps.' + patient.gender | translate) : ('generics.Unknown' | translate) }}
+            </p>
+          </div>
+          <div class="patient-card-actions" (click)="$event.stopPropagation()">
+            <button (click)="selectPatient(patient)" class="btn-action btn-view"><i class="fa fa-eye"></i> {{'generics.View' | translate}}</button>
+          </div>
+        </div>
       </div>
     </div>
+    <p class="no-patients-message" *ngIf="sharedPatients.length==0">{{'patients.No patients shared with you' | translate}}</p>
+    <p class="no-patients-message" *ngIf="sharedPatients.length>0 && filteredSharedPatients.length==0 && searchTerm">{{'patients.No shared patients match your search' | translate}}</p>
   </div>
-</div>
-
-<p *ngIf="sharedPatients.length==0">{{'patients.No patients shared with you' | translate}}</p>
-</div>
    
 </div>
 <ng-template #shareCustom let-c="close" let-d="dismiss" appendTo="body">

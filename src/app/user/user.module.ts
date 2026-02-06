@@ -42,6 +42,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { QRCodeModule } from 'angularx-qrcode';
 import { DragDropModule } from '@angular/cdk/drag-drop';
+import { QuillModule } from 'ngx-quill';
 
 @NgModule({
     exports: [
@@ -77,6 +78,7 @@ import { DragDropModule } from '@angular/cdk/drag-drop';
         MatExpansionModule,
         QRCodeModule,
         DragDropModule,
+        QuillModule,
         SharedModule
     ],
     declarations: [

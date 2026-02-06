@@ -21,7 +21,7 @@
   </div>
   <!-- *SIDE* Menu ends -->
 
-  <div class="main-panel" [ngClass]="(actualUrl == '/welcome' || actualUrl == '/new-patient')?'mt-0':'pt-custom'">
+  <div class="main-panel" [ngClass]="(actualUrl == '/welcome' || actualUrl == '/new-patient')?'mt-0':''">
     <div class="main-content" [ngClass]="(actualUrl == '/welcome' || actualUrl == '/new-patient')?'':''" >
       <div class="content-overlay"></div>
       <div class="content-wrapper">
@@ -32,13 +32,6 @@
     <!--<app-footer></app-footer>-->
     <!-- Scroll to top button -->
     <button *ngIf="actualUrl != '/home' && isScrollTopVisible" class="btn btn-primary scroll-top" type="button" (click)="scrollToTop();trackEventsService.lauchEvent('scroll btn 2');"><i class="fa fa-arrow-up"></i></button>
-    <button 
-  *ngIf="actualUrl == '/home' && scrollToBottomVisible" 
-  class="btn btn-primary scroll-bottom" 
-  type="button" 
-  (click)="scrollToBottom();trackEventsService.lauchEvent('scroll btn 2');">
-  <i class="fa fa-arrow-down"></i>
-</button>
   </div>
 
   <!-- *NOTIFICATION-SIDEBAR* starts -->

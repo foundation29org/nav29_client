@@ -1,14 +1,9 @@
 <div class="welcome-container" *ngIf="!showPanelDelete">
-	<div class="welcome-header text-center mb-5">
+	<div class="welcome-header text-center mb-4">
 	  <button class="btn btn-dark position-absolute" style="left: 1rem; top: 1rem;" (click)="goBack()">
 		<i class="fa fa-arrow-left"></i> {{'generics.Back' | translate }}
 	  </button>
 	  <h1 class="display-4 mb-3">{{'profile.Settings' | translate }}</h1>
-	  <div class="save-status" *ngIf="saveStatus">
-		<small class="text-success">
-		  <i class="fa fa-check"></i> {{'generics.ChangesSaved' | translate }}
-		</small>
-	  </div>
 	</div>
   
 	<div class="center-elements" *ngIf="loading">
@@ -17,95 +12,195 @@
 	  </div>
 	</div>
   
-	<div class="settings-grid" *ngIf="!loading">
-	  <!-- Idioma de la interfaz -->
-	  <div class="settings-card">
-		<div class="card-icon">
-		  <i class="fa fa-language"></i>
+	<div class="settings-sections" *ngIf="!loading">
+	  
+	  <!-- SECCIÓN 1: PREFERENCIAS DE IDIOMA -->
+	  <section class="settings-section">
+		<h2 class="section-title">
+		  <i class="fa fa-globe"></i>
+		  {{'whatsapp.language_preferences' | translate}}
+		</h2>
+		<div class="section-grid two-columns">
+		  <!-- Idioma de la interfaz -->
+		  <div class="settings-card">
+			<div class="card-icon">
+			  <i class="fa fa-language"></i>
+			</div>
+			<h3>{{'profile.Language' | translate}}</h3>
+			<p class="text-muted">{{'profile.Interface Language Explanation' | translate}}</p>
+			<select id="lang" name="lang" class="form-control" [(ngModel)]="user.lang" #langselected (ngModelChange)="onChangeLang($event)">
+			  <option *ngFor="let lang of langs" [ngValue]="lang.code">{{lang.name}}</option>
+			</select>
+		  </div>
+	  
+		  <!-- Idioma de las respuestas -->
+		  <div class="settings-card">
+			<div class="card-icon">
+			  <i class="fa fa-comments"></i>
+			</div>
+			<h3>{{'lang.Select the language of the responses' | translate}}</h3>
+			<p class="text-muted">{{'lang.ExplainLang' | translate}}</p>
+			<p class="text-muted">{{'lang.ExplainLang1' | translate}}</p>
+			<select id="preferredResponseLanguage" name="preferredResponseLanguage" class="form-control" [(ngModel)]="user.preferredResponseLanguage" (ngModelChange)="onChangePreferredResponseLanguage($event)">
+			  <option *ngIf="!user.preferredResponseLanguage" value="null" disabled selected>{{ 'lang.Select the language' | translate }}</option>
+			  <option *ngFor="let lang of allLangs" [ngValue]="lang.code">{{lang.nativeName}}</option>
+			</select>
+		  </div>
 		</div>
-		<h3>{{'profile.Language' | translate}}</h3>
-		<select id="lang" name="lang" class="form-control" [(ngModel)]="user.lang" #langselected (ngModelChange)="onChangeLang($event)">
-		  <option *ngFor="let lang of langs" [ngValue]="lang.code">{{lang.name}}</option>
-		</select>
-	  </div>
-  
-	  <!-- Idioma de las respuestas -->
-	  <div class="settings-card">
-		<div class="card-icon">
-		  <i class="fa fa-comments"></i>
+	  </section>
+
+	  <!-- SECCIÓN 2: TU PERFIL -->
+	  <section class="settings-section">
+		<h2 class="section-title">
+		  <i class="fa fa-user-circle"></i>
+		  {{'whatsapp.your_profile' | translate}}
+		</h2>
+		<div class="section-grid two-columns">
+		  <!-- Rol del usuario -->
+		  <div class="settings-card">
+			<div class="card-icon">
+			  <i class="fa fa-user"></i>
+			</div>
+			<h3>{{'steps.primaryGoal' | translate}}</h3>
+			<p class="text-muted">{{'steps.primaryGoalDescription' | translate}}</p>
+			<div class="role-options">
+			  <label class="role-option" [class.selected]="user.role === 'User'">
+				<input type="radio" name="role" value="User" [(ngModel)]="user.role" (change)="onRoleChange('User')">
+				<i class="fa fa-user-circle"></i>
+				<span>{{'steps.personalHealthInsights' | translate}}</span>
+			  </label>
+			  <label class="role-option" [class.selected]="user.role === 'Caregiver'">
+				<input type="radio" name="role" value="Caregiver" [(ngModel)]="user.role" (change)="onRoleChange('Caregiver')">
+				<i class="fa fa-heart"></i>
+				<span>{{'steps.someoneElsesHealth' | translate}}</span>
+			  </label>
+			  <label class="role-option" [class.selected]="user.role === 'Clinical'">
+				<input type="radio" name="role" value="Clinical" [(ngModel)]="user.role" (change)="onRoleChange('Clinical')">
+				<i class="fa fa-user-md"></i>
+				<span>{{'steps.professionalUse' | translate}}</span>
+			  </label>
+			</div>
+		  </div>
+	  
+		  <!-- Nivel de conocimiento -->
+		  <div class="settings-card">
+			<div class="card-icon">
+			  <i class="fa fa-graduation-cap"></i>
+			</div>
+			<h3>{{'profile.Level of health knowledge' | translate}}</h3>
+			<p class="text-muted">{{'profile.Medical Level Explanation' | translate}}</p>
+			<div class="knowledge-levels">
+			  <label class="knowledge-level" [class.selected]="user.medicalLevel === '0'">
+				<input type="radio" name="medicalLevel" value="0" [(ngModel)]="user.medicalLevel" (change)="onMedicalLevelChange('0')">
+				<span>{{'profile.No knowledge' | translate}}</span>
+			  </label>
+			  <label class="knowledge-level" [class.selected]="user.medicalLevel === '1'">
+				<input type="radio" name="medicalLevel" value="1" [(ngModel)]="user.medicalLevel" (change)="onMedicalLevelChange('1')">
+				<span>{{'profile.Basic knowledge' | translate}}</span>
+			  </label>
+			  <label class="knowledge-level" [class.selected]="user.medicalLevel === '2'">
+				<input type="radio" name="medicalLevel" value="2" [(ngModel)]="user.medicalLevel" (change)="onMedicalLevelChange('2')">
+				<span>{{'profile.Intermediate knowledge' | translate}}</span>
+			  </label>
+			  <label class="knowledge-level" [class.selected]="user.medicalLevel === '3'">
+				<input type="radio" name="medicalLevel" value="3" [(ngModel)]="user.medicalLevel" (change)="onMedicalLevelChange('3')">
+				<span>{{'profile.Advanced knowledge' | translate}}</span>
+			  </label>
+			</div>
+			<p class="text-muted mt-3">
+			  * {{'profile.If you change the health knowledge level' | translate }}
+			</p>
+		  </div>
 		</div>
-		<h3>{{'lang.Select the language of the responses' | translate}}</h3>
-		<p class="text-muted">{{'lang.ExplainLang' | translate}}</p>
-		<p class="text-muted">{{'lang.ExplainLang1' | translate}}</p>
-		<select id="preferredResponseLanguage" name="preferredResponseLanguage" class="form-control" [(ngModel)]="user.preferredResponseLanguage" (ngModelChange)="onChangePreferredResponseLanguage($event)">
-		  <option *ngIf="!user.preferredResponseLanguage" value="null" disabled selected>{{ 'lang.Select the language' | translate }}</option>
-		  <option *ngFor="let lang of allLangs" [ngValue]="lang.code">{{lang.nativeName}}</option>
-		</select>
-	  </div>
-  
-	  <!-- Rol del usuario -->
-	  <div class="settings-card">
-		<div class="card-icon">
-		  <i class="fa fa-user"></i>
+	  </section>
+
+	  <!-- SECCIÓN 3: WHATSAPP -->
+	  <section class="settings-section">
+		<h2 class="section-title">
+		  <i class="fa fa-whatsapp"></i>
+		  {{'whatsapp.title' | translate}}
+		</h2>
+		<div class="section-grid single-column">
+		  <div class="settings-card whatsapp-card">
+			<div class="whatsapp-header">
+			  <div class="whatsapp-status">
+				<span class="status-badge" [class.linked]="whatsappLinked" [class.not-linked]="!whatsappLinked">
+				  <i class="fa" [class.fa-check-circle]="whatsappLinked" [class.fa-times-circle]="!whatsappLinked"></i>
+				  {{ whatsappLinked ? ('whatsapp.linked' | translate) : ('whatsapp.not_linked' | translate) }}
+				</span>
+			  </div>
+			  <p class="text-muted mb-0">{{'whatsapp.description' | translate}}</p>
+			</div>
+
+			<!-- Estado vinculado -->
+			<div class="whatsapp-content" *ngIf="whatsappLinked">
+			  <div class="linked-info">
+				<div class="phone-display">
+				  <i class="fa fa-phone"></i>
+				  <span class="phone-number">{{ whatsappPhone }}</span>
+				</div>
+				<p class="text-muted">{{'whatsapp.linked_since' | translate}}: {{ whatsappLinkedAt | date:'dd/MM/yyyy' }}</p>
+			  </div>
+			  <button class="btn btn-outline-danger" (click)="unlinkWhatsApp()" [disabled]="unlinkingWhatsApp">
+				<i class="fa fa-unlink mr-1"></i>
+				<span *ngIf="!unlinkingWhatsApp">{{'whatsapp.unlink_button' | translate}}</span>
+				<span *ngIf="unlinkingWhatsApp" class="spinner-border spinner-border-sm" role="status"></span>
+			  </button>
+			</div>
+
+			<!-- Estado no vinculado -->
+			<div class="whatsapp-content" *ngIf="!whatsappLinked">
+			  <!-- Sin código generado -->
+			  <div class="link-action" *ngIf="!linkCode">
+				<button class="btn btn-success btn-lg" (click)="generateWhatsAppCode()" [disabled]="generatingCode">
+				  <i class="fa fa-whatsapp"></i>
+				  <span *ngIf="!generatingCode">{{'whatsapp.link_button' | translate}}</span>
+				  <span *ngIf="generatingCode" class="spinner-border spinner-border-sm" role="status"></span>
+				</button>
+			  </div>
+
+			  <!-- Código generado -->
+			  <div class="code-panel" *ngIf="linkCode">
+				<div class="code-display">
+				  <label>{{'whatsapp.code_label' | translate}}</label>
+				  <div class="code-box">
+					<span class="code-value">{{ linkCode }}</span>
+					<button class="btn btn-sm btn-outline-secondary" (click)="copyCodeToClipboard()" title="{{'whatsapp.copy_code' | translate}}">
+					  <i class="fa" [class.fa-copy]="!codeCopied" [class.fa-check]="codeCopied"></i>
+					</button>
+				  </div>
+				  <div class="code-countdown" *ngIf="countdownDisplay">
+					<i class="fa fa-clock-o"></i>
+					{{'whatsapp.code_expires' | translate}}: <strong>{{ countdownDisplay }}</strong>
+				  </div>
+				</div>
+
+				<div class="code-instructions">
+				  <p><strong>{{'whatsapp.instructions_title' | translate}}:</strong></p>
+				  <ol>
+					<li>{{'whatsapp.instruction_1' | translate}}</li>
+					<li>{{'whatsapp.instruction_2' | translate}}: <strong>{{ nav29WhatsAppNumber }}</strong></li>
+					<li>{{'whatsapp.instruction_3' | translate}}</li>
+				  </ol>
+				  <a href="https://wa.me/{{ nav29WhatsAppNumberClean }}?text={{ linkCode }}" target="_blank" class="btn btn-success">
+					<i class="fa fa-whatsapp"></i> {{'whatsapp.open_whatsapp' | translate}}
+				  </a>
+				</div>
+			  </div>
+			</div>
+		  </div>
 		</div>
-		<h3>{{'steps.primaryGoal' | translate}}</h3>
-		<p class="text-muted">{{'steps.primaryGoalDescription' | translate}}</p>
-		<div class="role-options">
-		  <label class="role-option" [class.selected]="user.role === 'User'">
-			<input type="radio" name="role" value="User" [(ngModel)]="user.role" (change)="onRoleChange('User')">
-			<i class="fa fa-user-circle"></i>
-			<span>{{'steps.personalHealthInsights' | translate}}</span>
-		  </label>
-		  <label class="role-option" [class.selected]="user.role === 'Caregiver'">
-			<input type="radio" name="role" value="Caregiver" [(ngModel)]="user.role" (change)="onRoleChange('Caregiver')">
-			<i class="fa fa-heart"></i>
-			<span>{{'steps.someoneElsesHealth' | translate}}</span>
-		  </label>
-		  <label class="role-option" [class.selected]="user.role === 'Clinical'">
-			<input type="radio" name="role" value="Clinical" [(ngModel)]="user.role" (change)="onRoleChange('Clinical')">
-			<i class="fa fa-user-md"></i>
-			<span>{{'steps.professionalUse' | translate}}</span>
-		  </label>
-		</div>
-	  </div>
-  
-	  <!-- Nivel de conocimiento -->
-	  <div class="settings-card">
-		<div class="card-icon">
-		  <i class="fa fa-graduation-cap"></i>
-		</div>
-		<h3>{{'profile.Level of health knowledge' | translate}}</h3>
-		<p class="text-muted">{{'profile.Medical Level Explanation' | translate}}</p>
-		<div class="knowledge-levels">
-		  <label class="knowledge-level" [class.selected]="user.medicalLevel === '0'">
-			<input type="radio" name="medicalLevel" value="0" [(ngModel)]="user.medicalLevel" (change)="onMedicalLevelChange('0')">
-			<span>{{'profile.No knowledge' | translate}}</span>
-		  </label>
-		  <label class="knowledge-level" [class.selected]="user.medicalLevel === '1'">
-			<input type="radio" name="medicalLevel" value="1" [(ngModel)]="user.medicalLevel" (change)="onMedicalLevelChange('1')">
-			<span>{{'profile.Basic knowledge' | translate}}</span>
-		  </label>
-		  <label class="knowledge-level" [class.selected]="user.medicalLevel === '2'">
-			<input type="radio" name="medicalLevel" value="2" [(ngModel)]="user.medicalLevel" (change)="onMedicalLevelChange('2')">
-			<span>{{'profile.Intermediate knowledge' | translate}}</span>
-		  </label>
-		  <label class="knowledge-level" [class.selected]="user.medicalLevel === '3'">
-			<input type="radio" name="medicalLevel" value="3" [(ngModel)]="user.medicalLevel" (change)="onMedicalLevelChange('3')">
-			<span>{{'profile.Advanced knowledge' | translate}}</span>
-		  </label>
-		</div>
-		<p class="text-muted mt-3">
-		  * {{'profile.If you change the health knowledge level' | translate }}
-		</p>
-	  </div>
+	  </section>
+
 	</div>
   
 	<div class="text-center mt-5">
-	  <button type="button" class="btn btn-danger" (click)="deleteAccount()">
+	  <button type="button" class="btn btn-outline-danger" (click)="deleteAccount()">
 		<i class="fa fa-trash"></i> {{'profile.Delete account' | translate }}
 	  </button>
 	</div>
-  </div>
+</div>
+
 <div class="offset-md-2 col-md-8 offset-lg-3 col-lg-6 offset-xl-4 col-xl-4">
 	
 	<div class="mt-2 pt-5" *ngIf="showPanelDelete">

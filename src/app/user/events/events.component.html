@@ -18,46 +18,10 @@
 					</div>
 					<div class="row">
 						<div class="col-md-12">
-							<form action="#" class="form form-horizontal" [formGroup]="seizuresForm">
+						<form action="#" class="form form-horizontal" [formGroup]="seizuresForm">
 								<div class="form-body">
 									<div class="">
-										<div class="">
-											<div class="form-group">
-												<label>{{'generics.Name' | translate }}</label>
-												<input type="text" class="col-12 form-control" id="numericos2"
-													formControlName="name"
-													[ngClass]="{ 'is-invalid': submitted && seizuresForm.get('name').errors }"
-													name="numericos2">
-												<small class="form-text text-muted danger"
-													*ngIf="submitted && seizuresForm.get('name').errors">{{'generics.required' |
-													translate }}</small>
-											</div>
-										</div>
-										<div class="">
-											<div class="form-group">
-												<label class="mb-0">{{'generics.Date' | translate }}</label>
-												<div class="">
-													<mat-form-field class="mr-sm-24" fxFlex>
-														<input matInput class="grey" readonly [matDatepicker]="picker"
-															autocomplete="off" name="date" formControlName="date">
-															<button *ngIf="seizuresForm.value.date!=null" matSuffix mat-icon-button aria-label="Clear" (click)="seizuresForm.controls['date'].setValue(null)" style="position: absolute; left: 30px;">
-																<em class="fa fa-trash danger"></em>
-															</button>
-														<mat-datepicker-toggle matSuffix
-															[for]="picker"></mat-datepicker-toggle>
-														<mat-datepicker touchUi="true" [startAt]="date" #picker></mat-datepicker>
-													</mat-form-field>
-	
-													<!--<mat-form-field class="mr-sm-24" fxFlex>
-														<input matInput class="grey" readonly [matDatepicker]="picker"
-															autocomplete="off" name="date" formControlName="date" [max]="viewDate">
-														<mat-datepicker-toggle matSuffix
-															[for]="picker"></mat-datepicker-toggle>
-														<mat-datepicker touchUi="true" [startAt]="date" #picker></mat-datepicker>
-													</mat-form-field>-->
-												</div>
-											</div>
-										</div>
+										<!-- Type first -->
 										<div>
 											<div class="form-group">
 												<label for="key">{{ 'events.Type' | translate }}</label>
@@ -73,6 +37,85 @@
 												</select>
 											  </div>
 										</div>
+										<!-- Name -->
+										<div class="">
+											<div class="form-group">
+												<label>{{'generics.Name' | translate }}</label>
+												<input type="text" class="col-12 form-control" id="numericos2"
+													formControlName="name"
+													[ngClass]="{ 'is-invalid': submitted && seizuresForm.get('name').errors }"
+													name="numericos2">
+												<small class="form-text text-muted danger"
+													*ngIf="submitted && seizuresForm.get('name').errors">{{'generics.required' |
+													translate }}</small>
+											</div>
+										</div>
+										<!-- Date -->
+										<div class="">
+											<div class="form-group">
+												<label class="mb-0">{{'generics.Date' | translate }}</label>
+												<div class="">
+													<mat-form-field class="mr-sm-24" fxFlex>
+														<input matInput class="grey" readonly [matDatepicker]="picker"
+															autocomplete="off" name="date" formControlName="date">
+															<button *ngIf="seizuresForm.value.date!=null" matSuffix mat-icon-button aria-label="Clear" (click)="seizuresForm.controls['date'].setValue(null)" style="position: absolute; left: 30px;">
+																<em class="fa fa-trash danger"></em>
+															</button>
+														<mat-datepicker-toggle matSuffix
+															[for]="picker"></mat-datepicker-toggle>
+														<mat-datepicker touchUi="true" [startAt]="date" #picker></mat-datepicker>
+													</mat-form-field>
+												</div>
+											</div>
+										</div>
+										<!-- Time field - visible for appointments/reminders, collapsable for others -->
+										<div class="" *ngIf="seizuresForm.value.key === 'appointment' || seizuresForm.value.key === 'reminder' || showTimeField">
+											<div class="form-group">
+												<label class="mb-0">
+													{{'timeline.Time' | translate }}
+													<span *ngIf="seizuresForm.value.key === 'appointment' || seizuresForm.value.key === 'reminder'" class="text-primary">*</span>
+												</label>
+												<div class="d-flex align-items-center">
+													<input type="number" class="form-control" style="width: 60px;" formControlName="timeHour" min="1" max="12" placeholder="HH">
+													<span class="mx-1">:</span>
+													<input type="number" class="form-control" style="width: 60px;" formControlName="timeMinute" min="0" max="59" placeholder="MM">
+													<div class="btn-group btn-group-sm ml-2" role="group">
+														<button type="button" class="btn" 
+															[class.btn-primary]="seizuresForm.value.timePeriod === 'AM'"
+															[class.btn-outline-secondary]="seizuresForm.value.timePeriod !== 'AM'"
+															(click)="seizuresForm.get('timePeriod').setValue('AM')">AM</button>
+														<button type="button" class="btn" 
+															[class.btn-primary]="seizuresForm.value.timePeriod === 'PM'"
+															[class.btn-outline-secondary]="seizuresForm.value.timePeriod !== 'PM'"
+															(click)="seizuresForm.get('timePeriod').setValue('PM')">PM</button>
+													</div>
+												</div>
+											</div>
+										</div>
+										<div class="" *ngIf="seizuresForm.value.key !== 'appointment' && seizuresForm.value.key !== 'reminder' && !showTimeField">
+											<button type="button" class="btn btn-outline-secondary btn-sm mb-2" (click)="showTimeField = true">
+												<i class="fa fa-clock-o mr-1"></i>{{'timeline.Add time' | translate }}
+											</button>
+										</div>
+										<!-- End Date -->
+										<div class="">
+											<div class="form-group">
+												<label class="mb-0">{{'events.End Date' | translate }} <small class="text-muted">({{'generics.Optional' | translate}})</small></label>
+												<div class="">
+													<mat-form-field class="mr-sm-24" fxFlex>
+														<input matInput class="grey" readonly [matDatepicker]="pickerEnd"
+															autocomplete="off" name="dateEnd" formControlName="dateEnd" [min]="seizuresForm.value.date">
+															<button *ngIf="seizuresForm.value.dateEnd!=null" matSuffix mat-icon-button aria-label="Clear" (click)="seizuresForm.controls['dateEnd'].setValue(null)" style="position: absolute; left: 30px;">
+																<em class="fa fa-trash danger"></em>
+															</button>
+														<mat-datepicker-toggle matSuffix
+															[for]="pickerEnd"></mat-datepicker-toggle>
+														<mat-datepicker touchUi="true" [startAt]="date" #pickerEnd></mat-datepicker>
+													</mat-form-field>
+												</div>
+											</div>
+										</div>
+										<!-- Notes -->
 										<div class="">
 											<div class="form-group">
 												<label>{{'generics.notes' | translate }}</label>
@@ -82,7 +125,7 @@
 											</div>
 										</div>
 									</div>
-	
+
 								</div>
 							</form>
 						</div>
@@ -100,137 +143,212 @@
 	
 		</div>
 		<div *ngIf="step=='1'" @fadeSlideInOut>
-			<div class="card card-block">
-				<div class="card-body">
-	
-					<h2 class="d-inline content-header mt-0 mb-2">{{'events.title' | translate }}</h2>
-					<p class="float-right"> <button class="btn btn-primary" (click)="goto('0');">{{'generics.New' | translate }}</button></p>
-					<div class="table-responsive"> <!--*ngIf="loadedEvents && events.length>0"-->
-	
-						<mat-form-field>
-							<mat-label>{{'events.Filter' | translate}}</mat-label>
-							<input matInput (keyup)="applyFilter($event)" placeholder="{{'events.Ex.' | translate }}" #input>
-						</mat-form-field>
-						<span *ngIf="selection.selected.length>0 && loadedEvents && events.length>0" class="ml-2">
-							<!--<span *ngIf="!deleting"> <button class="btn btn-primary" (click)="deleteAllEvent();">{{'generics.Delete all' | translate }} <i class="ft-trash"></i></button></span>-->
-							<span *ngIf="deleting"> <em class="fa fa-spinner fa-spin fa-3x fa-fw primary"></em>  </span>
-							<button *ngIf="!deleting" class="btn-sm btn btn-primary" (click)="deleteSelected()">{{'generics.Delete selected' | translate }} ({{selection.selected.length}}) <i class="ft-trash"></i></button>
-						</span>
-						<button *ngIf="range.value.start==null && range.value.end==null" class="btn btn-dark btn-sm float-right mt-2" (click)="showDates(contentDates);"><em class="fa fa-calendar"></em></button>
-						<span *ngIf="range.value.start!=null || range.value.end!=null" class="float-right mt-3">
-							<span>{{range.value.start | date}} - {{range.value.end | date}}</span>
-							<a class="ml-1 danger" (click)="clear();"><em class="fa fa-times"></em></a>
-						</span>
-						<div class="example-container mat-elevation-z8" tabindex="0">
-							<table mat-table [dataSource]="dataSource" matSort multiTemplateDataRows>
-								<ng-container matColumnDef="select">
-									<th mat-header-cell *matHeaderCellDef class="select-checkbox">
-										<mat-checkbox (change)="$event ? masterToggle() : null"
-													  [checked]="selection.hasValue() && isAllSelected()"
-													  [indeterminate]="selection.hasValue() && !isAllSelected()">
-										</mat-checkbox>
-									</th>
-									<td mat-cell *matCellDef="let row" class="select-checkbox">
-										<mat-checkbox (click)="$event.stopPropagation()" 
-													  (change)="$event ? selection.toggle(row) : null" 
-													  [checked]="selection.isSelected(row)">
-										</mat-checkbox>
-									</td>
-								</ng-container>
-								<!-- name Column -->
-								<ng-container matColumnDef="name">
-									<th mat-header-cell *matHeaderCellDef mat-sort-header> {{'generics.Name' | translate }} </th>
-									<td class="pr-2 pt-2 pb-2" mat-cell *matCellDef="let row"> 
-										<span *ngIf="row.key!=''" class="mr-1">{{getEventTypeIcon(row.key)}}</span>
-										<span>{{row.name}}</span> 
-									</td>
-								</ng-container>
-								<!-- name Column -->
-								<ng-container matColumnDef="origin">
-									<th mat-header-cell *matHeaderCellDef mat-sort-header> Origin </th>
-									<td class="pr-2 pt-2 pb-2" mat-cell *matCellDef="let row"> <span>{{row.origin}}</span> </td>
-								</ng-container>
-	
-								<!-- date Column -->
-								<ng-container matColumnDef="date">
-									<th mat-header-cell *matHeaderCellDef mat-sort-header> {{'generics.Date' | translate }} </th>
-									<td mat-cell *matCellDef="let row">
-										<span *ngIf="row.date!=null">{{row.date |date}}</span>
-										<span *ngIf="row.date==null">--/--/--</span>
-									</td>
-								</ng-container>
-	
-								<!-- notes Column 
-								<ng-container matColumnDef="notes">
-									<th mat-header-cell *matHeaderCellDef mat-sort-header> {{'generics.notes' | translate }} </th>
-									<td mat-cell *matCellDef="let row"> {{row.notes}} </td>
-								</ng-container>-->
-	
-								<!-- actions Column -->
-								<ng-container matColumnDef="actions">
-									<th mat-header-cell *matHeaderCellDef mat-sort-header> {{'events.Actions' | translate}} </th>
-									<td mat-cell *matCellDef="let row"> 
-										<a class="" style="color: #343a40" (click)="showForm(row);" title="{{'generics.Edit' | translate }}"
-										href="javascript:void(0)"><i class="fa fa-pencil"></i></a> 
-										<a class="ml-2" style="color: #343a40" (click)="deleteSeizure(row);" title="{{'generics.Delete' | translate }}"
-											href="javascript:void(0)"><i class="ft-trash"></i></a> 
-									</td>
-								</ng-container>
-								
-								<ng-container matColumnDef="expand">
-									<th mat-header-cell *matHeaderCellDef aria-label="row actions">&nbsp;</th>
-									<td mat-cell *matCellDef="let element">
-									  <button *ngIf="element.notes!=''" mat-icon-button aria-label="expand row" (click)="(expandedElement = expandedElement === element ? null : element); $event.stopPropagation()">
-										<!--em font awesome icon down-->
-										<em *ngIf="expandedElement !== element" class="fa fa-chevron-down"></em>
-										<!--em font awesome icon up-->
-										<em *ngIf="expandedElement === element" class="fa fa-chevron-up"></em>
-									  </button>
-									</td>
-								  </ng-container>
-								
-								  <!-- Expanded Content Column - The detail row is made up of this one column that spans across all columns -->
-								  <ng-container matColumnDef="expandedDetail">
-									<td mat-cell *matCellDef="let element" [attr.colspan]="columnsToDisplayWithExpand.length">
-									  <div class="example-element-detail"
-										   [@detailExpand]="element == expandedElement ? 'expanded' : 'collapsed'">
-										<div class="example-element-description" *ngIf="expandedElement">
-											<div *ngIf="expandedElement.notes!=''" class="d-block">
-												<label><strong>{{'generics.notes' | translate }}:</strong></label>
-												<span> {{expandedElement.notes}} </span>
-											</div>
-										</div>
-									  </div>
-									</td>
-								  </ng-container>
-	
-								<!--(click)="showForm(row)"-->
-								<tr mat-header-row *matHeaderRowDef="columnsToDisplayWithExpand; sticky: true"></tr>
-								<tr mat-row *matRowDef="let row; columns: columnsToDisplayWithExpand;"								
-									[class.example-expanded-row]="expandedElement === element"
-									(click)="expandedElement = expandedElement === element ? null : element"
-									>
-								</tr>
-								<tr mat-row *matRowDef="let row; columns: ['expandedDetail']" class="example-detail-row"></tr>
-								<!-- Row shown when there is no matching data. -->
-								<tr class="mat-row" *matNoDataRow>
-									<td class="mat-cell" colspan="4">{{'events.NoMaching' | translate}} "{{input.value}}"</td>
-								</tr>
-							</table>
+			<div class="events-container">
+				<!-- Header Section -->
+				<div class="events-header">
+					<div class="header-content">
+						<div class="title-with-count">
+							<h1 class="events-title">{{'events.title' | translate }}</h1>
+							<span class="events-count" *ngIf="loadedEvents && totalEventsCount > 0">
+								<span *ngIf="hasActiveFilters()">{{filteredEventsCount}} / {{totalEventsCount}}</span>
+								<span *ngIf="!hasActiveFilters()">{{totalEventsCount}}</span>
+							</span>
 						</div>
-							<!--<mat-paginator [pageSizeOptions]="[10, 25, 100]" class="w-100"
-								aria-label="Select page of events"></mat-paginator>-->
+						<button class="btn-new-event" (click)="goto('0');">
+							<i class="fa fa-plus"></i>
+							<span>{{'generics.New' | translate }}</span>
+						</button>
+					</div>
+				</div>
+
+				<!-- Filters and Actions Bar -->
+				<div class="filters-bar" *ngIf="loadedEvents">
+					<div class="filters-left">
+						<div class="search-container">
+							<i class="fa fa-search search-icon"></i>
+							<input 
+								type="text" 
+								class="search-input" 
+								(keyup)="applyFilter($event)" 
+								[placeholder]="'events.Filter' | translate"
+								#input>
+						</div>
 						
-					</div>
-					<div *ngIf="loadedEvents && events.length==0">
-						<p>{{'generics.No data' | translate }}</p>
-					</div>
-					<div class="" *ngIf="!loadedEvents">
-						<div class="center-elements">
-							<div>
-								<p class="centerSpinner"><i class="fa fa-spinner fa-spin fa-3x fa-fw primary"></i></p>
+						<div class="sort-container">
+							<label class="sort-label">{{'events.Sort by' | translate}}:</label>
+							<select class="sort-select" [value]="sortField" (change)="onSortFieldChange($event)">
+								<option value="date">{{'generics.Date' | translate}}</option>
+								<option value="name">{{'generics.Name' | translate}}</option>
+								<option value="origin">{{'events.Origin' | translate}}</option>
+							</select>
+							<button class="btn-sort-direction" (click)="toggleSortDirection()" [title]="sortDirection === 'asc' ? ('events.Sort descending' | translate) : ('events.Sort ascending' | translate)">
+								<i class="fa" [class.fa-sort-amount-up]="sortDirection === 'asc'" [class.fa-sort-amount-down]="sortDirection === 'desc'"></i>
+							</button>
+						</div>
+						
+						<div class="type-filter-container">
+							<select class="type-filter-select" [value]="filterType" (change)="onTypeFilterChange($event)">
+								<option *ngFor="let type of eventTypes" [value]="type.value">
+									{{type.icon}} {{ type.label | translate }}
+								</option>
+							</select>
+							<button 
+								*ngIf="filterType && filterType !== ''" 
+								class="btn-clear-type" 
+								(click)="clearTypeFilter();" 
+								[title]="'generics.Cancel' | translate">
+								<i class="fa fa-times"></i>
+							</button>
+						</div>
+
+						<div class="date-filter-container">
+							<button 
+								*ngIf="range.value.start==null && range.value.end==null" 
+								class="btn-date-filter" 
+								(click)="showDates(contentDates);">
+								<i class="fa fa-calendar"></i>
+								<span>{{'events.SelectDates' | translate}}</span>
+							</button>
+							<div *ngIf="range.value.start!=null || range.value.end!=null" class="date-range-display">
+								<span class="date-range-text">
+									{{range.value.start | date:'shortDate'}} - {{range.value.end | date:'shortDate'}}
+								</span>
+								<button class="btn-clear-date" (click)="clear();" [title]="'generics.Cancel' | translate">
+									<i class="fa fa-times"></i>
+								</button>
 							</div>
 						</div>
+					</div>
+
+					<div class="filters-right" *ngIf="selection.selected.length>0 && loadedEvents && events.length>0">
+						<div class="selection-info">
+							<span class="selection-count">{{selection.selected.length}} {{'generics.selected' | translate}}</span>
+						</div>
+						<button 
+							*ngIf="!deleting" 
+							class="btn-delete-selected" 
+							(click)="deleteSelected()">
+							<i class="fa fa-trash"></i>
+							<span>{{'generics.Delete selected' | translate}}</span>
+						</button>
+						<div *ngIf="deleting" class="deleting-spinner">
+							<i class="fa fa-spinner fa-spin"></i>
+						</div>
+					</div>
+				</div>
+
+				<!-- Events List -->
+				<div class="events-content" *ngIf="loadedEvents && events.length>0">
+					<div class="events-list">
+						<div 
+							*ngFor="let event of dataSource.filteredData" 
+							class="event-card"
+							[class.selected]="selection.isSelected(event)"
+							[class.expanded]="expandedElement === event">
+							<div class="event-card-content">
+								<div class="event-checkbox">
+									<mat-checkbox 
+										(click)="$event.stopPropagation()" 
+										(change)="$event ? selection.toggle(event) : null" 
+										[checked]="selection.isSelected(event)">
+									</mat-checkbox>
+								</div>
+								
+								<div class="event-main">
+									<div class="event-header-row">
+										<div class="event-title-section">
+											<span class="event-icon" *ngIf="event._eventIcon">{{event._eventIcon}}</span>
+											<h3 class="event-title">{{event.name}}</h3>
+										</div>
+										<div class="event-actions">
+											<button 
+												class="btn-action btn-edit" 
+												(click)="showForm(event); $event.stopPropagation();" 
+												[title]="'generics.Edit' | translate">
+												<i class="fa fa-pencil"></i>
+											</button>
+											<button 
+												class="btn-action btn-delete" 
+												(click)="deleteSeizure(event); $event.stopPropagation();" 
+												[title]="'generics.Delete' | translate">
+												<i class="fa fa-trash"></i>
+											</button>
+										</div>
+									</div>
+									
+									<div class="event-meta">
+										<div class="event-meta-item">
+											<i class="fa fa-tag meta-icon"></i>
+											<span class="meta-label">{{'events.Origin' | translate}}:</span>
+											<span class="meta-value" *ngIf="!event.docId">{{event._originText}}</span>
+											<span class="meta-value" *ngIf="event.docId">
+												<i class="fa fa-file-text-o"></i> {{event.documentTitle}}
+											</span>
+										</div>
+										<div class="event-meta-item">
+											<i class="fa fa-calendar meta-icon"></i>
+											<span class="meta-label">{{'generics.Date' | translate}}:</span>
+											<span class="meta-value">
+												<span *ngIf="!event.dateEnd">
+													{{event.date ? (event.date | date:'mediumDate') : '--/--/--'}}
+													<span *ngIf="(event.key === 'appointment' || event.key === 'reminder') && event.date && (event.date | date:'HH:mm') !== '00:00'">
+														- {{event.date | date:'HH:mm'}}
+													</span>
+												</span>
+												<span *ngIf="event.dateEnd">
+													{{event.date ? (event.date | date:'mediumDate') : '--/--/--'}} - {{event.dateEnd | date:'mediumDate'}}
+												</span>
+											</span>
+										</div>
+									</div>
+
+									<div 
+										class="event-notes-expand" 
+										*ngIf="event.notes && event.notes !== ''"
+										[@detailExpand]="expandedElement === event ? 'expanded' : 'collapsed'">
+										<div class="event-notes">
+											<strong>{{'generics.notes' | translate}}:</strong>
+											<p>{{event.notes}}</p>
+										</div>
+									</div>
+
+									<button 
+										*ngIf="event.notes && event.notes !== ''" 
+										class="btn-expand-notes"
+										(click)="expandedElement = expandedElement === event ? null : event; $event.stopPropagation();">
+										<i class="fa" [class.fa-chevron-down]="expandedElement !== event" [class.fa-chevron-up]="expandedElement === event"></i>
+										<span>{{expandedElement === event ? ('generics.Hide' | translate) : ('generics.Show notes' | translate)}}</span>
+									</button>
+								</div>
+							</div>
+						</div>
+					</div>
+
+					<!-- No Results Message -->
+					<div class="no-results" *ngIf="dataSource.filteredData.length === 0 && input.value">
+						<i class="fa fa-search"></i>
+						<p>{{'events.NoMaching' | translate}} "{{input.value}}"</p>
+					</div>
+				</div>
+
+				<!-- Empty State -->
+				<div class="empty-state" *ngIf="loadedEvents && events.length==0">
+					<div class="empty-state-content">
+						<i class="fa fa-calendar-check-o empty-icon"></i>
+						<h3>{{'generics.No data' | translate }}</h3>
+						<p>{{'events.No events yet' | translate}}</p>
+						<button class="btn-new-event-empty" (click)="goto('0');">
+							<i class="fa fa-plus"></i>
+							<span>{{'events.Create first event' | translate}}</span>
+						</button>
+					</div>
+				</div>
+
+				<!-- Loading State -->
+				<div class="loading-state" *ngIf="!loadedEvents">
+					<div class="loading-content">
+						<i class="fa fa-spinner fa-spin loading-spinner"></i>
+						<p>{{'generics.Loading' | translate}}...</p>
 					</div>
 				</div>
 			</div>

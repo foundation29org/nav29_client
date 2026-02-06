@@ -5,7 +5,6 @@ import { ErrorPageComponent } from "./error/error-page.component";
 import { LoginPageComponent } from "./login/login-page.component";
 import { RegisterPageComponent } from "./register/register-page.component";
 import { LoginCompPageComponent } from "./logincomp/logincomp-page.component";
-import { PrivacyPolicyPageComponent } from "./privacy-policy/privacy-policy.component";
 
 const routes: Routes = [
   {
@@ -37,13 +36,6 @@ const routes: Routes = [
         component: LoginCompPageComponent,
         data: {
           title: 'menu.Sign in'
-        }
-      },
-      {
-        path: 'privacy-policy',
-        component: PrivacyPolicyPageComponent,
-        data: {
-          title: 'menu.Privacy Policy'
         }
       }
     ]

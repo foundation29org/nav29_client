@@ -44,6 +44,7 @@ export class EditMedicalEventComponent implements OnInit {
     this.eventForm = this.formBuilder.group({
       name: [this.event.name, Validators.required],
       date: [new Date(this.event.date), Validators.required],
+      dateEnd: [this.event.dateEnd ? new Date(this.event.dateEnd) : null],
       key: [this.event.key, Validators.required],
       notes: [this.event.notes]
     });
@@ -55,6 +56,7 @@ export class EditMedicalEventComponent implements OnInit {
         ...this.event,
         name: this.eventForm.value.name,
         date: this.eventForm.value.date,
+        dateEnd: this.eventForm.value.dateEnd || null,
         key: this.eventForm.value.key,
         notes: this.eventForm.value.notes
       };

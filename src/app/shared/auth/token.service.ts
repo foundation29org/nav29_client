@@ -13,16 +13,23 @@ export class TokenService {
 
 
   isTokenValid():boolean{
-    if(localStorage.getItem('token') && this.authService.getIdUser()!=undefined){
-      if((this.authService.getToken() == localStorage.getItem('token'))&& this.authService.getIdUser()!=undefined){
-        const tokenPayload = decode(localStorage.getItem('token'));
-        if(tokenPayload.sub ==this.authService.getIdUser()){
+    // Validar token en memoria (ya no usamos localStorage para tokens)
+    const token = this.authService.getToken();
+    if(token && this.authService.getIdUser()!=undefined){
+      try {
+        const tokenPayload = decode(token);
+        // Verificar que el token no haya expirado
+        const currentTime = Math.floor(Date.now() / 1000);
+        if(tokenPayload.exp && tokenPayload.exp < currentTime){
+          return false; // Token expirado
+        }
+        if(tokenPayload.sub == this.authService.getIdUser()){
           return true;
         }else{
           return false;
         }
-      }else{
-        return false;
+      } catch (err) {
+        return false; // Token inválido
       }
     }else{
       return false;

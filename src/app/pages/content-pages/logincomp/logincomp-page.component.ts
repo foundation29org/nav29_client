@@ -71,7 +71,8 @@ export class LoginCompPageComponent implements OnDestroy, OnInit{
   listEvidences: any[] = [];
 
     constructor(private router: Router, public authService: AuthService, public translate: TranslateService, public toastr: ToastrService, public authServiceFirebase: AuthServiceFirebase, private modalService: NgbModal, private ngZone: NgZone, private goCertiusService: GoCertiusService, private http: HttpClient, private patientService: PatientService, private apiDx29ServerService: ApiDx29ServerService, private route: ActivatedRoute) {
-      if(this.authService.getEnvironment()){
+      // Solo redirigir si hay una sesión válida confirmada (no mientras se verifica)
+      if(this.authService.getEnvironment() && this.authService.isAuthenticated() && this.authService.getIdUser()){
 
         var param = this.router.parseUrl(this.router.url).queryParams;
         if (param.key && param.token) {
@@ -280,7 +281,12 @@ export class LoginCompPageComponent implements OnDestroy, OnInit{
                 confirmButtonText: this.translate.instant("generics.Close")
               });
             }else if(res.userid && res.message=='Done'){
-              this.router.navigate(['/home']);
+              // Si hay paciente seleccionado, ir a home; si no, ir a patients
+              if (this.authService.getCurrentPatient()) {
+                this.router.navigate(['/home']);
+              } else {
+                this.router.navigate(['/patients']);
+              }
             }   
             
           }, (err) => {

@@ -13,8 +13,10 @@ import { PatientService } from 'app/shared/services/patient.service';
 import { AuthGuard } from 'app/shared/auth/auth-guard.service';
 import { DateService } from 'app/shared/services/date.service';
 import { InsightsService } from 'app/shared/services/azureInsights.service';
+import { SpeechRecognitionService } from 'app/shared/services/speech-recognition.service';
 import * as datos from './icons.json';
-declare var webkitSpeechRecognition: any;
+import * as countriesData from '../../../assets/jsons/countries.json';
+import { jsPDF } from "jspdf";
 
 @Component({
   selector: 'app-new-patient',
@@ -31,12 +33,14 @@ export class NewPatientComponent implements OnInit, OnDestroy {
   modalReference: NgbModalRef;
   nameFileCamera: string = '';
   docs: any = [];
+  tempDocs: any = [];
   isCheckingDocsStatus = false;
   totalTokens = 0;
   containerName: string = '';
   currentPatient: string = '';
   actualPatient: any = {};
   icons: any = (datos as any).default;
+  countries: any[] = (countriesData as any).default || countriesData;
   initialEvents: any[] = [];
   medicalLevel: string = '1';
 
@@ -55,7 +59,6 @@ export class NewPatientComponent implements OnInit, OnDestroy {
   havetreatment = false;
   havediagnosis = false;
 
-  recognition: any;
   recording = false;
   supported = false;
   timer: number = 0;
@@ -66,9 +69,10 @@ export class NewPatientComponent implements OnInit, OnDestroy {
   tempFileName: string = '';
   showCameraButton: boolean = false;
   preferredResponseLanguage: string = '';
+  private speechSubscription: Subscription;
 
 
-  constructor(private patientService: PatientService, private router: Router, private modalService: NgbModal, public toastr: ToastrService, public translate: TranslateService, private http: HttpClient, private authService: AuthService, private formBuilder: FormBuilder, private dateService: DateService, private authGuard: AuthGuard, public insightsService: InsightsService) {
+  constructor(private patientService: PatientService, private router: Router, private modalService: NgbModal, public toastr: ToastrService, public translate: TranslateService, private http: HttpClient, private authService: AuthService, private formBuilder: FormBuilder, private dateService: DateService, private authGuard: AuthGuard, public insightsService: InsightsService, private speechRecognitionService: SpeechRecognitionService) {
     this.getTranslations();
   }
 
@@ -84,7 +88,56 @@ export class NewPatientComponent implements OnInit, OnDestroy {
   ngOnInit() {
     this.showCameraButton = this.isMobileDevice();
     this.maxDate = new Date();
+    this.supported = this.speechRecognitionService.isSupported();
     this.initEnvironment();
+    
+    // Suscribirse a los resultados del reconocimiento de voz
+    if (this.supported) {
+      let lastFinalText = '';
+      let lastInterimText = '';
+      this.speechSubscription = this.speechRecognitionService.results$.subscribe((result) => {
+        if (result && result.text) {
+          if (result.isFinal) {
+            // Para resultados finales, extraer solo el nuevo texto
+            const newText = result.text.replace(lastFinalText, '').trim();
+            if (newText) {
+              // Remover el último texto intermedio si existe
+              if (lastInterimText && this.medicalText.endsWith(lastInterimText)) {
+                this.medicalText = this.medicalText.slice(0, -lastInterimText.length);
+              }
+              this.medicalText += (this.medicalText && !this.medicalText.endsWith('\n') ? '\n' : '') + newText;
+            }
+            lastFinalText = result.text;
+            lastInterimText = '';
+          } else {
+            // Para resultados intermedios, reemplazar el último texto intermedio
+            if (lastInterimText && this.medicalText.endsWith(lastInterimText)) {
+              this.medicalText = this.medicalText.slice(0, -lastInterimText.length) + result.text;
+            } else {
+              // Si no hay texto intermedio previo, añadir el nuevo
+              const currentText = this.medicalText.trim();
+              if (currentText && !currentText.endsWith('\n')) {
+                this.medicalText += '\n' + result.text;
+              } else {
+                this.medicalText += result.text;
+              }
+            }
+            lastInterimText = result.text;
+          }
+        }
+      });
+
+      // Suscribirse a los errores
+      this.speechRecognitionService.errors$.subscribe((error) => {
+        if (error) {
+          this.toastr.error('', error);
+          if (this.recording) {
+            this.stopTimer();
+            this.recording = false;
+          }
+        }
+      });
+    }
   }
 
 
@@ -93,6 +146,10 @@ export class NewPatientComponent implements OnInit, OnDestroy {
     if (this.messageSubscription) {
       this.messageSubscription.unsubscribe();
     }
+    if (this.speechSubscription) {
+      this.speechSubscription.unsubscribe();
+    }
+    this.speechRecognitionService.stop();
   }
 
 
@@ -129,8 +186,13 @@ export class NewPatientComponent implements OnInit, OnDestroy {
                 this.continuePatient(res);
               });
             } else {
-              // User does not want to create a new patient, navigate to home
-              this.router.navigate(['/home']);
+              // User does not want to create a new patient
+              // Si hay paciente seleccionado, ir a home; si no, ir a patients para elegir
+              if (this.authService.getCurrentPatient()) {
+                this.router.navigate(['/home']);
+              } else {
+                this.router.navigate(['/patients']);
+              }
             }
           });          
         }
@@ -197,9 +259,9 @@ export class NewPatientComponent implements OnInit, OnDestroy {
       await this.delay(200);
       this.openCamera();
     }else if(opt=='opt2'){
-      this.setupRecognition();
       this.medicalText = '';
       this.summaryDx29 = '';
+      this.speechRecognitionService.clearAccumulatedText();
       if (this.modalReference != undefined) {
           this.modalReference.close();
       }
@@ -211,35 +273,6 @@ export class NewPatientComponent implements OnInit, OnDestroy {
       this.modalReference = this.modalService.open(content, ngbModalOptions);
     }
     
-  }
-
-  setupRecognition() {
-    if ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window) {
-      // El navegador soporta la funcionalidad
-      console.log('soporta')
-      this.recognition = new webkitSpeechRecognition();
-      let lang = localStorage.getItem('lang');
-      if(lang == 'en'){
-        this.recognition.lang = 'en-US';
-      }else if(lang == 'es'){
-        this.recognition.lang = 'es-ES';
-      }else if(lang == 'fr'){
-        this.recognition.lang = 'fr-FR';
-      }else if(lang == 'de'){
-        this.recognition.lang = 'de-DE';
-      }else if(lang == 'it'){
-        this.recognition.lang = 'it-IT';
-      }else if(lang == 'pt'){
-        this.recognition.lang = 'pt-PT';
-      }
-      this.recognition.continuous = true;
-      this.recognition.maxAlternatives = 3;
-      this.supported = true;
-    } else {
-      // El navegador no soporta la funcionalidad
-      this.supported = false;
-      console.log('no soporta')
-    }
   }
 
   startTimer(restartClock) {
@@ -266,28 +299,26 @@ export class NewPatientComponent implements OnInit, OnDestroy {
 
   toggleRecording() {
     if (this.recording) {
-      //mosstrar el swal durante dos segundos diciendo que es está procesando
+      // Mostrar el swal durante dos segundos diciendo que está procesando
       Swal.fire({
         title: this.translate.instant("voice.Processing audio..."),
         html: this.translate.instant("voice.Please wait a few seconds."),
         showCancelButton: false,
         showConfirmButton: false,
         allowOutsideClick: false
-      })
-      //esperar 4 segundos
-      console.log('esperando 4 segundos')
-      setTimeout(function () {
-        console.log('cerrando swal')
-        this.stopTimer();
-        this.recognition.stop();
-        Swal.close();
-      }.bind(this), 4000);
+      });
       
-      this.recording = !this.recording;
+      // Esperar 4 segundos
+      setTimeout(() => {
+        this.stopTimer();
+        this.speechRecognitionService.stop();
+        Swal.close();
+        this.recording = false;
+      }, 4000);
       
     } else {
       if(this.medicalText.length > 0){
-        //quiere continuar con la grabacion o empezar una nueva
+        // Quiere continuar con la grabación o empezar una nueva
         Swal.fire({
           title: this.translate.instant("voice.Do you want to continue recording?"),
           icon: 'warning',
@@ -300,53 +331,26 @@ export class NewPatientComponent implements OnInit, OnDestroy {
           allowOutsideClick: false
         }).then((result) => {
           if (result.value) {
-            this.continueRecording(false, true);
-          }else{
+            // Continuar grabación
+            this.startTimer(false);
+            this.speechRecognitionService.start();
+            this.recording = true;
+          } else {
+            // Empezar nueva grabación
             this.medicalText = '';
-            this.continueRecording(true, true);
+            this.speechRecognitionService.clearAccumulatedText();
+            this.startTimer(true);
+            this.speechRecognitionService.start();
+            this.recording = true;
           }
         });
-      }else{
-        this.continueRecording(true, true);
-      }
-    }
-    
-  }
-
-  continueRecording(restartClock, changeState){
-    this.startTimer(restartClock);
-    this.recognition.start();
-    this.recognition.onresult = (event) => {
-      console.log(event)
-      var transcript = event.results[event.resultIndex][0].transcript;
-      console.log(transcript); // Utilizar el texto aquí
-      this.medicalText += transcript + '\n';
-      /*this.ngZone.run(() => {
-        this.medicalText += transcript + '\n';
-      });*/
-      if (event.results[event.resultIndex].isFinal) {
-        console.log('ha terminado')
-      }
-    };
-
-   // this.recognition.onerror = function(event) {
-    this.recognition.onerror = (event) => {
-      if (event.error === 'no-speech') {
-        console.log('Reiniciando el reconocimiento de voz...');
-        this.restartRecognition(); // Llama a una función para reiniciar el reconocimiento
       } else {
-        // Para otros tipos de errores, muestra un mensaje de error
-        this.toastr.error('', this.translate.instant("voice.Error in voice recognition."));
+        // Empezar nueva grabación
+        this.startTimer(true);
+        this.speechRecognitionService.start();
+        this.recording = true;
       }
-    };
-    if(changeState){
-      this.recording = !this.recording;
     }
-  }
-
-  restartRecognition() {
-    this.recognition.stop(); // Detiene el reconocimiento actual
-    setTimeout(() => this.continueRecording(false, false), 100); // Un breve retraso antes de reiniciar
   }
 
   async createFile(){
@@ -500,64 +504,302 @@ export class NewPatientComponent implements OnInit, OnDestroy {
       filename = filename.split(extension)[0];
       var uniqueFileName = this.getUniqueFileName2();
       filename = 'raitofile/' + uniqueFileName + '/' + filename + extension;
-      this.docs.push({ dataFile: { event: file, name: file.name, url: filename, content: event2.target.result }, langToExtract: '', medicalText: '', state: 'false', tokens: 0 });
+      let dataFile = { event: file, url: filename, name: file.name };
+      this.tempDocs.push({ dataFile: dataFile, state: 'false' });
       if(goprev){
         this.prevCamera();
       }else{
-        if (this.modalReference != undefined) {
-          this.modalReference.close();
-          this.modalReference = undefined;
+        // Si hay más de 1 foto, preguntar si quiere agrupar
+        if (this.tempDocs.length > 1) {
+          this.askGroupPhotos();
+        } else {
+          // Si solo hay 1 foto, procesar directamente
+          if (this.modalReference != undefined) {
+            this.modalReference.close();
+            this.modalReference = undefined;
+          }
+          this.processFilesSequentially();
         }
-        this.isCheckingDocsStatus = false;
-        for (let i = 0; i < this.docs.length; i++) {
-          this.prepareFile(i);
-        }
-        
       }
     }
   }
 
   deletephoto(index) {
-    this.docs.splice(index, 1);
+    this.tempDocs.splice(index, 1);
   }
 
-
-  finishPhoto() {
-    if (this.modalReference != undefined) {
-      this.modalReference.close();
-      this.modalReference = undefined;
-    }
-    //add file to docs
-    if (this.nameFileCamera == '') {
-      this.nameFileCamera = 'photo-' + this.getUniqueFileName();
-    }
-    this.nameFileCamera = this.nameFileCamera + '.png';
-    let file = this.dataURLtoFile(this.capturedImage, this.nameFileCamera);
-    var reader = new FileReader();
-    reader.readAsArrayBuffer(file); // read file as data url
-    reader.onload = (event2: any) => { // called once readAsDataURL is completed
-      var filename = (file).name;
-      var extension = filename.substr(filename.lastIndexOf('.'));
-      var pos = (filename).lastIndexOf('.')
-      pos = pos - 4;
-      if (pos > 0 && extension == '.gz') {
-        extension = (filename).substr(pos);
+  askGroupPhotos() {
+    const pageCount = this.tempDocs.length;
+    const pageList = this.tempDocs.map((doc, index) => `${index + 1}. ${doc.dataFile.name}`).join('<br>');
+    
+    // Generar nombre por defecto inteligente
+    const defaultName = this.generateDefaultDocumentName();
+    
+    // Crear HTML con selector y campo de nombre condicional
+    let htmlContent = `
+      <p style="margin-bottom: 15px; font-size: 1.1em;">
+        ${this.translate.instant('demo.You have captured')} <strong>${pageCount}</strong> ${pageCount === 1 ? this.translate.instant('demo.page') : this.translate.instant('demo.pages')}.
+      </p>
+      <p style="margin-bottom: 10px;"><strong>${this.translate.instant('demo.Captured pages')}:</strong></p>
+      <div style="text-align: left; max-height: 120px; overflow-y: auto; margin: 10px 0; padding: 10px; background-color: #f8f9fa; border-radius: 4px; font-size: 0.9em;">${pageList}</div>
+      <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #dee2e6;">
+        <p style="margin-bottom: 15px; font-weight: 600;">${this.translate.instant('demo.How do you want to save this document?')}</p>
+        <div style="text-align: left;">
+          <label style="display: block; margin-bottom: 15px; cursor: pointer; padding: 10px; border: 2px solid #2F8BE6; border-radius: 6px; background-color: #f0f7ff;">
+            <input type="radio" name="saveOption" value="group" checked style="margin-right: 10px; cursor: pointer; width: 18px; height: 18px; accent-color: #2F8BE6;">
+            <span style="font-weight: 600; color: #2F8BE6;">${this.translate.instant('demo.Save as one document')}</span>
+            <span style="display: block; margin-left: 28px; margin-top: 5px; font-size: 0.9em; color: #666;">${this.translate.instant('demo.Save as one document description')}</span>
+          </label>
+          <label style="display: block; margin-bottom: 10px; cursor: pointer; padding: 10px; border: 2px solid #dee2e6; border-radius: 6px; background-color: #fff;">
+            <input type="radio" name="saveOption" value="separate" style="margin-right: 10px; cursor: pointer; width: 18px; height: 18px; accent-color: #2F8BE6;">
+            <span style="font-weight: 600;">${this.translate.instant('demo.Save as separate documents')}</span>
+            <span style="display: block; margin-left: 28px; margin-top: 5px; font-size: 0.9em; color: #666;">${this.translate.instant('demo.Save as separate documents description')}</span>
+          </label>
+        </div>
+        <div id="documentNameContainer" style="margin-top: 20px; padding-top: 15px; border-top: 1px solid #dee2e6;">
+          <label style="display: block; margin-bottom: 8px; font-weight: 600;">${this.translate.instant('demo.Document name')}</label>
+          <input type="text" id="documentNameInput" value="${defaultName}" style="width: 100%; padding: 8px; border: 1px solid #ced4da; border-radius: 4px; font-size: 1em;" placeholder="${this.translate.instant('demo.Enter document name')}">
+          <p style="margin-top: 5px; font-size: 0.85em; color: #666; font-style: italic;">${this.translate.instant('demo.You can change it later')}</p>
+        </div>
+      </div>
+    `;
+    
+    Swal.fire({
+      title: this.translate.instant('demo.Finalize document'),
+      html: htmlContent,
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonText: this.translate.instant('demo.Save document'),
+      cancelButtonText: this.translate.instant('generics.Cancel'),
+      confirmButtonColor: '#2F8BE6',
+      cancelButtonColor: '#B0B6BB',
+      reverseButtons: true,
+      didOpen: () => {
+        // Manejar cambio de opción y actualizar estilos visuales
+        const container = Swal.getHtmlContainer();
+        const radioButtons = container?.querySelectorAll('input[name="saveOption"]') as NodeListOf<HTMLInputElement>;
+        const nameContainer = container?.querySelector('#documentNameContainer') as HTMLElement;
+        const labels = container?.querySelectorAll('label') as NodeListOf<HTMLLabelElement>;
+        
+        // Función para actualizar estilos visuales de los labels
+        const updateLabelStyles = () => {
+          radioButtons?.forEach((radio, index) => {
+            const label = labels?.[index];
+            if (label && radio.checked) {
+              label.style.borderColor = '#2F8BE6';
+              label.style.backgroundColor = '#f0f7ff';
+            } else if (label) {
+              label.style.borderColor = '#dee2e6';
+              label.style.backgroundColor = '#fff';
+            }
+          });
+        };
+        
+        // Actualizar estilos iniciales
+        updateLabelStyles();
+        
+        radioButtons?.forEach(radio => {
+          radio.addEventListener('change', () => {
+            updateLabelStyles();
+            if (radio.value === 'group' && nameContainer) {
+              nameContainer.style.display = 'block';
+            } else if (radio.value === 'separate' && nameContainer) {
+              nameContainer.style.display = 'none';
+            }
+          });
+        });
+      },
+      preConfirm: () => {
+        const container = Swal.getHtmlContainer();
+        const selectedOption = (container?.querySelector('input[name="saveOption"]:checked') as HTMLInputElement)?.value;
+        const nameInput = container?.querySelector('#documentNameInput') as HTMLInputElement;
+        
+        if (selectedOption === 'group') {
+          const documentName = nameInput?.value?.trim();
+          if (!documentName) {
+            Swal.showValidationMessage(this.translate.instant('demo.Document name is required'));
+            return false;
+          }
+          return { option: 'group', name: documentName };
+        } else {
+          return { option: 'separate', name: null };
+        }
       }
-      filename = filename.split(extension)[0];
+    }).then((result) => {
+      if (this.modalReference != undefined) {
+        this.modalReference.close();
+        this.modalReference = undefined;
+      }
+      
+      if (result.isConfirmed && result.value) {
+        if (result.value.option === 'group') {
+          // Agrupar en un solo PDF con el nombre proporcionado
+          this.groupPhotosIntoPDF(result.value.name);
+        } else {
+          // Subir como documentos separados
+          this.processFilesSequentially();
+        }
+      }
+    });
+  }
+
+  generateDefaultDocumentName(): string {
+    // Generar nombre inteligente basado en fecha y contexto
+    const now = new Date();
+    const dateStr = now.toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' });
+    
+    // Opciones de nombres sugeridos
+    const suggestions = [
+      this.translate.instant('demo.Medical report'),
+      this.translate.instant('demo.Test results'),
+      this.translate.instant('demo.Medical documentation')
+    ];
+    
+    // Usar el nombre de la cámara si existe y tiene sentido, sino usar sugerencia
+    if (this.nameFileCamera && this.nameFileCamera !== '' && !this.nameFileCamera.startsWith('photo-')) {
+      return this.nameFileCamera.replace('.png', '');
+    }
+    
+    // Usar primera sugerencia con fecha
+    return `${suggestions[0]} – ${dateStr}`;
+  }
+
+  async groupPhotosIntoPDF(documentName: string) {
+    try {
+      // Mostrar mensaje de carga
+      Swal.fire({
+        title: this.translate.instant('demo.Combining photos'),
+        html: `<p>${this.translate.instant('demo.Combining')} ${this.tempDocs.length} ${this.tempDocs.length === 1 ? this.translate.instant('demo.photo') : this.translate.instant('demo.photos')} ${this.translate.instant('demo.into one document')}...</p>`,
+        allowOutsideClick: false,
+        didOpen: () => {
+          Swal.showLoading();
+        }
+      });
+
+      // Crear PDF con jsPDF
+      const doc = new jsPDF();
+      const pdfWidth = doc.internal.pageSize.getWidth();
+      const pdfHeight = doc.internal.pageSize.getHeight();
+      const margin = 10;
+      const maxWidth = pdfWidth - (margin * 2);
+      const maxHeight = pdfHeight - (margin * 2);
+
+      // Procesar cada foto y añadirla al PDF
+      for (let i = 0; i < this.tempDocs.length; i++) {
+        const photoData = this.tempDocs[i].dataFile;
+        const imageDataUrl = await this.fileToDataURL(photoData.event);
+        
+        // Crear imagen para obtener dimensiones
+        const img = new Image();
+        await new Promise((resolve) => {
+          img.onload = () => {
+            // Calcular dimensiones manteniendo proporción
+            let imgWidth = img.width;
+            let imgHeight = img.height;
+            const ratio = Math.min(maxWidth / imgWidth, maxHeight / imgHeight);
+            imgWidth = imgWidth * ratio;
+            imgHeight = imgHeight * ratio;
+
+            // Centrar imagen en la página
+            const x = (pdfWidth - imgWidth) / 2;
+            const y = (pdfHeight - imgHeight) / 2;
+
+            // Añadir nueva página si no es la primera foto
+            if (i > 0) {
+              doc.addPage();
+            }
+
+            // Añadir imagen al PDF
+            doc.addImage(imageDataUrl, 'PNG', x, y, imgWidth, imgHeight);
+            resolve(null);
+          };
+          img.src = imageDataUrl;
+        });
+      }
+
+      // Generar blob del PDF
+      const pdfBlob = doc.output('blob');
+      
+      // Crear File desde el blob usando el nombre proporcionado por el usuario
+      let cleanName = documentName.trim();
+      if (cleanName.toLowerCase().endsWith('.pdf')) {
+        cleanName = cleanName.slice(0, -4);
+      }
+      const pdfFileName = cleanName + '.pdf';
+      const pdfFile = new File([pdfBlob], pdfFileName, { type: 'application/pdf' });
+
+      // Preparar para subir
       var uniqueFileName = this.getUniqueFileName2();
-      filename = 'raitofile/' + uniqueFileName + '/' + filename + extension;
-      this.docs.push({ dataFile: { event: file, name: file.name, url: filename, content: event2.target.result }, langToExtract: '', medicalText: '', state: 'false', tokens: 0 });
-      if (file.type == 'application/pdf' || extension == '.docx' || file.type == 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' || extension == '.jpg' || extension == '.png' || extension == '.jpeg' || extension == '.bmp' || extension == '.tiff' || extension == '.heif' || extension == '.pptx' || file.type == 'text/plain' || extension == '.txt') {
-        let index = this.docs.length - 1;
-        //this.callParser(index);
+      var filename = 'raitofile/' + uniqueFileName + '/' + pdfFileName;
+      
+      // Leer el archivo como ArrayBuffer para el contenido
+      var reader = new FileReader();
+      reader.readAsArrayBuffer(pdfFile);
+      reader.onload = async (event2: any) => {
+        // Limpiar tempDocs y añadir el PDF a docs
+        this.tempDocs = [];
+        this.docs.push({ dataFile: { event: pdfFile, name: pdfFileName, url: filename, content: event2.target.result }, langToExtract: '', medicalText: '', state: 'false', tokens: 0 });
+
+        // Cerrar mensaje de carga y esperar un poco para que se cierre completamente
+        Swal.close();
+        await this.delay(300);
+
+        // Procesar el archivo
         this.isCheckingDocsStatus = false;
-        this.prepareFile(index);
-      } else {
-        Swal.fire(this.translate.instant("dashboardpatient.error extension"), '', "error");
-        this.insightsService.trackEvent('Invalid file extension', { extension: extension });
-      }
+        for (let i = 0; i < this.docs.length; i++) {
+          this.prepareFile(i);
+        }
+      };
+    } catch (error) {
+      console.error('Error combining photos:', error);
+      Swal.fire({
+        title: this.translate.instant('demo.Error combining photos'),
+        text: error.message || '',
+        icon: 'error'
+      });
+      this.insightsService.trackException(error);
     }
   }
+
+  fileToDataURL(file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => resolve(e.target?.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+
+  processFilesSequentially(index = 0) {
+    if (index < this.tempDocs.length) {
+      let file = this.tempDocs[index].dataFile.event;
+      var reader = new FileReader();
+      reader.readAsArrayBuffer(file);
+      reader.onload = (event2: any) => {
+        var filename = this.tempDocs[index].dataFile.url;
+        this.docs.push({ dataFile: { event: file, name: file.name, url: filename, content: event2.target.result }, langToExtract: '', medicalText: '', state: 'false', tokens: 0 });
+        
+        // Procesar siguiente archivo
+        this.processFilesSequentially(index + 1);
+      };
+    } else {
+      // Todos los archivos procesados, limpiar tempDocs y procesar docs
+      this.tempDocs = [];
+      if (this.modalReference != undefined) {
+        this.modalReference.close();
+        this.modalReference = undefined;
+      }
+      // Esperar un poco antes de procesar para asegurar que el modal se haya cerrado
+      setTimeout(() => {
+        this.isCheckingDocsStatus = false;
+        for (let i = 0; i < this.docs.length; i++) {
+          this.prepareFile(i);
+        }
+      }, 300);
+    }
+  }
+
+
 
   getUniqueFileName() {
     var now = new Date();
@@ -918,6 +1160,7 @@ export class NewPatientComponent implements OnInit, OnDestroy {
       heightIn: [null], // Altura en pulgadas
       heightCm: [null], // Altura en centímetros
       ethnicGroup: ['white_european', Validators.required],
+      country: [''], // País opcional - se puede añadir después
       gender: [null, Validators.required],
       chronicConditions: ['', Validators.required],
       diagnosis: [''],
@@ -1041,6 +1284,7 @@ export class NewPatientComponent implements OnInit, OnDestroy {
       this.actualPatient.patientName = this.initialEventsForm.value.name;
       this.actualPatient.birthDate = this.initialEventsForm.value.dob;
       this.actualPatient.gender = this.initialEventsForm.value.gender;
+      this.actualPatient.country = this.initialEventsForm.value.country; // País para contextualizar respuestas
       let savePromises = [this.updateBasicInfo(this.actualPatient)];
 
       const eventsData = [];
