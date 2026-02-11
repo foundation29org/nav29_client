@@ -29,7 +29,6 @@ import { NavbarD29Component } from "./navbar-dx29/navbar-dx29.component";
 import { NavbarPagesComponent } from "./navbar-pages/navbar-pages.component";
 import { HorizontalMenuComponent } from './horizontal-menu/horizontal-menu.component';
 import { VerticalMenuComponent } from "./vertical-menu/vertical-menu.component";
-import { NotificationSidebarComponent } from './notification-sidebar/notification-sidebar.component';
 import { SafePipe } from 'app/shared/services/safe.pipe';
 import { ShareModalComponent } from './share-modal/share-modal.component';
 import { LanguageSelectModalComponent } from 'app/user/language-select/language-select.component';
@@ -60,7 +59,6 @@ import { AutoFocusDirective } from './directives/auto-focus.directive';
         NavbarPagesComponent,
         VerticalMenuComponent,
         HorizontalMenuComponent,
-        NotificationSidebarComponent,
         ToggleFullscreenDirective,
         SidebarDirective,
         TopMenuDirective,
@@ -102,7 +100,6 @@ import { AutoFocusDirective } from './directives/auto-focus.directive';
         NavbarPagesComponent,
         VerticalMenuComponent,
         HorizontalMenuComponent,
-        NotificationSidebarComponent,
         ToggleFullscreenDirective,
         SidebarLinkDirective,
         SidebarDropdownDirective,
